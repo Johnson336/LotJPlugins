@@ -1,0 +1,257 @@
+<?xml version="1.0" encoding="iso-8859-1" ?> 
+<!DOCTYPE muclient> 
+<!--  Saved on Thursday, July 05, 2012, 1:04 AM   --> 
+<!-- MuClient version 4.73 --> 
+<muclient>
+<plugin name="LotJStarMap" author="@Johnson" id="dd5080a41939faabc233da8f" language="Lua" purpose="Star System Map" save_state="y" requires="4.73" version="2.13">
+<description trim="y">
+<![CDATA[ 
+Type "hypmap" to find starsystems and plot on map.
+Type "hidemap" to close map window, or click the X in the upper right to close.
+Hover mouse over systems to see distances to other systems.
+Click on a system to calculate a jump to the planet within that system.
+  ]]> 
+  </description>
+  </plugin>
+<!--   Get our standard constants   --> 
+  <include name="constants.lua" /> 
+<!--   Triggers    --> 
+<triggers>
+	<trigger name="systemCapture" script="storeSystem" match="^(.*)\( (.*)\, (.*) \)$" regexp="y" group="StarCap" omit_from_log="y" omit_from_output="y" sequence="100" />
+	<trigger name="starsFailed" script="toggleOff" match="^You must hold a datapad to do this\.$" regexp="y" group="StarCap" sequence="100" />
+	<trigger name="systemCapDone" script="findPlanets" match="^Show what to whom\?$" regexp="y" group="StarCap" omit_from_log="y" omit_from_output="y" sequence="100" />
+	<trigger name="planetCapTitle" match="Planet*Starsystem*Governed By*Popular Support" enabled="n" group="PlanetCap" omit_from_log="y" omit_from_output="y" sequence="100" />
+	<trigger name="planetCapture" script="storePlanet" match="^(.*)\.\d$" regexp="y" enabled="n" group="PlanetCap" omit_from_log="y" omit_from_output="y" sequence="100" />
+	<trigger name="planetCapDone" script="createWindow" match="^Use SHOWPLANET for more information\.$" regexp="y" enabled="n" group="PlanetCap" omit_from_log="y" omit_from_output="y" sequence="100" />
+
+  </triggers>
+<!--   Aliases    --> 
+<aliases>
+  <alias name="initCommand" script="findStars" match="^hypmap$" enabled="y" regexp="y" group="LotJStarMap" sequence="100" />
+  <alias name="removeWindow" script="destroyWindow" match="^hidemap$" enabled="y" regexp="y" group="LotJStarMap" sequence="100" />
+  </aliases>
+<!--   Script    --> 
+<script>
+<![CDATA[ 
+
+require "movewindow"
+win = "galaxy_map_" .. GetPluginID()  -- unique window name
+systems = {}
+system = { name = "", x = 0, y = 0, planet = "" }
+font = "f"
+maxX = 0
+maxY = 0
+
+function storePlanet(name, list, args)
+	--Note("1: '" .. args[1] .. "'")
+	for i, v in ipairs(systems) do
+		local sysName = v.name
+		if (string.find(args[1], sysName)) then -- if the system name was found in the grab text
+			systems[i].planet = Trim(string.sub(args[1], 1, string.find(args[1], sysName)-1)) -- set the planetname
+			--Note("System: '" .. systems[i].name .. "' Planet: '" .. systems[i].planet .. "'")
+		end
+	end
+end
+
+
+function findStars(name, list, args)
+	SendNoEcho("stars")
+	SendNoEcho("show")
+	toggleOn()
+end
+
+function findPlanets(name, list, args)
+	SendNoEcho("planets")
+	togglePlanetsOn()
+end
+
+function togglePlanetsOn(name, list, args)
+	EnableTriggerGroup("PlanetCap", true)
+end
+
+function toggleOn(name, list, args)
+	EnableTriggerGroup("StarCap", true)
+	WindowCreate (win, 0, 0, 800, 600, miniwin.pos_center_all, 0, ColourNameToRGB("black"))  -- create window
+	WindowFont (win, font, "Arial", 10, true, false, false, false) -- define font
+end
+
+function storeSystem(name, list, args)
+	if (args[1] and args[2] and args[3]) then
+		system.name = Trim(args[1])
+		system.x = tonumber(args[2])
+		system.y = tonumber(args[3])
+		systems[#systems + 1] = system
+        system = { name = "", x = 0, y = 0, planet = "" }
+	end
+end
+
+function toggleOff(name, list, args)
+	EnableTriggerGroup("StarCap", false)
+end
+
+function togglePlanetsOff(name, list, args)
+	EnableTriggerGroup("PlanetCap", false)
+end
+
+
+function createWindow(name, line, args)
+	toggleOff()
+	togglePlanetsOff()
+	
+	for i=1,#systems,1 do
+		local sys = systems[i]
+		if (math.abs(sys.x) > maxX) then
+			maxX = math.abs(sys.x)
+		end
+		if (math.abs(sys.y) > maxY) then
+			maxY = math.abs(sys.y)
+		end
+	end	
+	
+	for i=1,#systems,1 do
+		local sys = systems[i]
+		local x = scaleXCoord(sys.x)  -- scale X coordinate
+		local y =  scaleYCoord(sys.y) -- scale Y coordinate
+		
+		WindowText (win, "f", sys.name,   -- text
+                x+5, y+5, 0, 0,        -- rectangle
+                ColourNameToRGB ("white"), -- colour
+                false)              -- not Unicode
+                
+    	WindowCircleOp (win, miniwin.circle_ellipse, -- circle
+                x, y, x+5, y+5,                -- Left, Top, Right, Bottom
+                ColourNameToRGB("blue"), miniwin.pen_solid, 1, -- pen width 1
+                ColourNameToRGB("blue"), miniwin.brush_solid)  -- brush
+        
+        WindowAddHotspot(win, i,  
+                -- x, y, WindowTextWidth (win, "f", tostring(sys.name)), WindowFontInfo (win, "f", 1),   -- rectangle, left, top, right, bottom
+                 x, y, x+5+WindowTextWidth (win, "f", tostring(sys.name)), y+5+WindowFontInfo (win, "f", 1),
+                 "drawPaths", -- mousehover
+                 "hidePaths",        -- mousecancelhover
+                 "onClick",         -- mousedown
+                 "",   -- mousecanceldown
+                 "",           -- mouseup
+                 sys.name.. " (" .. sys.x .. "," .. sys.y .. ")",  -- tooltip text
+                 1, 0)
+                
+    end
+
+	 -- draw border
+  	WindowRectOp (win, 5, 0, 0, 0, 0, 5, 15 + 0x1000)
+  
+  	-- add the drag handler so they can move the window around
+  	local font_height = WindowFontInfo (win, font, 1)
+  	movewindow.add_drag_handler (win, 0, 0, 0, font_height)
+  	
+  	-- draw X in the corner to close the window
+  	WindowLine (win, 785, 5, 795, 15, ColourNameToRGB ("white"), miniwin.pen_solid, 1)
+  	WindowLine (win, 785, 15, 795, 5, ColourNameToRGB ("white"), miniwin.pen_solid, 1)
+  	WindowAddHotspot(win, "windowX",
+  			785, 5, 795, 15,
+  			"",                   --mousehover
+  			"",                   --mouseoffhover
+  			"destroyWindow",      --mousedown
+  			"",                   --mouseoffdown
+  			"",                   --mouseup
+  			"Close hypmap window",
+  			1, 0)
+  
+  	-- heading line
+ 	WindowText (win, font, "Galaxy Map", 5, 5, 0, 0, ColourNameToRGB  "white")
+  
+  
+  	WindowShow (win,  true)  -- show it
+  
+end
+
+function togglePaths(flags, hotspot_id)
+	if(showPaths == true) then
+		showPaths = false
+		hidePaths()
+	else
+		showPaths = true
+		drawPaths(flags, hotspotid)
+	end
+end
+
+
+function hidePaths(flags, hotspot_id)
+	WindowRectOp (win, miniwin.rect_fill, 0, 0, 800, 600, ColourNameToRGB("black"))  -- draw blank rectangle to "erase" window contents
+	createWindow() -- redraw window
+	
+end
+
+function scaleXCoord(coord)
+	return ((( coord / (maxX + 10)) * 400) + 400)
+end
+
+function scaleYCoord(coord)
+	return (300 - ((( coord / (maxY + 10)) * 300)))
+end
+
+function onClick(flags, hotspot_id)
+	local sys = systems[tonumber(hotspot_id)]
+	if (sys.planet ~= "") then
+		Execute("calculate " .. sys.planet)
+	else
+		Execute("calcu '" .. sys.x .. " " .. sys.y .. "'")
+	end
+end
+
+function drawPaths(flags, hotspot_id)
+	local sys = systems[tonumber(hotspot_id)]
+	if not sys then
+		return
+	end
+	local ax = scaleXCoord(tonumber(sys.x))
+	local ay = scaleYCoord(tonumber(sys.y))
+	for i, v in ipairs(systems) do
+		if (v ~= sys) then
+			local bx = scaleXCoord(tonumber(v.x))
+			local by = scaleYCoord(tonumber(v.y))
+			WindowLine (win, ax+2.5, ay+2.5, bx+2.5, by+2.5, ColourNameToRGB ("orange"), miniwin.pen_solid, 1)
+			WindowText (win, "f", distance(sys, v),   -- text
+                scaleXCoord((sys.x+v.x)/2), scaleYCoord((sys.y+v.y)/2), 0, 0,        --draw distance in the middle of draw path
+                ColourNameToRGB ("white"), -- colour
+                false)              -- not Unicode
+			
+		end
+	end
+	WindowShow (win,  true)  -- show it
+
+end
+
+function destroyWindow(name, list, args)
+	systems = {}
+	system = { }
+	WindowShow (win, false)
+	--WindowDelete(win)
+end
+
+function distance(a, b)
+	return string.format("%.0f", math.sqrt(((a.x-b.x)*(a.x-b.x))+((a.y-b.y)*(a.y-b.y))))
+end
+
+
+function OnPluginInstall ()
+
+  -- install the window movement handler, get back the window position
+  windowinfo = movewindow.install (win, 6)  -- default to 6 (on top right)
+  
+  -- make window so I can grab the font info
+  WindowCreate (win, 0, 0, 0, 0, 1, 0, 0)
+
+  -- add the font                 
+  WindowFont (win, font, "Courier", 10)  
+    
+end -- OnPluginInstall
+
+function OnPluginSaveState ()
+  -- save window current location for next time  
+  movewindow.save_state (win)
+end -- function OnPluginSaveState
+
+
+  ]]> 
+  </script>
+  </muclient>

@@ -1,0 +1,1921 @@
+<?xml version="1.0" encoding="iso-8859-1" ?> 
+<!DOCTYPE muclient> 
+<!--  Saved on Thursday, February 21, 2013, 8:52 PM   --> 
+<!-- MuClient version 4.73 --> 
+<muclient>
+<plugin name="LotJVisualSpace" author="@Johnson" id="a920ac5df84885eac6be8d61" language="Lua" purpose="Visual Space" save_state="y" requires="4.73" version="0.82">
+<description trim="y">
+
+Type 'vsconfig' to display Visual Space Config window where you can check and uncheck which windows you want to display.
+
+
+</description>
+</plugin>
+<!--   Get our standard constants   --> 
+<include name="constants.lua" /> 
+<!--   Triggers    --> 
+<triggers>
+	<!-- autopilot triggers -->
+	<trigger name="autopilotActivated" match="^Autopilot ON\.$" script="toggleAutopilotOn" group="LotJVisualSpace" enabled="y" regexp="y" sequence="100" />
+	<trigger name="autopilotDeactivated" match="^Autopilot OFF\.$" script="toggleAutopilotOff" group="LotJVisualSpace" enabled="y" regexp="y" sequence="100" />
+	<trigger name="autopilotActivate" match="^Autopilot Status\: ACTIVE(.*)$" script="toggleAutopilotOn" group="LotJVisualSpace" enabled="y" regexp="y" sequence="100" />
+	<trigger name="autopilotAlreadyActivate" match="^Autopilot is already on\.$" script="toggleAutopilotOn" group="LotJVisualSpace" enabled="y" regexp="y" sequence="100" />
+	<trigger name="autopilotAlreadyDeactive" match="^Autopilot is already off\.$" script="toggleAutopilotOff" group="LotJVisualSpace" enabled="y" regexp="y" sequence="100" />
+	<trigger name="autopilotDeactive" match="^Autopilot Status\: Offline(.*)$" script="toggleAutopilotOff" group="LotJVisualSpace" enabled="y" regexp="y" sequence="100" />	
+	<!-- shield triggers -->
+	<trigger name="shieldsActivated" match="^Shields ON\. Autorecharge ON(.*)?$" script="toggleShieldsOn" group="LotJVisualSpace" enabled="y" regexp="y" sequence="100" />
+	<trigger name="shieldsDeactivated" match="^Shields OFF\. Shield strength set to 0\. Autorecharge OFF\.$" script="toggleShieldsOff" group="LotJVisualSpace" enabled="y" regexp="y" sequence="100" />
+	<trigger name="landingShieldOff" match="^You begin to land on (.*)\.$" script="toggleShieldsOff" group="LotJVisualSpace" enabled="y" regexp="y" sequence="100" />
+	<trigger name="shieldsIdle" match="^Autorecharge OFF\. Shields IDLING\.$" script="toggleShieldsOff" group="LotJVisualSpace" enabled="y" regexp="y" sequence="100" />
+	<!-- Lightspeed triggers -->
+	<trigger name="partialJump" match="^Remaining jump distance\: (.*)$" script="storePartialJump" group="LotJVisualSpace" enabled="y" regexp="y" sequence="100" />
+	<trigger name="jumpComplete" match="^Hyperjump complete\.$" script="clearJump" group="LotJVisualSpace" enabled="y" regexp="y" sequence="100" />
+	
+	<!-- Level capture triggers -->
+	<trigger name="LevelScoreGrab" match="^(.*) Level\: (\S+)\s*?\/(\S+)\s+(.*) Level\: (\S+)\s*?\/(.*)$" script="storeLevel" regexp="y" enabled="y" group="VariableStorage" sequence="100" />
+	<trigger name="LevelGrab" match="^(.*) Level\: (\d+)\s+Max\: (.*)\s+Exp\:(.*)$" script="storeLevel2" regexp="y" enabled="y" group="VariableStorage" sequence="100" />
+
+  </triggers>
+<!--   Aliases    --> 
+<aliases>
+  <alias name="clearWindows" script="destroyWindows" match="^vsclear$" enabled="y" ignore_case="y" regexp="y" group="LotJVisualSpace" sequence="100" />
+  <alias name="toggleConfigCommand" script="toggleVisualSpaceConfig" match="^vsconfig$" enabled="y" ignore_case="y" regexp="y" group="LotJVisualSpace" sequence="100" />
+  <alias name="toggleSpeedCommand" script="toggleVisualSpaceSpeed" match="^vsspeed$" enabled="y" ignore_case="y" regexp="y" group="LotJVisualSpace" sequence="100" />
+  <alias name="manualReset" script="reset" match="vsreset" enabled="y" ignore_case="y" group="LotJVisualSpace" sequence="100" />
+  <alias name="manualwindowskew" script="setval" match="vsset * * * *" enabled="y" regexp="n" ignore_case="y" group="LotJVisualSpace" sequence="100" />
+
+  </aliases>
+<timers>
+	<timer name="hyperJumpTicker" script="hyperJumpTick" enabled="n" second="2" group="LotJVisualSpace" />
+</timers>
+<!--   Script    --> 
+<script>
+<![CDATA[ 
+
+require "tprint"
+require "movewindow"
+require "serialize"
+require "pairsbykeys"
+
+local win = "visual_space_" .. GetPluginID()  -- unique window name
+local configwin = "config_win_" .. GetPluginID() -- unique config window name
+local speedwin = "speed_win_" .. GetPluginID() -- unique speed window name
+local jumpwin = "jump_win_" .. GetPluginID() -- unique jump window name
+local statwin = "stat_win_" .. GetPluginID() -- unique stat window name
+
+local font = "font"..GetPluginID()
+local digiFont = "digiFont"..GetPluginID()
+local statFont = "statFont"..GetPluginID()
+local displayJumpPercent =       tonumber(GetVariable("show_jump_percent") or 1)
+local visualSpaceVisible =       tonumber(GetVariable("show_space") or 0)
+local visualSpaceConfigVisible = tonumber(GetVariable("show_config") or 1)
+local visualSpaceSpeedVisible =  tonumber(GetVariable("show_speed") or 0)
+local visualSpaceJumpVisible =   tonumber(GetVariable("show_jump") or 0)
+local visualSpaceStatVisible =   tonumber(GetVariable("show_stat") or 0)
+
+
+local msdp = {}
+local levels = {}
+
+
+windows = {}
+window_info = {}
+loadstring(GetVariable("windows") or "")()
+
+local autopilot = false
+local recharge = false
+local totalJump = 0
+local partialJump = 0
+
+
+background_colour     = 0x000000
+border_color          = 0xcccccc
+default_width         = 400
+default_height		  = 40
+default_x             = 0
+default_y             = 552
+
+charwidth = default_width
+charheight = default_height
+
+local RESIZE_TAG_SIZE = 10
+local MIN_WIDTH        = 50
+local MIN_HEIGHT	   = 40
+local LEFT_MARGIN     = 10
+local TOP_MARGIN      = 5
+
+-- Variables not saved.
+startx     = ""  
+starty     = ""
+posx       = "" 
+posy       = ""
+hotspot_id = ""
+page_built = false
+line_height= 0
+
+-- space position variables
+local zoom = 1
+local xcenter = 0
+local ycenter = 0
+local zcenter = 0
+
+function drawWindows()
+	for k, v in pairs(windows) do
+		if (v.visible == 1) then
+			makeWindow(v)
+		end
+	end
+	if (visualSpaceVisible == 1) then
+		drawWindow()
+	end
+	if (visualSpaceConfigVisible == 1) then
+		drawConfigWindow()
+	end
+	if (visualSpaceSpeedVisible == 1) then
+		drawSpeedWindow()
+	end
+	if (visualSpaceJumpVisible == 1) then
+		drawJumpWindow()
+	end
+	if (visualSpaceStatVisible == 1) then
+		drawStatWindow()
+	end
+	BroadcastPlugin (999, "repaint")
+end
+
+function drawConfigWindow()
+
+	left = 0
+	top = 0
+	right = 220
+	bottom = 340
+	
+	WindowRectOp (configwin, miniwin.rect_fill, 0, 0, right, bottom, ColourNameToRGB("black"))
+	WindowRectOp (configwin, 5, 0, 0, 0, 0, 5, 15 + 0x1000)
+	
+	--local font_height = WindowFontInfo (configwin, font, 1)
+	--movewindow.add_drag_handler (configwin, 0, 0, 0, font_height)
+	
+	-- config window X
+	WindowLine (configwin, right-15, 5, right-5, 15, ColourNameToRGB ("white"), miniwin.pen_solid, 1)
+	WindowLine (configwin, right-15, 15, right-5, 5, ColourNameToRGB ("white"), miniwin.pen_solid, 1)
+	WindowAddHotspot(configwin, "configWindowX",
+			right-15, 5, right-5, 15,
+			"",
+			"",
+			"destroyConfigWindow",
+			"",
+			"",
+			"Close config window",
+			1, 0)
+	-- config window header
+	WindowText (configwin, font, "Visual Space Config v0.82", 5, 5, 0, 0, ColourNameToRGB("white"))
+	
+	local oX = 10
+	local oY = 30
+	
+	-- config option for main space window
+	drawConfigEntry(configwin, oX, oY, "Display Ship Position", 
+			ColourNameToRGB("white"), 
+			visualSpaceVisible, 
+			"configWindowSpaceToggle", 
+			"toggleVisualSpace")
+			
+	-- move down 25 pixels
+	oY = oY + 25
+	-- config option for speed window
+	drawConfigEntry(configwin, oX, oY, "Display Speedometer", 
+			ColourNameToRGB("white"), 
+			visualSpaceSpeedVisible, 
+			"configWindowSpeedToggle", 
+			"toggleVisualSpaceSpeed") 
+			
+	-- move down 25 pixels
+	oY = oY + 25
+	-- config option for jump window
+	drawConfigEntry(configwin, oX, oY, "Display Hyperjump Window",
+			ColourNameToRGB("white"),
+			visualSpaceJumpVisible,
+			"configWindowJumpToggle",
+			"toggleVisualSpaceJump")
+			
+	-- move down 25 pixels
+	oY = oY + 25
+	 --config option for stat window
+	drawConfigEntry(configwin, oX, oY, "Display Char Stat Window",
+			ColourNameToRGB("white"),
+			visualSpaceStatVisible,
+			"configWindowStatToggle",
+			"toggleVisualSpaceStat")
+			
+	for k, v in pairs(windows) do
+		-- move down 25 pixels
+		oY = oY + 25
+		drawConfigEntry(configwin, oX, oY, "Display " .. v.name .. " Window",
+				ColourNameToRGB("white"),
+				v.visible,
+				v.id.."configWindowToggle",
+				"windowToggle")
+	end
+			
+	WindowShow (configwin, true)
+	
+end
+
+function drawConfigEntry(w, x, y, tx, cr, cbb, hsn, hscn)
+	-- window, x, y, displayText, color, checkBoxBoolean, hotSpotName, hotSpotClickName
+	WindowRectOp (w, 5, x, y, x+20, y+20, 5, 15 + 0x1000) -- draw empty check box
+	WindowText (w, font, tx, x+28, y+2, 0, 0, cr)         -- draw option text
+	if (cbb == 1) then  -- draw checkbox if window is visible
+		drawcheckbox(w, x+2, y+2)
+	end 
+	WindowAddHotspot(w, hsn, x, y, x+20, y+20, -- window, hotspotname, left, top, right, bottom
+			"",  -- mousehover
+			"",  -- mouseoffhover
+			hscn,-- mousedown
+			"",  -- mouseoffdown
+			"",  -- mouseup
+			tx,  -- alt text
+			1, 0)
+end
+
+function drawcheckbox(window, left, top)
+	WindowLine (window, left+3, top+7, left+7, top+13, ColourNameToRGB("white"), miniwin.pen_solid, 2)
+	WindowLine (window, left+7, top+13, left+15, top+1, ColourNameToRGB("white"), miniwin.pen_solid, 2)
+	Redraw()
+end	
+
+function windowToggle(flags, hotspot_id)
+	clickedWin = findwinbyid(string.sub(hotspot_id, 0, string.find(hotspot_id, "configWindowToggle")-1))
+	if not clickedWin then
+		return
+	end
+	if (clickedWin.visible == 1) then
+		clickedWin.visible = 0
+		WindowShow (clickedWin.id, false)
+	else
+		clickedWin.visible = 1
+		makeWindow(clickedWin)
+	end
+	if (visualSpaceConfigVisible == 1) then
+		drawConfigWindow()
+	end
+end
+
+function windowSwap(flags, hotspot_id)
+	clickedWin = findwinbyid(string.sub(hotspot_id, 0, string.find(hotspot_id, "Swap")-1))
+	if not clickedWin then
+		return
+	end
+	
+	if (clickedWin.style == "horizontal") then
+		clickedWin.style = "vertical"
+		temp = clickedWin.width
+		clickedWin.width = clickedWin.height
+		clickedWin.height = temp
+	else
+		clickedWin.style = "horizontal"
+		temp = clickedWin.width
+		clickedWin.width = clickedWin.height
+		clickedWin.height = temp
+	end
+	SetUpHotspotsAndDraw(false)
+end
+
+function togglePercent(flags, hotspot_id)
+	clickedWin = findwinbyid(string.sub(hotspot_id, 0, string.find(hotspot_id, "TogglePercent")-1))
+	if not clickedWin then
+		return
+	end
+	if (clickedWin.percent == 1) then
+		clickedWin.percent = 0
+	else
+		clickedWin.percent = 1
+	end
+	makeWindow(clickedWin)
+end
+
+
+function unmakeWindow(flags, hotspot_id)
+	clickedWin = findwinbyid(string.sub(hotspot_id, 0, string.find(hotspot_id, "Close")-1))
+	if not clickedWin then
+		return
+	end
+	
+	clickedWin.visible = 0
+	WindowShow (clickedWin.id, false)
+	if (visualSpaceConfigVisible == 1) then
+		drawConfigWindow()
+	end
+end
+
+function makeWindow(ww)
+			
+	-- clear window
+	WindowRectOp (ww.id, miniwin.rect_fill, 0, 0, ww.width, ww.height, ColourNameToRGB("black"))
+	-- draw border
+	WindowRectOp (ww.id, 5, 0, 0, 0, 0, 5, 15 + 0x1000)
+	--drag handler
+	movewindow.add_drag_handler (ww.id, 0, 0, 0, WindowFontInfo(ww.id, font, 1))
+	
+	-- msdp assignment
+	local stat = tonumber(getmsdp(ww.stat1)) or 0
+	local maxStat = tonumber(getmsdp(ww.stat2)) or 0
+	--local stat = tonumber(msdpval(ww.stat1)) or 0
+	--local maxStat = tonumber(msdpval(ww.stat2)) or 0
+	
+	local filledPixels = 0
+	local filledPercent = 0
+	
+	if (maxStat > 0) then
+		filledPercent = stat / maxStat
+	else
+		filledPercent = 0
+	end
+
+	if (ww.style == "horizontal") then -- style horizontal
+	
+	filledPixels = filledPercent * (ww.width - MIN_WIDTH)
+	
+	local textWidth = WindowTextWidth(ww.id, font, ww.name)
+	WindowText (ww.id, font, ww.name, (25-(textWidth/2)), ww.height/2, 0, 0, ColourNameToRGB("white"))
+	local displayText = ""
+	if (ww.percent == 1) then
+		displayText = round(filledPercent*100) .. "%"
+	else
+		displayText = stat
+	end
+	textWidth = WindowTextWidth(ww.id, font, displayText)
+	WindowText (ww.id, font, displayText, (25-(textWidth/2)), ww.height/2-line_height, 0, 0, ColourNameToRGB("white"))
+	WindowAddHotspot(ww.id, ww.id.."TogglePercent",
+			(25-(textWidth/2)), ww.height/2-line_height, (25+(textWidth/2)), ww.height/2+line_height,
+			"",
+			"",
+			"togglePercent",
+			"",
+			"",
+			"Toggle percentage display",
+			1, 0)
+	WindowRectOp (ww.id, 5, MIN_WIDTH-2, 2, ww.width-2, ww.height-2, 10, 15 + 0x1000) -- surround dial with inverted border
+	
+	local fillcolor = ColourNameToRGB(ww.color100)
+  	if (filledPercent*100 <= 50) then
+  		fillcolor = ColourNameToRGB(ww.color50)
+  		if (filledPercent*100 <= 25) then
+  			fillcolor = ColourNameToRGB(ww.color25)
+  		end
+  	end
+  	
+  	-- redraw the bars
+    WindowGradient (ww.id, 50, 3, 46+filledPixels, ww.height/2, ColourNameToRGB("black"), fillcolor, 2)
+    WindowGradient (ww.id, 50, ww.height/2, 46+filledPixels, ww.height-3, fillcolor, ColourNameToRGB("black"), 2)
+    
+    else -- style vertical
+
+  	-- calculate the filled part
+  	filledPixels = filledPercent * (ww.height - MIN_HEIGHT - 20)
+  	
+  	local textWidth  = WindowTextWidth (ww.id, font, ww.name)
+  	WindowText (ww.id, font, ww.name, ((ww.width/2)-(textWidth/2)), ww.height-8-line_height,0,0, ColourNameToRGB("white"))
+  	if (ww.percent == 1) then
+  		displayText = round(filledPercent*100) .. "%"
+  	else
+  		displayText = stat
+  	end
+  	textWidth   = WindowTextWidth (ww.id, font, displayText)
+  	WindowText (ww.id, font, displayText, ((ww.width/2)-(textWidth/2)), ww.height-8-(line_height*2),0,0, ColourNameToRGB("white"))
+  	WindowAddHotspot(ww.id, ww.id.."TogglePercent",
+  		((ww.width/2)-(textWidth/2)), ww.height-45, ((ww.width/2)+(textWidth/2)), ww.height-5,
+  		"",                   --mousehover
+  		"",                   --mouseoffhover
+  		"togglePercent",      --mousedown
+  		"",                   --mouseoffdown
+  		"",                   --mouseup
+  		"Toggle percentage display",
+  		1, 0)
+  	WindowRectOp (ww.id, 5, 2, 18, ww.width-2, ww.height-(MIN_HEIGHT-2), 10, 15 + 0x1000) -- surround dial with inverted border
+  	
+  	fillcolor = ColourNameToRGB(ww.color100)
+  	if (filledPercent*100 <= 50) then
+  		fillcolor = ColourNameToRGB(ww.color50)
+  		if (filledPercent*100 <= 25) then
+  			fillcolor = ColourNameToRGB(ww.color25)
+  		end
+  	end
+  	
+  	-- redraw the bars
+    WindowGradient (ww.id, 4, ww.height-filledPixels-MIN_HEIGHT, ww.width/2, ww.height-MIN_HEIGHT, ColourNameToRGB("black"), fillcolor, 1)
+    WindowGradient (ww.id, ww.width/2, ww.height-filledPixels-MIN_HEIGHT, ww.width-4, ww.height-MIN_HEIGHT, fillcolor, ColourNameToRGB("black"), 1)
+    	
+    end  -- style
+    
+	-- draw widget to vert swap
+	drawSwapper(ww.id, ww.width-30, 5, ColourNameToRGB("white"), ww.id.."Swap", "windowSwap", "Swap window style")
+	
+	--draw X to close
+	drawX(ww.id, ww.width-15, 5, ColourNameToRGB("white"), ww.id.."Close", "unmakeWindow", "Close "..ww.name.." window")
+	
+	drawResizer(ww.id, ww.width, ww.height)
+	
+	WindowShow (ww.id, true)
+
+end
+
+require "commas"
+
+function drawStatWindow()
+	width = 400
+	height = 300
+	
+	-- clear window
+	WindowRectOp (statwin, miniwin.rect_fill, 0, 0, width, height, ColourNameToRGB("black"))
+	--border
+	WindowRectOp (statwin, 5, 0, 0, 0, 0, 5, 15 + 0x1000)
+	--drag handler
+	movewindow.add_drag_handler (statwin, 0, 0, 0, WindowFontInfo(statwin, font, 1))
+	--draw X to close
+	drawX(statwin, width-15, 5, ColourNameToRGB("white"), "statWindowX", "destroyStatWindow", "Close stat window")
+	
+	local charname = getmsdp("CHARACTERNAME") or ""
+	local toplevel = getmsdp("TOPLEVEL") or ""
+	local class = getmsdp("CLASS") or ""
+	local race = getmsdp("RACE") or ""
+	local align = tonumber(getmsdp("ALIGNMENT")) or 0
+	local charstats = {
+		"Strength",			getmsdp("STR") or 0, getmsdp("STRPERM") or 0,
+		"Dexterity",   		getmsdp("DEX") or 0, getmsdp("DEXPERM") or 0,
+		"Constitution",		getmsdp("CON") or 0, getmsdp("CONPERM") or 0,
+		"Intelligence",		getmsdp("INT") or 0, getmsdp("INTPERM") or 0,
+		"Wisdom",			getmsdp("WIS") or 0, getmsdp("WISPERM") or 0,
+		"Charisma",			getmsdp("CHA") or 0, getmsdp("CHAPERM") or 0
+		}
+	local charattribs = {
+		"Armor",			getmsdp("AC") or 0,
+		"Hitroll",			getmsdp("HITROLL") or 0,
+		"Damroll",			getmsdp("DAMROLL") or 0,
+		"Moneytotal",		getmsdp("MONEYTOTAL") or 0,
+		"Moneybank",		getmsdp("MONEYBANK") or 0,
+		"Moneyinv",			getmsdp("MONEYINV" or 0)
+		}
+			
+	local oY = 10
+	
+	local textWidth = WindowTextWidth(statwin, font, charname)
+	if (align < 0) then
+		aligncolor = "red"
+	elseif (align > 0) then
+		aligncolor = "deepskyblue"
+	else
+		aligncolor = "white"
+	end
+	WindowText(statwin, font, charname, width/2-(textWidth/2), oY, 0, 0, ColourNameToRGB("silver"))
+	oY = oY + (line_height*1.5)
+	textWidth = WindowTextWidth(statwin, font, "Level "..toplevel.." "..race.." "..class.." main")
+	WindowText(statwin, font, "Level "..toplevel.." "..race.." "..class.." main", width/2-(textWidth/2), oY, 0, 0, ColourNameToRGB("silver"))
+	oY = oY + line_height
+	for i=0, 15, 3 do
+		oY = oY + line_height
+		WindowText(statwin, statFont, charstats[i+1], 10, oY, 0, 0, ColourNameToRGB("gray"))
+		WindowText(statwin, statFont, ":[", 110, oY, 0, 0, ColourNameToRGB("cyan"))
+		WindowText(statwin, statFont, charstats[i+2], 130, oY, 0, 0, ColourNameToRGB("silver"))
+		textWidth = WindowTextWidth(statwin, statFont, charstats[i+2])
+		WindowText(statwin, statFont, "/", 130+textWidth, oY, 0, 0, ColourNameToRGB("cyan"))
+		textWidth = textWidth + WindowTextWidth(statwin, statFont, "/")
+		WindowText(statwin, statFont, charstats[i+3], 130+textWidth, oY, 0, 0, ColourNameToRGB("silver"))
+		textWidth = textWidth + WindowTextWidth(statwin, statFont, charstats[i+3])
+		WindowText(statwin, statFont, "]", 133+textWidth, oY, 0, 0, ColourNameToRGB("cyan"))
+	end	
+	oY = 10 + (line_height*2.5)
+	for i=0, 10, 2 do
+		oY = oY + line_height
+		WindowText(statwin, statFont, charattribs[i+1], 200, oY, 0, 0, ColourNameToRGB("gray"))
+		WindowText(statwin, statFont, ":[", 280, oY, 0, 0, ColourNameToRGB("cyan"))
+		if (i>4) then
+			text = commas(charattribs[i+2])
+		else
+			text = charattribs[i+2]
+		end
+		WindowText(statwin, statFont, text, 300, oY, 0, 0, ColourNameToRGB("silver"))
+		textWidth = WindowTextWidth(statwin, statFont, text)
+		WindowText(statwin, statFont, "]", 303+textWidth, oY, 0, 0, ColourNameToRGB("cyan"))
+		
+	end
+	
+	oY = oY + 20
+	
+	oX = width / 2
+  local skip = false
+  for k, v in pairsByKeys(levels) do
+  
+  	if (k == "bounty hunting") then
+  		levels[k].class_level = getmsdp("LEVELHUNTING") or 1
+  	elseif (k == "combat") then
+  		levels[k].class_level = getmsdp("LEVELCOMBAT") or 1
+  	elseif (k == "diplomacy") then
+  		levels[k].class_level = getmsdp("LEVELDIPLOMACY") or 1
+  	elseif (k == "engineering") then
+  		levels[k].class_level = getmsdp("LEVELENGINEERING") or 1
+  	elseif (k == "espionage") then
+  		levels[k].class_level = getmsdp("LEVELESPIONAGE") or 1
+  	elseif (k == "force") then
+  		levels[k].class_level = getmsdp("LEVELFORCE") or 1
+  	elseif (k == "leadership") then
+  		levels[k].class_level = getmsdp("LEVELLEADERSHIP") or 1
+  	elseif (k == "medical") then
+  		levels[k].class_level = getmsdp("LEVELMEDIC") or 1
+  	elseif (k == "piloting") then
+  		levels[k].class_level = getmsdp("LEVELPILOTING") or 1
+  	elseif (k == "science") then
+  		levels[k].class_level = getmsdp("LEVELSCIENCE") or 1
+  	elseif (k == "slicer") then
+  		levels[k].class_level = getmsdp("LEVELSLICER") or 1
+  	elseif (k == "smuggling") then
+  		levels[k].class_level = getmsdp("LEVELSMUGGLING") or 1
+  	end
+  
+    if (skip == true) then
+  		skip = false  		
+  		WindowText(statwin, statFont, v.class_name,oX+10, oY, 0, 0, ColourNameToRGB("gray"))
+  		WindowText(statwin, statFont, ":",oX+103,oY,0,0,ColourNameToRGB("cyan"))
+  		WindowText(statwin, statFont, v.class_level, oX+110, oY, 0, 0, ColourNameToRGB("silver"))
+  		WindowText(statwin, statFont, "/", oX+134, oY, 0, 0, ColourNameToRGB("cyan"))
+  		WindowText(statwin, statFont, v.class_max, oX+141, oY, 0, 0, ColourNameToRGB("silver"))
+  		
+  		
+  	else
+  		skip = true
+  		oY = oY + line_height
+  		WindowText(statwin, statFont, v.class_name,10, oY, 0, 0, ColourNameToRGB("gray"))
+  		WindowText(statwin, statFont, ":",123,oY,0,0,ColourNameToRGB("cyan"))
+  		WindowText(statwin, statFont, v.class_level, 130, oY, 0, 0, ColourNameToRGB("silver"))
+  		WindowText(statwin, statFont, "/", 154, oY, 0, 0, ColourNameToRGB("cyan"))
+  		WindowText(statwin, statFont, v.class_max, 161, oY, 0, 0, ColourNameToRGB("silver"))
+  	end
+  end
+	
+	
+	
+	--drawResizer(statwin, width, height)
+	
+	WindowShow (statwin, true)
+end
+
+function storeLevel(name, list, args)
+	local storage = { 
+		class_name = "",
+		class_level = 1,
+		class_max = 1
+		}
+		
+		storage.class_name = Trim(args[1])
+		storage.class_level = Trim(args[2])
+		storage.class_max = Trim(args[3])
+		levels[storage.class_name] = storage
+		--table.insert(levels, storage)
+		--Note("class: '" .. storage.class_name .. "' (" .. storage.class_level .. "/" .. storage.class_max .. ")")
+	local storage = { 
+		class_name = "",
+		class_level = 0,
+		class_max = 0
+		}
+		storage.class_name = Trim(args[4])
+		storage.class_level = Trim(args[5])
+		storage.class_max = Trim(args[6])
+		levels[storage.class_name] = storage
+		--table.insert(levels, storage)
+		--Note("class: '" .. storage.class_name .. "' (" .. storage.class_level .. "/" .. storage.class_max .. ")")	
+		--for i=1, #args, 1 do
+		--	Note(i .. " : '" .. args[i] .. "'")
+		--end
+		drawStatWindow()
+
+end
+
+function storeLevel2(name, list, args)
+	local storage = {
+		class_name = "",
+		class_level = 1,
+		class_max = 1
+		}
+		
+	storage.class_name = Trim(args[1])
+	storage.class_level = Trim(args[2])
+	storage.class_max = Trim(args[3])
+	levels[storage.class_name] = storage
+	drawStatWindow()
+end
+
+function abbrev_class(classname)
+	if (classname == "combat") then
+		return "Com"
+	elseif (classname == "piloting") then
+		return "Pil"
+	elseif (classname == "engineering") then
+		return "Eng"
+	elseif (classname == "bounty hunting") then
+		return "Bht"
+	elseif (classname == "smuggling") then
+		return "Smu"
+	elseif (classname == "diplomacy") then
+		return "Dip"
+	elseif (classname == "leadership") then
+		return "Lea"
+	elseif (classname == "espionage") then
+		return "Esp"
+	elseif (classname == "slicer") then
+		return "Sli"
+	elseif (classname == "medical") then
+		return "Med"
+	elseif (classname == "science") then
+		return "Sci"
+	elseif (classname == "force") then
+		return "Frc"
+	end
+end
+
+function drawJumpWindow()
+	left = 0
+	top = 0
+	right = 400
+	bottom = 60
+	
+	-- clear window
+	WindowRectOp (jumpwin, miniwin.rect_fill, 0, 0, right, bottom, ColourNameToRGB("black"))
+	--border
+	WindowRectOp (jumpwin, 5, 0, 0, 0, 0, 5, 15 + 0x1000)
+	--drag handler
+	movewindow.add_drag_handler (jumpwin, 0, 0, 0, WindowFontInfo(jumpwin, font, 1))
+	--draw X to close
+	drawX(jumpwin, right-15, 5, ColourNameToRGB("white"), "jumpWindowX", "destroyJumpWindow", "Close hyperjump window")	
+
+	
+	local percent = 0
+	local pixels = 0
+	
+	local systemname = getmsdp("SHIPSYSNAME") or ""
+	--Note("System: " .. systemname)
+	
+	-- calculate amount of jump we've completed
+	if (totalJump > 0 and partialJump > 0) then
+		percent = (totalJump - partialJump) / totalJump
+	else
+		percent = 0
+	end
+	pixels = percent * (right - 70)
+	
+	local textWidth = WindowTextWidth(jumpwin, font, "Jump")
+	WindowText (jumpwin, font, "Jump", left+(25-(textWidth/2)), bottom-25, left+(25+(textWidth/2)), bottom-5, ColourNameToRGB("white"))
+	local displayJumpText = ""
+	if (displayJumpPercent == 1) then
+		displayJumpText = round(percent*100) .. "%"
+	else
+		displayJumpText = partialJump
+	end
+	
+	-- jump window header - remaining jump time
+	if (partialJump > 0) then
+		local jumpTime = displayTime(math.ceil(partialJump/50) * 2)
+		textWidth = WindowTextWidth(jumpwin, font, "~" .. jumpTime .. " remaining")
+		WindowText (jumpwin, font, "~" .. jumpTime .. " remaining", left+(200-(textWidth/2)) , 5, left+(200+(textWidth/2)), 20, ColourNameToRGB("white"))
+	end
+	
+	textWidth = WindowTextWidth (jumpwin, font, displayJumpText)
+	WindowText (jumpwin, font, displayJumpText, left+(25-(textWidth/2)), bottom-45, left+(25+(textWidth/2)), bottom-15, ColourNameToRGB("white"))
+	WindowAddHotspot (jumpwin, "toggleJumpPercentHotspot",
+		left+(25-(textWidth/2)), bottom-45, left+(25+(textWidth/2)), bottom-25,
+		"",
+		"",
+		"toggleJumpPercent",
+		"",
+		"",
+		"Toggle percentage display",
+		1, 0)
+	
+	-- draw systems and traveling bar
+	WindowLine (jumpwin, left+60, bottom/2, right-10, bottom/2, ColourNameToRGB("white"), miniwin.pen_solid, 4)
+	WindowCircleOp(jumpwin, 1, left+55, (bottom/2)-5, left+65, (bottom/2)+5, ColourNameToRGB("olivedrab"), 0, 2, ColourNameToRGB("olivedrab"), 0)
+	WindowCircleOp(jumpwin, 1, right-15, (bottom/2)-5, right-5, (bottom/2)+5, ColourNameToRGB("olivedrab"), 0, 2, ColourNameToRGB("olivedrab"), 0)
+	
+	-- draw player ship on traveling bar
+	
+	WindowCircleOp(jumpwin, 1, left+55+pixels, (bottom/2)-5, left+65+pixels, (bottom/2)+5, ColourNameToRGB("dodgerblue"), 0, 2, ColourNameToRGB("dodgerblue"), 0)
+	
+	WindowShow (jumpwin, true)
+	
+end
+
+local speedSlide = 0
+local prevSpeed = 0
+local tempSpeed = 0
+local tempPercent = 0
+local tempPixels = 0
+local speed = 0
+local maxSpeed = 0
+local speedlist = {}
+
+function drawSpeedWindow()
+	left = 0
+	top = 0
+	right = 300
+	bottom = 200
+	
+	
+	prevSpeed = speed
+	
+	--msdp assignment
+	if (speedSlide == 0) then -- we're sliding so we don't need to update speed
+		speed = tonumber(getmsdp("SHIPSPEED")) or 0
+		maxSpeed = tonumber(getmsdp("SHIPMAXSPEED")) or 0
+	end
+	
+	-- clear window
+	WindowRectOp (speedwin, miniwin.rect_fill, 0, 0, right, bottom, ColourNameToRGB("black"))
+	-- border
+	WindowRectOp (speedwin, 5, 0, 0, 0, 0, 5, 15 + 0x1000)
+	-- drag handler
+	movewindow.add_drag_handler (speedwin, 0, 0, 0, WindowFontInfo (speedwin, font, 1))
+	-- draw X to close
+	drawX(speedwin, right-15, 5, ColourNameToRGB("white"), "speedWindowX", "destroySpeedWindow", "Close speed window")
+
+	-- here is my attempt to slide the indicator nicely between speed changes
+  	if (speed > prevSpeed) then 		-- you went up in speed
+  		speedSlide = 1					
+  		for i=0, 10, 1 do				-- figure the incremental changes
+  			speedlist[i] = prevSpeed + ((speed - prevSpeed)*(i/10))
+  		end
+  	end
+  	if (speed < prevSpeed) then			-- you went down in speed
+  		speedSlide = -1
+  		for i=0, 10, 1 do				-- figure the incremental changes
+  			speedlist[i] = prevSpeed - ((prevSpeed - speed)*(i/10))
+  		end
+  	end
+	
+	local filledPixels = 0
+	local filledPercent = 0
+	
+	if (maxSpeed > 0) then -- if you're in a ship
+		filledPercent = speed / 200 -- percent is your speed / max speed of gauge
+	else
+		filledPercent = 0 -- not in a ship
+	end
+	filledPixels = filledPercent * 280  -- number of pixels to draw is percent * width of gauge
+	
+	-- draw Speed text
+	local textWidth = WindowTextWidth (speedwin, font, "Speed")
+  	WindowText (speedwin, font, "Speed", left+(150-(textWidth/2)), bottom-25, left+(150+(textWidth/2)), bottom-5, ColourNameToRGB("white"))
+
+  	
+  	--Note("speed: " .. speed .. " max: " .. maxSpeed .. " filled: " .. filledPercent .. " (" .. filledPixels .. ")")
+	
+  	
+  	-- draw speed readout text
+  	if (#speedlist > 0 and speedlist[math.abs(speedSlide)] > 0) then -- if we're in the middle of a slide, show the incremental speed change
+  		textWidth = WindowTextWidth(speedwin, digiFont, round(speedlist[math.abs(speedSlide)]))
+  		WindowText (speedwin, digiFont, round(speedlist[math.abs(speedSlide)]), left+(150-(textWidth/2)), bottom-55, left+(150+(textWidth/2)), bottom-15, ColourNameToRGB("white"))
+  	else
+  		textWidth   = WindowTextWidth (speedwin, digiFont, speed) -- otherwise show the real speed
+  		WindowText (speedwin, digiFont, speed, left+(150-(textWidth/2)), bottom-55, left+(150+(textWidth/2)), bottom-15, ColourNameToRGB("white"))
+  	end
+
+  	 -- surround dial with inverted border
+  	WindowRectOp (speedwin, 5, left+8, top+38, right-8, bottom-68, 10, 15 + 0x1000)
+  	
+  	-- draw speed tick marks at 10% intervals from 20 to 200
+  	for i=0, 10, 1 do
+  		WindowLine (speedwin, left+(i*28)+10, top+40, left+(i*28)+10, bottom-110, ColourNameToRGB("white"),0, 4)
+  		textWidth = WindowTextWidth(speedwin, font, (i*20))
+  		-- draw text above the tick marks centered on each mark
+  		WindowText (speedwin, font, (i*20), left+(i*28)+(10-(textWidth/2)), top+20, left+(i*28)+(10+(textWidth/2)), top+41, ColourNameToRGB("white"))
+  	end
+  	-- draw the ship's max speed (red line)
+  	WindowLine (speedwin, left+((maxSpeed/200)*280)+10, top+40, left+((maxSpeed/200)*280)+10, bottom-110, ColourNameToRGB("darkred"), 0, 4)
+
+  	
+  	-- draw current speed indicator
+  	if (#speedlist > 0 and speedlist[math.abs(speedSlide)] > 0) then -- if we're sliding, show the incremental change
+		tempPercent = speedlist[math.abs(speedSlide)] / 200
+		tempPixels = tempPercent * 280
+		WindowLine (speedwin, left+tempPixels+10, bottom-120, left+tempPixels+10, bottom-70, ColourNameToRGB("red"), 0, 4)
+	else -- show the real speed
+  		WindowLine (speedwin, left+filledPixels+10, bottom-120, left+filledPixels+10, bottom-70, ColourNameToRGB("red"), 0, 4)
+  	end
+  	
+  	-- poor way of incrementing the shift from one speed to another.. FIXME
+  	if (speedSlide > 0) then
+  		speedSlide = speedSlide + 1
+		if (speedSlide > 10) then
+			speedSlide = 0
+			speedlist = {}
+		else
+			-- this seems to work alright, but varies quite a bit in number of frames shown and isn't always smooth
+			-- needs a smooother animation method to slide needle between speeds
+			DoAfterSpecial (.1, 'drawSpeedWindow()', sendto.script)
+		end
+	end
+	if (speedSlide < 0) then
+		speedSlide = speedSlide - 1
+		if (speedSlide < -10) then
+			speedSlide = 0
+			speedlist = {}
+		else
+			DoAfterSpecial (.1, 'drawSpeedWindow()', sendto.script)
+		end
+	end
+  	
+  	
+  	-- draw autopilot indicator
+  	local drawcolor = ColourNameToRGB("gray")
+  	if (autopilot) then
+  		drawcolor = ColourNameToRGB("red")
+  	end
+	WindowText (speedwin, font, "AUTOPILOT", left+5, bottom-25, left+WindowTextWidth(speedwin, font, "AUTOPILOT")+5, bottom-5, drawcolor)
+	-- draw shield indicator
+	drawcolor = ColourNameToRGB("gray")
+	if (recharge) then
+		drawcolor = ColourNameToRGB("yellow")
+	end
+	WindowText (speedwin, font, "SHIELDS", right-WindowTextWidth(speedwin, font, "SHIELDS")-5, bottom-25, right-5, bottom-5, drawcolor)
+	WindowShow (speedwin, true)
+end
+
+-- method to draw a colored X in window at left, top with hotspotname and does hotspotclick when you click it
+function drawX(window, left, top, color, hotSpotName, hotSpotClick, hotSpotText)
+	WindowLine (window, left, top, left+10, top+10, color, miniwin.pen_solid, 1)
+	WindowLine (window, left, top+10, left+10, top, color, miniwin.pen_solid, 1)
+	WindowAddHotspot(window, hotSpotName, left, top, left+10, top+10, "", "", hotSpotClick, "", "", hotSpotText, 1, 0)
+	Redraw()
+end
+
+function drawSwapper(window, left, top, color, hotSpotName, hotSpotClick, hotSpotText)
+	WindowLine(window, left, top, left+4, top, color, miniwin.pen_solid, 1)
+	WindowLine(window, left, top, left, top+4, color, miniwin.pen_solid, 1)
+	WindowLine(window, left, top, left+10, top+10, color, miniwin.pen_solid, 1)
+	WindowLine(window, left+6, top+10, left+10, top+10, color, miniwin.pen_solid, 1)
+	WindowLine(window, left+10, top+6, left+10, top+10, color, miniwin.pen_solid, 1)
+	WindowAddHotspot(window, hotSpotName, left, top, left+10, top+10, "", "", hotSpotClick, "", "", hotSpotText, 1, 0)
+	Redraw()
+end
+
+function drawResizer(window, width, height)
+   -- draw the resize widget bottom right corner.
+   WindowLine(window, width-3, height-2, width-2, height-3, 0xffffff, 0, 2)
+   WindowLine(window, width-4, height-2, width-2, height-4, 0x696969, 0, 1)
+   WindowLine(window, width-6, height-2, width-2, height-6, 0xffffff, 0, 2)
+   WindowLine(window, width-7, height-2, width-2, height-7, 0x696969, 0, 1)
+   WindowLine(window, width-9, height-2, width-2, height-9, 0xffffff, 0, 2)
+   WindowLine(window, width-10, height-2, width-2, height-10, 0x696969, 0, 1)
+   WindowLine(window, width-12, height-2, width-2, height-12, 0xffffff, 0, 2)
+   WindowLine(window, width-13, height-2, width-2, height-13, 0x696969, 0, 1)
+end
+
+function round (x)
+  if x >= 0 then
+    return math.floor (x + 0.5)
+    --return math.floor (x)
+  end  -- if positive
+
+  return math.ceil (x - 0.5)
+  --return math.ceil (x)
+end -- function round
+
+----- 3D transform variables
+--a{x,y,z} - the 3D position of a point A that is to be projected
+--c{x,y,z} - the 3D position of a point C representing the camera
+--t{x,y,z} - the orientation of the camera (represented, for instance, by tait-bryan angles)
+--e{x,y,z} - the viewer's position relative to the display surface
+-- which results in:
+-- b{x,y}  - the 2D projection of A
+
+-- to compute b{x,y} we first define a vector d{x,y,z} as the position of point A with respect to a coordinate system 
+-- defined by the camera, with origin in C and rotated by T with respect to the initial coordinate system. This is
+-- achieved by subtracting C from A and then applying a rotation by -T to the result. This transformation is often
+-- called a camera transform, and can be expressed as follows, expressing the rotation in terms of rotations about
+-- the x, y, and z axes (these calculations assume that the axes are ordered as a left-handed system of axes)
+-- d{x} = cos(t{y}) * (sin(t{z}) * (a{y} - c{y}) + cos(t{z}) * (a{x} - c{x})) - sin(t{y}) * (a{z} - c{z})
+-- d{y} = sin(t{x}) * (cos(t{y}) * (a{z} - c{z}) + sin(t{y}) * (sin(t{z}) * (a{y} - c{y}) + cos(t{z}) * (a{x} - c{x}))) + cos(t{x}) * (cos(t{z}) * (a{y} - c{y}) - sin(t{z}) * (a{x} - c{x}))
+-- d{z} = cos(t{x}) * (cos(t{y}) * (a{z} - c{z}) + sin(t{y}) * (sin(t{z}) * (a{y} - c{y}) + cos(t{z}) * (a{x} - c{x}))) - sin(t{x}) * (cos(t{z}) * (a{y} - c{y}) - sin(t{z}) * (a{x} - c{x}))
+--
+-- b{x} = (d{x} - e{x})*(e{z}/d{z})
+-- b{y} = (d{y} - e{y})*(e{z}/d{z})
+
+local a = {x=0,y=0,z=0} -- position of point A to be projected
+local c = {x=2000,y=2000,z=2000} -- position of point C representing the camera
+local t = {x=30,y=30,z=30} -- orientation of the camera
+local e = {x=2000,y=2000,z=2000} -- viewer's position relative to the display surface
+local d = {x=0,y=0,z=0} -- position of point A with respect to coordinate system defined by the camera, with origin C and rotated by T
+local b = {x=0,y=0}     -- our final point to be mapped in an 2D XY surface
+
+function setval(name, line, args)
+
+	if (args[1]~="" and args[2]~="" and args[3]~="" and args[4]~="") then
+		if (args[1] == "t") then
+			t = {x=tonumber(args[2]),y=tonumber(args[3]),z=tonumber(args[4])}
+			Note("t".."("..t.x..","..t.y..","..t.z..")")
+		elseif (args[1] == "c") then
+			c = {x=tonumber(args[2]),y=tonumber(args[3]),z=tonumber(args[4])}
+			Note("c".."("..c.x..","..c.y..","..c.z..")")
+		elseif (args[1] == "e") then
+			e = {x=tonumber(args[2]),y=tonumber(args[3]),z=tonumber(args[4])}
+			Note("e".."("..e.x..","..e.y..","..e.z..")")
+		end
+		--args[1] = {x=tonumber(args[2]),y=tonumber(args[3]),z=tonumber(args[4])}
+		--Note(args[1].."("..args[1].x..","..args[1].y..","..args[1].z..")")
+		drawWindow()
+	end
+end
+
+function drawWindow()  -- BIG GODDAMN TODO
+	-- clear window
+	WindowRectOp (win, miniwin.rect_fill, 0, 0, 800, 600, ColourNameToRGB("black"))  -- draw blank rectangle to "erase" window
+	 -- draw border
+  	WindowRectOp (win, 5, 0, 0, 0, 0, 5, 15 + 0x1000)
+  
+  	-- add the drag handler so they can move the window around
+  	local font_height = WindowFontInfo (win, font, 1)
+  	movewindow.add_drag_handler (win, 0, 0, 0, font_height)
+  	
+  	-- draw X in the corner to close the window
+  	WindowLine (win, 785, 5, 795, 15, ColourNameToRGB ("white"), miniwin.pen_solid, 1)
+  	WindowLine (win, 785, 15, 795, 5, ColourNameToRGB ("white"), miniwin.pen_solid, 1)
+  	WindowAddHotspot(win, "windowX",
+  			785, 5, 795, 15,
+  			"",                   --mousehover
+  			"",                   --mouseoffhover
+  			"destroyWindow",      --mousedown
+  			"",                   --mouseoffdown
+  			"",                   --mouseup
+  			"Close space window",
+  			1, 0)
+    
+  	heading = ""
+  	
+  	if (getmsdp("SHIPSYSNAME")) then
+  		heading = getmsdp("SHIPSYSNAME")
+  	elseif (getmsdp("PLANET")) then
+  		heading = getmsdp("PLANET")
+  	end
+  	
+   	-- heading line
+  	WindowText (win, font, heading, 5, 5, 0, 0, ColourNameToRGB("white"))
+  	
+  	--shipx = tonumber(msdp["SHIPSYSX"]) or 0
+  	--shipy = tonumber(msdp["SHIPSYSY"]) or 0
+  	--shipz = tonumber(msdp["SHIPSYSZ"]) or 0
+  	
+  	a.name = "ship"
+  	a.x = tonumber(getmsdp("SHIPSYSX")) or 0
+  	a.y = tonumber(getmsdp("SHIPSYSY")) or 0
+  	a.z = tonumber(getmsdp("SHIPSYSZ")) or 0
+  	
+  	
+  	-- begin the transform madness
+  	--d.x = math.cos(t.y) * (math.sin(t.z) * (a.y - c.y) + math.cos(t.z) * (a.x - c.x)) - math.sin(t.y) * (a.z - c.z)
+  	--d.y = math.sin(t.x) * (math.cos(t.y) * (a.z - c.z) + math.sin(t.y) * (math.sin(t.z) * (a.y - c.y) + math.cos(t.z) * (a.x - c.x))) + math.cos(t.x) * (math.cos(t.z) * (a.y - c.y) - math.sin(t.z) * (a.x - c.x))
+  	--d.z = math.cos(t.x) * (math.cos(t.y) * (a.z - c.z) + math.sin(t.y) * (math.sin(t.z) * (a.y - c.y) + math.cos(t.z) * (a.x - c.x))) - math.sin(t.x) * (math.cos(t.z) * (a.y - c.y) - math.sin(t.z) * (a.x - c.x))
+
+  	--b.x = (d.x - e.x)*(e.z/d.z)
+  	--b.y = (d.y - e.y)*(e.z/d.z)
+  	local shipcoords = getxy(a)
+  	local alderaana = {x=1500,y=1500,z=3000}
+  	local alderaancoords = getxy(alderaana)
+  	local markotha = {x=-4500,y=-10500,z=-3000}
+  	local markothcoords = getxy(markotha)
+  	
+  	
+  	
+  	--draw axes
+  	local axes = {
+  	{
+  		name="maxX",
+  		x=50000,
+  		y=0,
+  		z=0
+  	},
+  	{
+  		name="minX",
+  		x=-50000,
+  		y=0,
+  		z=0
+  	},
+  	{
+  		name="maxY",
+  		x=0,
+  		y=50000,
+  		z=0
+  	},
+  	{
+  		name="minY",
+  		x=0,
+  		y=-50000,
+  		z=0
+  	},
+  	{
+  		name="maxZ",
+  		x=0,
+  		y=0,
+  		z=50000
+  	},
+  	{
+  		name="minZ",
+  		x=0,
+  		y=0,
+  		z=-50000
+  	}}
+  	for k,v in pairs(axes) do
+  		local aa = getxy(v)
+ 		local realaax = scaleXcoord(aa.x)
+		local realaay = scaleYcoord(aa.y)
+		WindowText(win, font, v.name, realaax+3, realaay+3, 0, 0, ColourNameToRGB("white"))
+  		WindowCircleOp(win, 1, realaax-2, realaay-2, realaax+2, realaay+2, ColourNameToRGB("red"), 0, 2, ColourNameToRGB("red"), 0)
+  	end
+  	
+  	--Note("d("..d.x..","..d.y..","..d.z..") b("..b.x..","..b.y..")")
+  	
+  	
+  	
+  	
+  	-- draw ship and axes  TODO
+  	--WindowLine(win, 100, 300, 700, 300, ColourNameToRGB ("yellow"), miniwin.pen_solid, 1)
+  	--WindowLine(win, 400, 50, 400, 550, ColourNameToRGB ("yellow"), miniwin.pen_solid, 1)
+  	--local maxXtext = tostring(round((50000/zoom)+xcenter))
+  	--local maxYtext = tostring(round((50000/zoom)+ycenter))
+  	
+  	--WindowText(win, font, maxYtext, 402, 550, 0, 0, ColourNameToRGB("white"))
+  	--WindowText(win, font, "-"..maxYtext, 402, 50, 0, 0, ColourNameToRGB("white"))
+  	--WindowText(win, font, maxXtext, 700, 302, 0, 0, ColourNameToRGB("white"))
+  	--WindowText(win, font, "-"..maxXtext, 100, 302, 0, 0, ColourNameToRGB("white"))
+  	
+  	
+  	--draw alderaan
+ 	realaldx = scaleXcoord(alderaancoords.x)
+	realaldy = scaleYcoord(alderaancoords.y)
+  	WindowCircleOp(win, 1, realaldx-5, realaldy-5, realaldx+5, realaldy+5, ColourNameToRGB("seagreen"), 0, 2, ColourNameToRGB("seagreen"), 0)
+  	 	
+  	--draw markoth
+ 	realmarx = scaleXcoord(markothcoords.x)
+	realmary = scaleYcoord(markothcoords.y)
+  	WindowCircleOp(win, 1, realmarx-5, realmary-5, realmarx+5, realmary+5, ColourNameToRGB("yellow"), 0, 2, ColourNameToRGB("yellow"), 0)
+ 
+  	
+  	
+  	
+	--realshipx = ((( shipx / 50000) * 300) + 400)
+	realshipx = scaleXcoord(shipcoords.x)
+
+	--realshipy = ((( shipy / 50000) * 250) + 300)
+	realshipy = scaleYcoord(shipcoords.y)
+	--Note("a("..a.x..","..a.y..","..a.z..") = ("..realshipx..","..realshipy..")")
+  	
+
+  	WindowCircleOp(win, 1, realshipx-5, realshipy-5, realshipx+5, realshipy+5, ColourNameToRGB("dodgerblue"), 0, 2, ColourNameToRGB("dodgerblue"), 0)
+  	WindowAddHotspot(win, "shipPositionHover",
+  		realshipx-5, realshipy-5, realshipx+5, realshipy+5,
+  		"",			--mousehover
+  		"",			--mouseoffhover
+  		"",      	--mousedown
+  		"",			--mouseoffdown
+  		"",			--mouseup
+  		"("..a.x..","..a.y..","..a.z..") = ("..realshipx..","..realshipy..")",
+  		1, 0)
+  	
+  	
+  
+  	WindowShow (win,  true)  -- show it
+end
+
+function getxy(a)
+  	-- begin the transform madness
+  	local d = {x=0,y=0,z=0}
+  	local b = {x=0,y=0}
+  	d.x = math.cos(t.y) * (math.sin(t.z) * (a.y - c.y) + math.cos(t.z) * (a.x - c.x)) - math.sin(t.y) * (a.z - c.z)
+  	d.y = math.sin(t.x) * (math.cos(t.y) * (a.z - c.z) + math.sin(t.y) * (math.sin(t.z) * (a.y - c.y) + math.cos(t.z) * (a.x - c.x))) + math.cos(t.x) * (math.cos(t.z) * (a.y - c.y) - math.sin(t.z) * (a.x - c.x))
+  	d.z = math.cos(t.x) * (math.cos(t.y) * (a.z - c.z) + math.sin(t.y) * (math.sin(t.z) * (a.y - c.y) + math.cos(t.z) * (a.x - c.x))) - math.sin(t.x) * (math.cos(t.z) * (a.y - c.y) - math.sin(t.z) * (a.x - c.x))
+
+  	b.x = (d.x - e.x)*(e.z/d.z)
+  	b.y = (d.y - e.y)*(e.z/d.z)
+  	return b
+end
+
+
+function scaleXcoord(coord)
+	return ((( coord / (50000 / zoom)) * 300) + (400+xcenter))
+end
+function scaleYcoord(coord)
+	return ((( coord / (50000 / zoom)) * 250) + (300+ycenter))
+end
+function scaleZcoord(coord)
+end
+
+function displayTime(time)
+	local retval = {}
+	local secs = tonumber(time)
+
+	if (secs >= 315705600) then
+		local decades = secs / 315705600
+		secs = secs - (decades * 315705600)
+		retval[#retval + 1] = tostring(string.format("%.1f", decades) .. " decades")
+	end
+	if (secs >= 31570560) then
+		local years = secs / 31570560
+		secs = secs - (years * 31570560)
+		retval[#retval + 1] = tostring(string.format("%.1f", years) .. " years")
+	end
+	if (secs >= 2630880) then
+		local months = secs / 2630880
+		secs = secs - (months * 2630880)
+		retval[#retval + 1] = tostring(string.format("%.1f", months) .. " months")
+	end
+	if (secs >= 604800) then
+		local weeks = secs / 604800
+		secs = secs - (weeks * 604800)
+		retval[#retval + 1] = tostring(string.format("%.1f", weeks) .. " weeks")
+	end
+	if (secs >= 86400) then
+		local days = secs / 86400
+		secs = secs - (days * 86400)
+		retval[#retval + 1] = tostring(string.format("%.1f", days) .. " days")
+	end
+	if (secs >= 3600) then
+		local hours = secs / 3600
+		secs = secs - (hours * 3600)
+		retval[#retval + 1] = tostring(string.format("%.1f", hours) .. " hours")
+	end
+	if (secs >= 60) then
+		local mins = secs / 60
+		secs = secs - (mins * 60)
+		retval[#retval + 1] = tostring(string.format("%.1f", mins) .. " mins")
+	end
+	if (secs >= 1) then
+		retval[#retval + 1] = tostring(string.format("%.1f", secs) .. " secs")
+	end
+	--1,60,3600,86400,604800,2630880,31570560,315705600
+	return table.concat(retval, ", ")
+end
+
+
+function reset()
+	OnPluginSaveState()
+	OnPluginInstall()
+end
+
+function hyperJumpTick()
+	if (totalJump > 0 and partialJump > 0) then
+		partialJump = partialJump - 50
+		if (visualSpaceJumpVisible == 1) then
+			--Note("Tick: " .. partialJump .. "/" .. totalJump)
+			drawJumpWindow()
+		end
+	end
+end
+
+function storeTotalJump(name, list, args)
+	if (args[1] and tonumber(args[1]) > 0) then
+		totalJump = tonumber(args[1])
+	end
+	if (visualSpaceJumpVisible == 1) then
+		drawJumpWindow()
+	end
+end
+
+function storePartialJump(name, list, args)
+	if (args[1] and tonumber(args[1]) > 0) then
+		if (totalJump == 0) then
+			totalJump = tonumber(args[1])
+			EnableTimer("hyperJumpTicker", true)
+		end
+		partialJump = tonumber(args[1])
+	end
+	if (visualSpaceJumpVisible == 1) then
+		--Note("Tock: " .. partialJump .. "/" .. totalJump)
+		drawJumpWindow()
+	end
+end
+
+function clearJump()
+	totalJump = 0
+	partialJump = 0
+	EnableTimer("hyperJumpTicker", false)
+	if (visualSpaceJumpVisible == 1) then
+		drawJumpWindow()
+	end
+end
+
+-- toggles should probably be cleaned up into something more modular... TODO
+
+
+-------- stat window toggles
+function toggleVisualSpaceStatOn()
+	visualSpaceStatVisible = 1
+	drawStatWindow()
+end
+
+function toggleVisualSpaceStat()
+	if (visualSpaceStatVisible == 1) then
+		destroyStatWindow()
+	else
+		toggleVisualSpaceStatOn()
+	end
+	if (visualSpaceConfigVisible == 1) then
+		drawConfigWindow()
+	end
+end
+
+function destroyStatWindow()
+	visualSpaceStatVisible = 0
+	WindowShow (statwin, false)
+	--WindowDelete(energywin)
+	if (visualSpaceConfigVisible == 1) then
+		drawConfigWindow()
+	end
+end
+
+-------------- jump window toggles
+
+
+function toggleVisualSpaceJumpOn()
+	visualSpaceJumpVisible = 1
+	drawJumpWindow()
+end
+
+function toggleVisualSpaceJump()
+	if (visualSpaceJumpVisible == 1) then
+		destroyJumpWindow()
+	else
+		toggleVisualSpaceJumpOn()
+	end
+	if (visualSpaceConfigVisible == 1) then
+		drawConfigWindow()
+	end
+end
+
+function destroyJumpWindow(name, list, args)
+	visualSpaceJumpVisible = 0
+	WindowShow (jumpwin, false)
+	if (visualSpaceConfigVisible == 1) then
+		drawConfigWindow()
+	end
+end
+
+function toggleJumpPercent()
+	if (displayJumpPercent == 1) then
+		displayJumpPercent = 0
+	else
+		displayJumpPercent = 1
+	end
+	drawJumpWindow()
+end
+
+-------------- speed window toggles
+function toggleVisualSpaceSpeed()
+	if (visualSpaceSpeedVisible == 1) then
+		destroySpeedWindow()
+	else
+		toggleVisualSpaceSpeedOn()
+	end
+	if (visualSpaceConfigVisible == 1) then
+		drawConfigWindow()
+	end
+end
+
+function toggleVisualSpaceSpeedOn()
+	visualSpaceSpeedVisible = 1
+	drawSpeedWindow()
+end
+
+function destroySpeedWindow(name, list, args)
+	visualSpaceSpeedVisible = 0
+	WindowShow (speedwin, false)
+	if (visualSpaceConfigVisible == 1) then
+		drawConfigWindow()
+	end
+end
+
+function toggleAutopilotOn()
+	autopilot = true
+	if (visualSpaceSpeedVisible == 1) then
+		drawSpeedWindow()
+	end
+end
+
+function toggleAutopilotOff()
+	autopilot = false
+	if (visualSpaceSpeedVisible == 1) then
+		drawSpeedWindow()
+	end
+end
+
+function toggleShieldsOn()
+	recharge = true
+	if (visualSpaceSpeedVisible == 1) then
+		drawSpeedWindow()
+	end
+end
+
+function toggleShieldsOff()
+	recharge = false
+	if (visualSpaceSpeedVisible == 1) then
+		drawSpeedWindow()
+	end
+end
+
+-------------- config window toggles
+function toggleVisualSpaceConfigOn()
+	visualSpaceConfigVisible = 1
+	drawConfigWindow()
+end
+
+function toggleVisualSpaceConfig()
+	if (visualSpaceConfigVisible == 1) then
+		destroyConfigWindow()
+	else
+		toggleVisualSpaceConfigOn()
+	end
+end
+
+function destroyConfigWindow(name, list, args)
+	visualSpaceConfigVisible = 0
+	WindowShow (configwin, false)
+	--WindowDelete(configwin)
+end
+
+
+-------------- main window toggles
+function toggleVisualSpaceOn()
+	visualSpaceVisible = 1
+	drawWindow()
+end
+
+function toggleVisualSpace()
+	if (visualSpaceVisible == 1) then
+		destroyWindow()
+	else
+		toggleVisualSpaceOn()
+	end
+	if (visualSpaceConfigVisible == 1) then
+		drawConfigWindow()
+	end
+end
+
+function destroyWindow(name, list, args)
+	visualSpaceVisible = 0
+	WindowShow (win, false)
+	--WindowDelete(win)
+	if (visualSpaceConfigVisible == 1) then
+		drawConfigWindow()
+	end
+end
+
+
+------------------- end toggles
+
+function hideWindows()
+	WindowShow (win, false)
+	WindowShow (configwin, false)
+	WindowShow (speedwin, false)
+	WindowShow (jumpwin, false)
+	WindowShow (statwin, false)
+	for k, v in pairs(windows) do
+		WindowShow (v.id, false)
+	end
+end
+
+function destroyWindows(name, list, args)
+	destroyWindow()
+	destroyConfigWindow()
+	destroySpeedWindow()
+	destroyJumpWindow()
+	destroyStatWindow()
+end
+
+function OnPluginInstall ()		
+
+  --- Setup the windows
+   SetUpHotspotsAndDraw(true)
+
+  -- add the fonts                
+  check(WindowFont (win, font, "Arial", 10, true, false, false, false))
+  check(WindowFont (configwin, font, "Arial", 10, true, false, false, false))
+  check(WindowFont (speedwin, font, "Arial", 10, true, false, false, false))
+  check(WindowFont (jumpwin, font, "Arial", 10, true, false, false, false))
+  check(WindowFont (speedwin, digiFont, "Terminal", 20, true, false, false, false))
+  check(WindowFont (statwin, font, "Arial", 10, true, false, false, false))
+  check(WindowFont (statwin, statFont, "Courier", 10, false, false, false, false))
+  
+  font_height = WindowFontInfo (win, font, 1) -  WindowFontInfo (win, font, 4) + 1 -- height
+  font_width  = WindowFontInfo (win, font, 6)  -- avg width
+  line_height = font_height + 1
+  
+  
+  if GetVariable ("enabled") == "false" then
+  	ColourNote ("yellow", "", "Warning: Plugin " .. GetPluginName().. " is currently disabled.")
+  	check (EnablePlugin(GetPluginID(), false))
+  	return
+  end -- plugin wasn't enabled last time
+  
+  OnPluginSaveState()
+  installed = true
+  drawWindows()
+    
+end -- OnPluginInstall
+
+--================================================================================
+-- Called by OnPluginInstall, but also by redraw routine to refresh the screen
+-- and (if the first time) add the resizer tag, otherwise move the resizer relative
+-- to the main window.
+--=================================================================================
+function SetUpHotspotsAndDraw(firstTime)
+	if (firstTime) then
+	
+	
+		-- create our windows structure
+		newWindows = {
+		{ 
+			id = "hp_win_"..GetPluginID(), 
+			name = "HP", 
+			width = default_width, 
+			height = default_height,
+			effectiveWidth = 0,
+			visible = 0,
+			stat1 = "HEALTH",
+			stat2 = "HEALTHMAX",
+			color100 = "darkred",
+			color50 = "darkred",
+			color25 = "red",
+			style = "horizontal",
+			percent = 1
+			},
+		{
+			id = "move_win_"..GetPluginID(),
+			name = "Moves",
+			width = default_width,
+			height = default_height,
+			effectiveWidth = 0,
+			visible = 0,
+			stat1 = "MOVEMENT",
+			stat2 = "MOVEMENTMAX",
+			color100 = "green",
+			color50 = "yellow",
+			color25 = "red",
+			style = "horizontal",
+			percent = 1
+			},
+		{
+			id = "mana_win_"..GetPluginID(),
+			name = "Mana",
+			width = default_width,
+			height = default_height,
+			effectiveWidth = 0,
+			visible = 0,
+			stat1 = "MANA",
+			stat2 = "MANAMAX",
+			color100 = "darkturquoise",
+			color50 = "lightseagreen",
+			color25 = "darkslategray",
+			style = "horizontal",
+			percent = 1
+			},
+		{
+			id = "enemy_win_"..GetPluginID(),
+			name = "Enemy",
+			width = default_width,
+			height = default_height,
+			effectiveWidth = 0,
+			visible = 0,
+			stat1 = "OPPONENTHEALTH",
+			stat2 = "OPPONENTHEALTHMAX",
+			color100 = "darkgray",
+			color50 = "gray",
+			color25 = "dimgray",
+			style = "horizontal",
+			percent = 1
+			},
+		{
+			id = "shield_win_"..GetPluginID(),
+			name = "Shield",
+			width = default_height+10,
+			height = default_width,
+			effectiveWidth = 0,
+			visible = 0,
+			stat1 = "SHIPSHIELD",
+			stat2 = "SHIPMAXSHIELD",
+			color100 = "lime",
+			color50 = "gold",
+			color25 = "red",
+			style = "vertical",
+			percent = 1
+			},
+		{
+			id = "hull_win_"..GetPluginID(),
+			name = "Hull",
+			width = default_height+10,
+			height = default_width,
+			effectiveWidth = 0,
+			visible = 0,
+			stat1 = "SHIPHULL",
+			stat2 = "SHIPMAXHULL",
+			color100 = "dimgray",
+			color50 = "gray",
+			color25 = "darkgray",
+			style = "vertical",
+			percent = 1
+			},
+		{
+			id = "energy_win_"..GetPluginID(),
+			name = "Energy",
+			width = default_height+10,
+			height = default_width,
+			effectiveWidth = 0,
+			visible = 0,
+			stat1 = "SHIPENERGY",
+			stat2 = "SHIPMAXENERGY",
+			color100 = "blue",
+			color50 = "yellow",
+			color25 = "red",
+			style = "vertical",
+			percent = 1
+			}
+		}
+		
+		-- if our current window structure is different than the new one, replace it
+		if (#newWindows ~= #windows) then
+			windows = newWindows
+		end
+	
+		
+		-- make windows so I can grab the font info
+		WindowCreate (win, 0, 0, 800, 600, miniwin.pos_center_all, 0, ColourNameToRGB("black"))  -- create window
+		WindowCreate (configwin, 0, 0, 220, 340, miniwin.pos_center_all, 0, ColourNameToRGB("black")) -- create config window
+		WindowCreate (speedwin, 0, 0, 300, 200, miniwin.pos_center_all, 0, ColourNameToRGB("black")) -- create speed window
+		WindowCreate (jumpwin, 0, 0, 400, 60, miniwin.pos_center_all, 0, ColourNameToRGB("black")) -- create jump window
+		WindowCreate (statwin, 0, 0, 400, 300, miniwin.pos_center_all, 0, ColourNameToRGB("black")) -- create stat window
+		
+		  -- install the window movement handlers, get back the window position
+ 		windowinfo =       movewindow.install (win, 6)  -- default to 6 (on top right)
+  		configwindowinfo = movewindow.install (configwin, 6) -- default to 6 (on top right)
+  		speedwindowinfo =  movewindow.install (speedwin, 6) -- default to 6 (on top right)
+  		jumpwindowinfo =   movewindow.install (jumpwin, 6) -- default to 6 (on top right)
+  		statwindowinfo =   movewindow.install (statwin, 6) -- default to 6 (on top right)
+  		
+  		-- catch for scroll wheel movement
+		--WindowAddHotspot(win, "gridarea", 100, 50, 700, 550, "", "", "MouseDownMain", "CancelMouseDownMain", "MouseUpMain", "", 1, 0)
+
+		-- mouse wheel handler for scrolling up/down
+		--WindowScrollwheelHandler(win, "gridarea", "wheel_move")
+		--WindowDragHandler(win, "gridarea", "MainDragCallback", "MainReleaseCallback", 0)
+		
+		movewindow.add_drag_handler (win, 0, 0, 0, WindowFontInfo (win, font, 1))
+		movewindow.add_drag_handler (configwin, 0, 0, 0, WindowFontInfo (configwin, font, 1))
+		movewindow.add_drag_handler (speedwin, 0, 0, 0, WindowFontInfo (speedwin, font, 1))
+		movewindow.add_drag_handler (jumpwin, 0, 0, 0, WindowFontInfo (jumpwin, font, 1))
+		movewindow.add_drag_handler (statwin, 0, 0, 0, WindowFontInfo (statwin, font, 1))
+		
+		--effectiveWidth = math.min(charwidth, GetInfo(281)-charwindowinfo.window_left)
+		--WindowAddHotspot(charwin, "resize", effectiveWidth-RESIZE_TAG_SIZE, charheight-RESIZE_TAG_SIZE, effectiveWidth, charheight, "MouseOver", "CancelMouseOver", "MouseDown", "CancelMouseDown", "MouseUp", "", 6, 0)
+		--WindowDragHandler(charwin, "resize", "ResizeMoveCallback", "ResizeReleaseCallback", 0)
+		
+		
+		-- setup every window in our table
+		for k, v in pairs(windows) do
+			WindowCreate (v.id, 0, 0, v.width, v.height, miniwin.pos_center_all, 0, ColourNameToRGB("black")) -- create windows
+			window_info[v.id] = movewindow.install (v.id, 6) -- default to 6 (on top right)
+			--v.info = movewindow.install (v.id, 6) -- default to 6 (on top right)
+			movewindow.add_drag_handler (v.id, 0, 0, 0, WindowFontInfo (v.id, font, 1))
+			v.effectiveWidth = math.min(v.width, GetInfo(281)-window_info[v.id].window_left)
+			WindowAddHotspot (v.id, v.id.."resize", v.effectiveWidth-RESIZE_TAG_SIZE, v.height-RESIZE_TAG_SIZE, v.effectiveWidth, v.height, "MouseOver", "CancelMouseOver", "MouseDown", "CancelMouseDown", "MouseUp", "", 6, 0)
+			WindowDragHandler(v.id, v.id.."resize", "ResizeMoveCallback", "ResizeReleaseCallback", 0)
+			check(WindowFont (v.id, font, "Arial", 10, true, false, false, false))
+		end -- end for
+		
+	else -- not our first time drawing
+		-- everything has already been made
+		-- just move them back into place
+		
+		for k, v in pairs(windows) do
+			v.effectiveWidth = math.min(v.width, GetInfo(281)-window_info[v.id].window_left)
+			WindowResize(v.id, v.effectiveWidth, v.height, background_colour)
+			WindowMoveHotspot(v.id, v.id.."resize", v.effectiveWidth-RESIZE_TAG_SIZE, v.height-RESIZE_TAG_SIZE, v.effectiveWidth, v.height)
+		end
+		
+		--effectiveWidth = math.min(charwidth, GetInfo(281)-charwindowinfo.window_left)
+		--WindowResize(charwin, effectiveWidth, charheight, background_colour)
+		--WindowMoveHotspot(charwin, "resize", effectiveWidth-RESIZE_TAG_SIZE, charheight-RESIZE_TAG_SIZE, effectiveWidth, charheight)
+		drawWindows()
+	end
+end
+
+
+
+function OnPluginSaveState ()
+  -- save window current location for next time  
+  movewindow.save_state (win)
+  movewindow.save_state (configwin)
+  movewindow.save_state (speedwin)
+  movewindow.save_state (jumpwin)
+  movewindow.save_state (statwin)
+  
+  for k, v in pairs(windows) do
+  	movewindow.save_state (v.id)
+  end
+  
+  -- save window display settings
+  SetVariable("show_space", tostring(visualSpaceVisible))
+  SetVariable("show_jump_percent", tostring(displayJumpPercent))
+  SetVariable("show_config", tostring(visualSpaceConfigVisible))
+  SetVariable("show_speed", tostring(visualSpaceSpeedVisible))
+  SetVariable("show_jump", tostring(visualSpaceJumpVisible))
+  SetVariable("show_stat", tostring(visualSpaceStatVisible))
+  SetVariable("windows", serialize.save("windows"))
+
+end -- function OnPluginSaveState
+
+
+--============================================================================
+-- Central function for listening to data broadcast by LotJMSDPHandler.xml
+-- Stores broadcast information locally to be easily accessed by plugin
+--============================================================================
+
+function OnPluginBroadcast (msg, id, name, text)
+	-- Look for MSDP Handler.
+	if (id == 'b3aae34498d5bf19b5b2e2af') then
+		-- HUGE FIXME.. not an idea solution
+		if (msg == 91) then -- we got table information from MSDP handler
+			-- store information in our own msdp table
+			key = string.sub(text, 0, string.find(text,",",0,true)-1)  -- parse the variable key
+			val = utils.base64decode(string.sub(text, string.find(text,",",0,true)+1, string.len(text))) -- parse the variable value
+			msdp[key] = val -- store it
+			--Note("key: " .. key .. " val: " .. msdp[key])
+			key = ""
+			val = ""
+		end
+		if (text == 'reload') then
+			-- invalidate current data
+			page_built = false
+			return
+		end
+	end
+	drawWindows()  -- redraw windows every time new information is received
+	BroadcastPlugin(999, "repaint")
+end
+
+--============================================================================
+-- Function to be used to retrieve msdp information. Returns either the
+-- information stored in the local msdp table or gets the requested variable
+-- from msdp_helper, if it doesn't exist locally
+--============================================================================
+
+function getmsdp(key)
+	if not IsConnected() then  -- don't try to get stuff if we aren't connected to the mud
+		return ""
+	end
+	if (msdp[key] ~= nil) then  -- if the key has been updated by msdp handler already, retrieve it
+		return msdp[key]
+	elseif (GetPluginVariable("b3aae34498d5bf19b5b2e2af", key) ~= nil) then  -- if the key hasn't been updated, but msdp handler has it cached, retrieve it and store in local table for next time
+		msdp[key] = utils.base64decode(GetPluginVariable("b3aae34498d5bf19b5b2e2af", key))
+		return msdp[key]
+	else
+		ColourNote("red","black", "Warning: Unable to find key " .. key)
+		return ""   -- should never get here  -- can't find the requested key
+	end
+	return "" -- should never ever get here
+end
+
+function findwinbyid(id)
+	for k, v in pairs(windows) do
+		if (v.id == id) then
+			return v
+		end
+	end
+	return nil
+end
+
+--==============================================================================
+-- function used to retrieve information from LotJMSDPHandler.xml
+--==============================================================================
+
+function msdpval(fieldname) 
+
+	assert (fieldname, "nil fieldname passed to msdpval")
+
+	return CallPlugin("b3aae34498d5bf19b5b2e2af","msdpval",fieldname) 
+	
+end -- function msdpval
+
+
+----------------------------------------------------------------------
+-- Called as the windows are dragged around.
+----------------------------------------------------------------------
+function ResizeMoveCallback(flags, hotspot_id)
+	clickedWin = findwinbyid(string.sub(hotspot_id, 0, string.find(hotspot_id, "resize")-1))
+	if not clickedWin then
+		return
+	end
+	--Note("clickedwin.id = " .. clickedWin.id)
+
+   posx, posy = WindowInfo (clickedWin.id, 17), WindowInfo (clickedWin.id, 18)
+   clickedWin.width = clickedWin.width + posx - startx
+   startx = posx
+   if (clickedWin.width < MIN_WIDTH) then
+      clickedWin.width = MIN_WIDTH
+      startx = window_info[clickedWin.id].window_left+clickedWin.width
+   elseif (window_info[clickedWin.id].window_left+clickedWin.width > GetInfo(281)) then
+      clickedWin.width = GetInfo(281)-window_info[clickedWin.id].window_left
+      startx = GetInfo(281)
+   end
+   
+   clickedWin.height = clickedWin.height + posy - starty
+   starty = posy
+   if (clickedWin.height < MIN_HEIGHT) then
+   	clickedWin.height = MIN_HEIGHT
+   	starty = window_info[clickedWin.id].window_top+clickedWin.height
+   elseif (window_info[clickedWin.id].window_top+clickedWin.height > GetInfo(280)) then
+   	clickedWin.height = GetInfo(280)-window_info[clickedWin.id].window_top
+   	starty = GetInfo(280)
+   end
+   
+   
+	if (utils.timer() - lastRefresh > 0.0333) then
+		SetUpHotspotsAndDraw(false)
+		lastRefresh = utils.timer()
+	end
+end
+
+lastRefresh = 0
+
+---------------------------------------------------------------------------------
+-- Called after the resize widget is released.
+---------------------------------------------------------------------------------
+function ResizeReleaseCallback()
+   SetUpHotspotsAndDraw(false)
+end
+
+---------------------------------------------------------------------------------
+-- Called when mouse button is pressed on hotspot.
+---------------------------------------------------------------------------------
+function MouseDown(flags, hotspot_id)
+	clickedWin = findwinbyid(string.sub(hotspot_id, 0, string.find(hotspot_id, "resize")-1)) 
+	if not clickedWin then
+		return
+	end
+   --if (hotspot_id == "resize") then
+      startx, starty = WindowInfo (clickedWin.id, 17), WindowInfo (clickedWin.id, 18)
+   --end
+end
+
+---------------------------------------------------------------------------------
+-- Called when mouse moved away from hotspot. Doesn't really apply for draggables.
+---------------------------------------------------------------------------------
+function CancelMouseDown(flags, hotspot_id)
+end
+
+---------------------------------------------------------------------------------
+-- Called when mouse button released on hotspot.
+---------------------------------------------------------------------------------
+function MouseUp(flags, hotspot_id, win)
+   if bit.band (flags, miniwin.hotspot_got_rh_mouse) ~= 0 then
+      --right_click_menu()
+   end
+   return true
+end
+
+function LeftClickOnly(flags, hotspot_id, win)
+   if bit.band (flags, miniwin.hotspot_got_rh_mouse) ~= 0 then
+      return true
+   end
+   return false
+end
+
+
+
+
+------main window stuff
+----------------------------------------------------------------------------------
+-- Called when scroll wheel is moved
+----------------------------------------------------------------------------------
+function wheel_move (flags, hotspot_id)
+	if bit.band(flags, 0x100) ~= 0 then
+	-- wheel scrolled down (towards you)
+		zoom = zoom - 1
+		if (zoom < 1) then
+			zoom = 1
+		end
+		
+	else
+	-- wheel scrolled up (away from you)
+		zoom = zoom + 1
+		if (zoom > 50) then
+			zoom = 50
+		end
+		
+	end -- if
+	drawWindow()
+end -- wheel_move
+
+---------------------------------------------------------------------------------
+-- Called when mouse button is pressed in main window
+---------------------------------------------------------------------------------
+function MouseDownMain(flags, hotspot_id)
+   --if (hotspot_id == "resize") then
+      startx, starty = WindowInfo (win, 17), WindowInfo (win, 18)
+   --end
+end
+
+---------------------------------------------------------------------------------
+-- Called when mouse moved away from main window. Doesn't really apply for draggables.
+---------------------------------------------------------------------------------
+function CancelMouseDownMain(flags, hotspot_id)
+end
+
+
+-- called when mouse is dragged inside space window grid area
+function MainDragCallback(flags, hotspot_id)
+	posx, posy = WindowInfo(win, 17), WindowInfo(win, 18)
+	if bit.band (flags, miniwin.drag_got_shift) ~= 0 then -- pressed shift while click and drag
+		-- move the center of our window
+		xcenter = xcenter + posx - startx
+		startx = posx
+		if (xcenter < -50000) then
+			xcenter = -50000
+			startx = -50000
+		elseif (xcenter > 50000) then
+			xcenter = 50000
+			startx = 50000
+		end
+		ycenter = ycenter + posy - starty
+		starty = posy
+		if (ycenter < -50000) then
+			ycenter = -50000
+			starty = -50000
+		elseif (ycenter > 50000) then
+			ycenter = 50000
+			starty = 50000
+		end
+		--Note("shift pressed")
+		Note("xcenter: "..xcenter.." ycenter: "..ycenter)
+		
+	elseif bit.band (flags, miniwin.drag_got_control) ~= 0 then -- pressed control while click and drag
+		-- twist display around our mouse TODO
+		--Note("control pressed")
+	else
+		-- twist display around the center of our view TODO
+		--Note("click by itself")
+		
+	end
+	-- if we hold mouse down too long, refresh window at appropriate invervals
+	if (utils.timer() - lastRefresh > 0.0333) then
+		SetUpHotspotsAndDraw(false)
+		lastRefresh = utils.timer()
+	end
+	
+end
+
+-- called when mouse is released from dragging inside space window grid area
+function MainReleaseCallback()
+	SetUpHotspotsAndDraw(false)
+end
+
+---------------------------------------------------------------------------------
+-- Called when mouse button released in main window
+---------------------------------------------------------------------------------
+function MouseUpMain(flags, hotspot_id, win)
+   if bit.band (flags, miniwin.hotspot_got_rh_mouse) ~= 0 then
+      --right_click_menu()
+   end
+   return true
+end
+
+function LeftClickOnlyMain(flags, hotspot_id, win)
+   if bit.band (flags, miniwin.hotspot_got_rh_mouse) ~= 0 then
+      return true
+   end
+   return false
+end
+
+
+
+
+function OnPluginClose()
+	OnPluginDisable()
+	hideWindows()
+end
+
+function OnPluginDisable()
+	OnPluginSaveState()
+	hideWindows()
+end
+
+function OnPluginEnable()
+	WindowShow(configwin, true)
+	OnPluginSaveState()
+end
+
+require "checkplugin"
+function OnPluginListChanged()
+	do_plugin_check_now ("b3aae34498d5bf19b5b2e2af", "LotJMSDPHandler") -- check we have MSDP handler plugin
+	do_plugin_check_now ("e2a1af0b5e462318bb423764", "lotj_repaint_buffer") -- check we have the repaint buffer
+end
+
+]]>
+</script>
+
+</muclient>

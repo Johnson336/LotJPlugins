@@ -1,0 +1,197 @@
+<?xml version="1.0" encoding="iso-8859-1" ?> 
+<!DOCTYPE muclient> 
+<!--  Saved on Tuesday, July 31, 2012, 2:24 PM   -->  
+<muclient>
+<plugin name="jShipstacking" author="@Johnson" id="09685096834058234533333f" language="Lua" purpose="Stack large numbers of ships together" save_state="y" requires="4.40" version="1.0">
+<description trim="y">
+<![CDATA[ 'shipstackhelp' - To see the commands available in the game.
+
+Remove unsightly spam by grouping same-class ships together.
+Use "shipstackmode" to toggle between displaying ships in RP mode or displaying only numbers.
+
+  ]]> 
+  </description>
+  </plugin>
+<!--   Get our standard constants   --> 
+  <include name="constants.lua" /> 
+<!--   Triggers    --> 
+<triggers>
+
+	<!-- Space Stacking Triggers -->
+	<trigger name="shipStackSpacecap" script="toggleSpaceOn" match="^Through the transparisteel windows you see\:$" enabled="y" regexp="y" group="spaceStackEnable" sequence="100" />
+	<trigger name="shipStackSpace" script="shipStackSpace" match="Nebulon-B Escort Frigate 'Resonance II'" enabled="n" regexp="y" group="jShipstackspace" omit_from_output="y" omit_from_log="y" sequence="100" />
+	
+	<!-- Pad Stacking Triggers -->
+	<trigger name="shipStackPadtwo" script="shipStackPad" match="^(.*) (?:\x27(.*)\x27|\w{2,}\d{2,})\s*(.*) (?:\x27(.*)\x27|\w{2,}\d{2,})\s*$" enabled="n" regexp="y" group="jShipstackpad" omit_from_output="y" omit_from_log="y" sequence="100" match_back_colour="y" match_bold="y" match_text_colour="y" back_colour="8" bold="y" custom_colour="4" text_colour="14" />
+	<trigger name="shipStackPadone" script="shipStackPad" match="^(.*) (?:\x27(.*)\x27|\w{2,}\d{2,})\s*$" enabled="n" regexp="y" group="jShipstackpad" omit_from_output="y" omit_from_log="y" sequence="101" match_back_colour="y" match_bold="y" match_text_colour="y" back_colour="8" bold="y" custom_colour="4" text_colour="14" />
+	<trigger name="shipStackPadcap" script="padCapOn" match="^Obvious exits\:$" enabled="y" regexp="y" group="padStackStart" sequence="100" />
+	<trigger name="shipStackPadlist" script="showPadStack" match="^$" enabled="n" regexp="y" group="jShipstackpad" sequence="100" />
+	
+	<!-- tone triggers -->
+	<trigger name="tonelist" script="toneList" match="^\d+\.\s+(.*)\s+\d+\.\s+(.*)\s+\d+\.\s+(.*)\s+\d+\.\s+(.*)\s+$" enabled="y" regexp="y" group="ToneList" sequence="100" />
+</triggers>
+<!--   Aliases    --> 
+<aliases>
+
+	<alias name="shipStackToggle" script="stackToggle" match="^shipstack(.*) (.*)?$" enabled="y" regexp="y" ignore_case="y" group="jStackCmd" sequence="100" />
+	<alias name="displayModeTog" script="displayModeToggle" match="^shipstackmode(.*)?$" enabled="y" regexp="y" ignore_case="y" group="jStackCmd" sequence="100" />
+	<alias name="displaycommands" script="displayHelp" match="^shipstackhelp$" enabled="y" regexp="y" ignore_case="y" group="jStackCmd" sequence="100" />
+</aliases>
+<!--   Script    --> 
+<script>
+<![CDATA[ 
+require "pairsbykeys"
+ships = {}
+displayMode = "long"
+shipPadStacking = false
+shipSpaceStacking = false
+
+function toneList(name, list, wildcards)
+	for i=1, #wildcards, 1 do
+		Note(i .. ": '" .. wildcards[i] .. "'")
+	end
+end
+
+function displayHelp()
+	Note("  jShipstacking help commands:")
+	Note("------------------------------")
+	Note("shipstack pad (on/off)      - turns ship stacking on landing pads on or off")
+	Note("shipstackmode (long/short)  - changes the stacking mode to display RP mode text or purely numbers")
+	Note("shipstackhelp               - display this help menu!")
+end
+
+function shipStackSpace(name, list, wildcards)
+end
+
+function showSpaceStack()
+end
+
+function toggleSpaceOn()
+end
+
+function toggleSpaceOff()
+end
+
+function shipStackPad(name, list, wildcards)
+	for i=1, #wildcards, 1 do
+		if (i == 1 or i == 3) then
+			if (ships[wildcards[i]]) then
+				ships[wildcards[i]] = ships[wildcards[i]] + 1
+			else
+				ships[wildcards[i]] = 1
+			end
+		end	
+	end
+	--for i=1, #wildcards, 1 do
+	--	Note(i .. ": '" .. wildcards[i] .. "'")
+	--end
+end
+
+function showPadStack()
+	local i = 1
+	for k, v in pairsByKeys(ships) do
+		i = i + 1
+		if (displayMode == "short") then
+			ColourTell("cyan", "", string.format(" %-35s (x%02d)", k, v)) -- odd number, print ship type (xnumber)
+		else
+			if (v > 20) then
+				ColourTell("cyan", "", string.format(" A ridiculous number of %ss are here.", k))
+			elseif (v > 10) then
+				ColourTell("cyan", "", string.format(" A bunch of %ss are here.", k))
+			elseif (v > 4) then
+				ColourTell("cyan", "", string.format(" Several %ss are here.", k))
+			elseif (v > 2) then
+				ColourTell("cyan", "", string.format(" A few %ss are here.", k))
+			elseif (v > 1) then
+				ColourTell("cyan", "", string.format(" A couple %ss are here.", k))
+			elseif (v == 1) then
+				ColourTell("cyan", "", string.format(" A single %s is here.", k))
+			end
+		end
+		if (math.fmod(i, 2) == 1) then
+			Tell("\n")
+		end
+	end
+	padCapOff()
+end       
+
+function togglePadOn()
+	ships = {}
+	EnableTriggerGroup("padStackStart", true)
+	Note("Ship stacking activated.")
+	shipPadStacking = true
+end
+
+function padCapOn()
+	ships = {}
+	EnableTriggerGroup("jShipstackpad", true)
+end
+
+function padCapOff()
+	EnableTriggerGroup("jShipstackpad", false)
+end
+
+function togglePadOff()
+	EnableTriggerGroup("jShipstackpad", false)
+	EnableTriggerGroup("padStackStart", false)
+	Note("Ship stacking deactivated.")
+	shipPadStacking = false
+end
+
+function stackToggle(name, list, wildcards)
+	if (wildcards[1] ~= "") then -- arg found
+		if (Trim(wildcards[1]) == "pad") then -- pad 
+			if (wildcards[2] ~= "") then
+				if (Trim(wildcards[2]) == "on") then	-- pad on
+					togglePadOn()
+				elseif (Trim(wildcards[2]) == "off") then -- pad off
+					togglePadOff()
+				end
+			else
+				if (shipPadStacking == false) then -- pad
+					togglePadOn()
+				else
+					togglePadOff()			-- pad
+				end
+			end
+		else
+			Note("Unrecognized argument given to shipStack: " .. wildcards[1])
+		end
+	else -- no arg found
+		Note("Valid usage is shipstack pad (on/off).")
+	end
+end
+
+function displayModeToggle(name, list, wildcards)
+	if (wildcards[1] ~= "") then -- arg found
+		if (Trim(wildcards[1]) == "long") then -- turn on
+			displayMode = "long"
+		elseif (Trim(wildcards[1]) == "short") then -- turn off
+			displayMode = "short"
+		else
+			Note("Unrecognized argument given to shipStack: " .. args[1])
+		end
+	else -- no arg found
+		if (displayMode == "short") then -- turn on
+			displayMode = "long"
+		else
+			displayMode = "short"
+		end
+	end
+	Note("jShipstack Display Mode: " .. displayMode)
+end
+
+  ]]> 
+  </script>
+ <!--   Plugin help    -->
+  <aliases>
+  <alias script="OnHelp" match="jShipstack:help" enabled="y" /> 
+  </aliases>
+ <script>
+ <![CDATA[ function OnHelp ()
+  world.Note (world.GetPluginInfo (world.GetPluginID (), 3))
+end
+
+  ]]> 
+  </script>
+  </muclient>

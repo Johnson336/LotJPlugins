@@ -1,0 +1,303 @@
+<?xml version="1.0" encoding="iso-8859-1" ?> 
+<!DOCTYPE muclient> 
+<!--  Saved on Sunday, July 04, 2012, 5:39 AM   -->  
+<muclient>
+<plugin name="LotJResearch" author="@Johnson" id="0b90ce53347f37f34ff36fcf" language="Lua" purpose="Automatic Researching" save_state="y" requires="4.40" version="1.73">
+<description trim="y">
+<![CDATA[ 'ResearchHelp' - To see the commands available in the game.
+
+Automatically populate and research items that need to be researched.
+
+  ]]> 
+  </description>
+  </plugin>
+<!--   Get our standard constants   --> 
+  <include name="constants.lua" /> 
+<!--   Triggers    --> 
+<triggers>
+  <trigger name="ResearchSecure" script="researchNext" match="^You cannot learn more about that from books\.$" enabled="n" group="AutoResearch" regexp="y" sequence="100" />
+  <trigger name="ResearchComplete" script="researchNext" match="^You can\'t learn any more about that from books\!$" enabled="n" group="AutoResearch" regexp="y" sequence="100" />
+  <trigger name="ResearchSmuggling" script="researchNext" match="^You can\'t learn smuggling skills from a book\!$" enabled="n" group="AutoResearch" regexp="y" sequence="100" />
+  <trigger name="ResearchBH" script="researchNext" match="^You can\'t learn bounty hunting skills from a book\!$" enabled="n" group="AutoResearch" regexp="y" sequence="100" />
+  <trigger name="ResearchBowcaster" script="researchNext" match="^You aren't going to learn that from a book\. Go find a Wookiee\!$" enabled="n" group="AutoResearch" regexp="y" sequence="100" />
+  <trigger name="ResearchFlurry" script="researchNext" match="^Go learn it the hard way\, sissy\.$" enabled="n" group="AutoResearch" regexp="y" sequence="100" />
+  <trigger name="ResearchForce" script="researchNext" match="^You\'re not going to learn force spells from a book\. Trust me\.$" enabled="n" group="AutoResearch" regexp="y" sequence="100" />
+  <trigger name="ResearchScience" script="researchNext" match="^You can\'t learn about that in books\. Go find a teacher\.$" enabled="n" group="AutoResearch" regexp="y" sequence="100" />
+  <trigger name="ResearchSuccess" script="research" match="^You finish your studies and feel much more skilled\.$" enabled="n" group="AutoResearch" regexp="y" sequence="100" />
+  <trigger name="ResearchFailure" script="research" match="^You study for hours on end, but fail to gather any knowledge\.$" enabled="n" group="AutoResearch" regexp="y" sequence="100" />
+  <trigger name="ResearchResumeAFK" script="resumeResearchFromAFK" match="^You may now bot again\.$" enabled="n" group="AutoResearch" regexp="y" sequence="100" />
+  <trigger name="ResearchGrabThree" script="grabAdd" match="^(.*)(\s+\d+)\%(.*)(\s+\d+)\%(.*)(\s+\d+)\%(\s+)$" keep_evaluating="n" regexp="y" enabled="y" omit_from_output="y" omit_from_log="y" group="ResearchColour" sequence="100" />
+  <trigger name="ResearchGrabTwo" script="grabAdd" match="^(.*)(\s+\d+)\%(.*)(\s+\d+)\%(\s+)$" keep_evaluating="n" regexp="y" enabled="y" omit_from_output="y" omit_from_log="y" group="ResearchColour" sequence="100" />
+  <trigger name="ResearchGrabOne" script="grabAdd" match="^(.*)(\s+\d+)\%(\s+)?$" keep_evaluating="n" regexp="y" enabled="y" omit_from_output="y" omit_from_log="y" group="ResearchColour" sequence="100" />
+  <trigger name="ResearchGrabDone" script="toggleGrabOff" match="^To see a shorter practice list\, type PRACTICE \<class name\>\.$" regexp="y" group="ResearchGrabber" enabled="n" sequence="100" />
+  <trigger name="Allskillsclear" script="clearGrabList" match="---------------------------------Skills-----------------------------------" enabled="y" group="ResearchColour" sequence="100" />
+</triggers>
+<!--   Aliases    --> 
+<aliases>
+  <alias name="ResearchAdd" script="addItem" match="^researchadd (.*)$" enabled="y" group="AutoResearchCmd" regexp="y" ignore_case="y" sequence="100" /> 
+  <alias name="ResearchAddShort" script="addItem" match="^radd (.*)$" enabled="y" group="AutoResearchCmd" regexp="y" ignore_case="y" sequence="100" /> 
+  <alias name="ResearchRem" script="removeItem" match="^researchrem (.*)$" enabled="y" group="AutoResearchCmd" regexp="y" ignore_case="y" sequence="100" />
+  <alias name="DisplayResearchCommands" script="displayResearchCommands" match="researchhelp" enabled="y" group="AutoResearchCmd" ignore_case="y" sequence="100" />
+  <alias name="ResearchClear" script="clearList" match="researchclear" enabled="y" group="AutoResearchCmd" ignore_case="y" sequence="100" />
+  <alias name="ResearchAuto" script="researchAuto" match="^researchAuto(.*)?$" enabled="y" group="AutoResearchCmd" regexp="y" ignore_case="y" sequence="100" />
+  <alias name="ResearchDisplay" script="displayList" match="researchList" enabled="y" group="AutoResearchCmd" ignore_case="y" sequence="100" />
+  <alias name="ResearchStart" script="researchStart" match="researchStart" enabled="y" group="AutoResearchCmd" ignore_case="y" sequence="100" />
+  <alias name="Research" script="researchArg" match="^research( +(.*))?$" enabled="y" group="AutoResearchCmd" regexp="y" ignore_case="y" sequence="100" /> 
+  <alias name="ResearchNext" script="researchNext" match="researchNext" enabled="y" group="AutoResearchCmd" ignore_case="y" sequence="100" />
+  <alias name="ResearchGrab" script="toggleGrabOn" match="^researchgrab(.*)?" enabled="y" group="AutoResearchCmd" regexp="y" ignore_case="y" sequence="100" />
+  <alias name="printskills" script="printSkills" match="^printskills$" enabled="y" group="AutoResearchCmd" regexp="y" ignore_case="y" sequence="100" />
+</aliases>
+<!--   Script    --> 
+<script>
+<![CDATA[ 
+require "pairsbykeys"
+autoResearch = false
+researchList = {}
+currentPos = 1
+currentItem = ""
+grabSkill = ""
+grabPercent = 90
+allSkills = {}
+grab = false
+local storage = { percent = 0, name = "" }
+
+
+function displayResearchCommands(name, line, args)
+   Note("Research <skill>                       - Resume research or start on skill independent of the list")
+   Note("ResearchStart                          - Begin new research session from front of list")
+   Note("ResearchGrab <skill tree> <percentage> - Grab skills from optional skill tree that")
+   Note("                                         are below optional percentage barrier")
+   Note("                                         (If no arguments are given it will add every")
+   Note("                                          item in your skill list that is below 90%)")
+   Note("ResearchAdd <skill>                    - Manually add a skill to the list")
+   Note("ResearchRem <skill/#>                  - Remove skill in list by name or index number")
+   Note("ResearchList                           - Display list contents")
+   Note("ResearchNext                           - Skip current item in list")
+   Note("ResearchClear                          - Clear all research variables")
+   Note("ResearchAuto (on/off)                  - Turns automatic researching on or off")
+end -- function
+
+function research()
+	if (currentItem ~= "") then
+		Send("research " .. currentItem)
+	else
+		if (researchList[currentPos]) then
+			Send("research ".. researchList[currentPos])
+		else
+			Note("Research list empty, aborting!")
+			toggleOff()
+		end
+	end
+end
+
+function researchArg(name, line, args)
+	if (args[1] ~= "") then
+		currentItem = Trim(args[1])
+	end
+	research()
+end
+
+
+function researchStart(name, line, args)
+	currentItem = ""
+	if (#researchList > 0) then -- we have stuff to research!
+		currentPos = 0
+		researchNext()
+		toggleOn()
+	else                     -- nothing to research
+		Note("Nothing to research!")
+		toggleOff()
+	end
+end
+
+function grabAdd(name, line, args)
+	local grabItem = ""
+	--local storage = { percent = 0, name = "" }
+	for i=1, #args, 1 do
+		if (math.fmod(i, 2) == 1) then	-- arg number is odd
+			grabItem = Trim(args[i])
+			storage.name = grabItem
+		else			-- arg number is even
+			if (tonumber(Trim(args[i])) < grabPercent) then
+				if (grab == true) then
+					internalAddItem(grabItem)
+				end
+			end
+			storage.percent = tonumber(Trim(args[i]))
+			allSkills[#allSkills + 1] = storage
+			printSkill(allSkills[#allSkills].name, allSkills[#allSkills].percent)
+			if (math.fmod(i, 5) == 1) then
+				Tell("\n")
+			end
+			storage = { percent = 0, name = "" }
+		end
+	end
+end
+
+function printSkill(name, percent)
+	local colour = "blue"
+	if (percent == 100) then
+		colour = "white"
+	elseif (percent > 89) then
+		colour = "lime"
+	elseif (percent > 0) then
+		colour = "orange"
+	else
+		colour = "red"
+	end
+	ColourTell(colour, "", string.format("%20s %3d%%", name, percent))
+end
+	
+
+function printSkills()
+	local triplet = 0
+	for k, v in pairs(allSkills) do
+		triplet = triplet + 1
+		if (math.fmod(triplet, 3) == 1) then
+			Tell("\n")
+		end
+		printSkill(v.name, v.percent)
+	end
+end
+
+function toggleOn(name, line, args)
+	autoResearch = true
+	EnableTriggerGroup("AutoResearch", true)
+	Note("Autoresearch enabled.")
+end
+
+function toggleOff(name, line, args)
+	autoResearch = false
+	EnableTriggerGroup("AutoResearch", false)
+	EnableTriggerGroup("ResearchGrabber", false)
+	Note("Autoresearch disabled.")
+end
+
+function toggleGrabOn(name, line, args)
+	clearList()
+	grab = true
+	if (args[1] ~= "") then
+		if (string.find(args[1], "%d", 1)) then -- number found
+			grabSkill = Trim(string.sub(args[1], 1, string.find(args[1], "%d", 1)-1))
+			grabPercent = tonumber(string.sub(args[1], string.find(args[1], "%d", 1), string.len(args[1])))
+		else -- no number found
+			grabSkill = Trim(args[1])
+		end
+	end
+	EnableTriggerGroup("ResearchGrabber", true)
+	Note("Grab started. Skill: '"..grabSkill.."' Percent: '"..grabPercent .. "'")
+	Send("practice " .. grabSkill)
+end
+
+
+function toggleGrabOff(name, line, args)
+	Note("Grab completed. Found "..#researchList.." items. Type 'researchlist' to see them.")
+	EnableTriggerGroup("ResearchGrabber", false)
+	grab = false
+	autoResearch = true
+	researchStart()
+end
+
+function researchNext(name, line, args)
+	currentPos = currentPos + 1
+	if (currentPos > #researchList) then  -- reached end of list
+		Note("Researching complete.")      -- finished
+		toggleOff()
+	else                                    -- middle of list
+		research()  -- finally, research item
+	end
+end
+
+function addItem(name, line, args)
+	researchList[#researchList + 1] = args[1]
+	Note("'" .. researchList[#researchList] .. "' added to research list.")
+end
+
+function internalAddItem(item)
+	researchList[#researchList + 1] = item
+	--Note("'" .. researchList[#researchList] .. "' added to research list. (internal)")
+end
+
+function removeItem(name, line, args)
+   t = #researchList
+   for i, v in ipairs(researchList) do
+      if ((v == args[1]) or (i == tonumber(args[1]))) then
+         Note("Removed '" .. researchList[i] .. "' index(" .. i .. ") from research list.")
+         table.remove(researchList, i)
+         if (currentPos > i) then  -- if our item is higher in the list than what we remove
+         	currentPos = currentPos - 1  -- decrement the pointer to follow the current item
+         end
+         break
+      else
+         if (t == i) then
+            Note("Unable to find specified item in research list.")
+         end
+      end
+   end
+end
+
+function clearGrabList()
+	allSkills = {}
+end
+
+function clearList()
+	currentItem = ""
+	grabSkill = ""
+	grabPercent = 90
+	allSkills = {}
+	researchList = {}
+	Note("Research list cleared.")
+	currentPos = 0
+	toggleOff()
+end
+
+function resumeResearchFromAFK(name, line, args)
+	Send("afk")
+	Send("bot start")
+	research()
+end
+
+function displayList(name, line, args)
+   t = #researchList
+   Note("Research List Contains: ")
+   for i = 1, t, 1 do
+      if (i ~= currentPos) then
+         Note (researchList[i])
+      else
+         ColourNote("lime","", "--]>" .. researchList[i] .. "<[--")
+      end
+   end
+end
+
+function researchAuto(name, line, args)
+	if (args[1] ~= "") then -- arg found
+		if (Trim(args[1]) == "on") then -- turn on
+			toggleOn()
+		elseif (Trim(args[1]) == "off") then -- turn off
+			toggleOff()
+		else
+			Note("Unrecognized argument given to researchauto: " .. args[1])
+		end
+	else -- no arg found
+		if (autoResearch == false) then -- turn on
+			toggleOn()
+		else
+			toggleOff()
+		end
+	end
+end
+
+  ]]> 
+  </script>
+ <!--   Plugin help    -->
+  <aliases>
+  <alias script="OnHelp" match="LotJResearch:help" enabled="y" /> 
+  </aliases>
+ <script>
+ <![CDATA[ function OnHelp ()
+  world.Note (world.GetPluginInfo (world.GetPluginID (), 3))
+end
+
+  ]]> 
+  </script>
+  </muclient>

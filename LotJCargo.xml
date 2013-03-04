@@ -1,0 +1,646 @@
+<?xml version="1.0" encoding="iso-8859-1" ?> 
+<!DOCTYPE muclient> 
+<!--  Saved on Wednesday, July 25, 2012, 7:12 PM   -->  
+<muclient>
+<plugin name="LotJCargo" author="@Johnson" id="b4f195e776cff20d17a1abd2" language="Lua" purpose="Cargo Running Made Easy" save_state="y" requires="4.40" version="1.40">
+<description trim="y">
+<![CDATA[ 
+'CargoHelp'      - To see the list of commands associated with this plugin.
+
+  ]]> 
+  </description>
+  </plugin>
+<!--   Get our standard constants   --> 
+  <include name="constants.lua" /> 
+<!--   Triggers    --> 
+<triggers>
+	<!-- Planet and System Capture Triggers -->
+	<trigger name="cargoSystemCapture" script="storeSystem" match="^(.*)\( (.*)\, (.*) \)$" enabled="n" regexp="y" group="SystemCap" omit_from_log="y" omit_from_output="y" sequence="100" />
+	<trigger name="cargoStarsFailed" script="toggleSystemCapOff" match="^You must hold a datapad to do this\.$" enabled="n" regexp="y" group="SystemCap" sequence="100" />
+	<trigger name="cargoSystemCapDone" script="scanNext" match="^Show what to whom\?$" regexp="y" enabled="n" group="SystemCap" omit_from_log="y" omit_from_output="y" sequence="100" />
+	<trigger name="cargoBodyCapTitle" script="cleanUp" match="*Starsystem*Governed By*Popular Support" enabled="n" group="BodyCap" omit_from_log="y" omit_from_output="y" sequence="100" />
+	<trigger name="cargoBodyCapture" script="storeBody" match="^(.*)\.\d$" regexp="y" enabled="n" group="BodyCap" omit_from_log="y" omit_from_output="y" sequence="100" />
+	<trigger name="cargoBodyCapDone" script="scanNext" match="^Use SHOWPLANET for more information\.$" regexp="y" enabled="n" group="BodyCap" omit_from_log="y" omit_from_output="y" sequence="100" />
+
+	<!-- Resource Capture Triggers -->
+	<trigger enabled="n" group="ResourceStart" match="^You use the datapad to lookup the information\.$" name="ShowplanetSuccess" script="showplanetSuccess" regexp="y" omit_from_log="y" omit_from_output="y" sequence="100" />
+	<trigger enabled="n" group="ResourceStart" match="^No such planet\.$" name="ShowplanetFailure" script="showplanetFailure" regexp="y" omit_from_log="y" omit_from_output="y" sequence="100" /> 
+	<trigger enabled="n" group="ResourceCap" match="^Planet\: (.*)$" name="storeTempPlanet" script="storeTempPlanet" regexp="y" omit_from_log="y" omit_from_output="y" sequence="100" />
+	<trigger enabled="n" group="ResourceCap" match="^Starsystem\: (.*)$" name="SystemCap" script="storeTempSystem" regexp="y" omit_from_log="y" omit_from_output="y" sequence="100" />
+	<trigger enabled="n" group="ResourceCap" match="^Coordinates\: (.*) (.*) (.*)$" name="CoordCap" script="storeCoords" regexp="y" omit_from_log="y" omit_from_output="y" sequence="100" />
+	<trigger enabled="n" group="ResourceCap" match="^(.*) \( Price per unit\: (.*) ?\)$" name="ResourceCap" script="storeResource" regexp="y" omit_from_log="y" omit_from_output="y" sequence="100" />
+	<trigger enabled="n" group="ResourceCap" match="^Tax Rate\: (.*)\%        \(Tax Income\: (.*)\)$" name="TaxCap" script="storeTax" regexp="y" omit_from_log="y" omit_from_output="y" sequence="100" />
+	<trigger enabled="n" group="GagAll" match="^(.*)$" name="GagAll" regexp="y" keep_evaluating="y" omit_from_log="y" omit_from_output="y" sequence="100" />
+	<trigger enabled="n" group="ResourceCap" match="^Use \'SHOWPLANET \<planet\> RESOURCES\' for current resources\.$" name="ResourceCoordEnd" regexp="y" omit_from_log="y" omit_from_output="y" script="resourceEnd" sequence="100" />
+	<trigger enabled="n" group="ResourceCap" match="^Show what to whom\?$" regexp="y" name="resourceCapEnd" script="resourceEnd" omit_from_log="y" omit_from_output="y" sequence="100" />
+
+	<!-- Automatic cargo triggers -->
+	<trigger name="tradeCargo" script="resumeSell" match="^You exit the ship\.$" enabled="n" regexp="y" group="AutoCargo" sequence="100" />
+	<trigger name="soldcargo" script="soldCargo" match="^You sell (.*) units of (.*)\.$" enabled="n" regexp="y" group="AutoCargo" sequence="100" />
+	<trigger name="earnedmoney" script="gainMoney" match="^You earned (.*) credits from the sale and pay (.*) in taxes\.$" enabled="n" regexp="y" group="AutoCargo" sequence="100" />
+	<trigger name="waitSell" script="waitSell" match="^The planets funds can\'t support such a sale\!$" enabled="n" regexp="y" group="AutoCargo" sequence="100" />
+	<trigger name="boughtcargo" script="boughtCargo" match="^You purchased (.*) units of (.*)\.$" enabled="n" regexp="y" group="AutoCargo" sequence="100" />
+	<trigger name="lostmoney" script="loseMoney" match="^It cost you (.*) credits total\, (.*) credits in tax\.$" enabled="n" regexp="y" group="AutoCargo" sequence="100" />
+	<trigger name="jumpComplete" match="^Hyperjump complete\.$" script="jumpComplete" group="AutoCargo" enabled="y" regexp="y" sequence="100" />
+
+
+</triggers>
+
+<aliases>
+	<!-- Capture Aliases -->
+	<alias name="populateTable" script="scanNext" match="^cargoscan$" enabled="y" regexp="y" ignore_case="y" group="LotJCargo" sequence="100" />
+	<alias name="listsystems" script="listSystems" match="listsystems" enabled="y" ignore_case="y" group="LotJCargo" sequence="100" />
+	<alias name="cargoBestRoute" script="cargoBestRoute" match="^cargobest( +(.*))?$" enabled="y" ignore_case="y" regexp="y" group="LotJCargo" sequence="100" />
+	<alias name="Cargosetup" script="cargoSetup" match="^cargosetup$" enabled="y" ignore_case="y" regexp="y" group="LotJCargo" sequence="100" />
+	<alias name="cargoHelp" script="cargoHelp" match="^cargohelp$" enabled="y" regexp="y" ignore_case="y" group="LotJCargo" sequence="100" />
+	<alias name="cargoStart" script="cargoStart" match="cargostart" enabled="y" ignore_case="y" group="LotJCargo" sequence="100" />
+	<alias name="CargoAuto" match="^cargoauto( +(.*))?$" script="cargoAuto" enabled="y" regexp="y" group="LotJCargo" ignore_case="y" sequence="100" />
+	<alias name="CargoList" script="cargoList" match="cargoList" enabled="y" group="LotJCargo" send_to="1" ignore_case="y" sequence="100" />
+	<alias name="CargoClear" script="cargoClear" match="cargoclear" enabled="y" group="LotJCargo" ignore_case="y" send_to="1" sequence="100" />
+	<alias name="Cargoefficiency" script="displayEfficiency" match="cargoefficiency" enabled="y" group="LotJCargo" ignore_case="y" sequence="100" />
+	<alias name="CargoTrade" script="tradeCargo" match="cargotrade" enabled="y" group="LotJCargo" ignore_case="y" sequence="100" />
+	<alias name="CargoCycle" script="toggleCycle" match="cargocycle" enabled="y" group="LotJCargo" ignore_case="y" sequence="100" />
+	<alias name="CargoNext" script="cargoResume" match="cargoresume" enabled="y" group="LotJCargo" ignore_case="y" sequence="100" />
+</aliases>
+<timers>
+	<timer name="EfficiencyTimer" script="displayEfficiency" enabled="n" minute="5" group="AutoCargo" />
+	<timer name="keeptrading" script="tradeCargo" enabled="n" second="1" group="AutoCargo" />
+</timers>
+<!--   Script    --> 
+<script>
+<![CDATA[require "tprint"
+local systems = {}
+local tempPlanet = ""
+local tempSystem = ""
+local scanned = "none"
+local percent = 0
+local numBodies = 0
+
+local autoCargo = false
+local cargoCap = 0
+--local cargoCur = 0
+local soldAmt = 0
+local boughtAmt = 0
+local soldGoal = 0
+local boughtGoal = 0
+local cargoHauling = ""
+local cPlanets = {}
+local cVar = 0
+local shipName = ""
+local startTime = 0
+local amountEarned = 0
+local cycle = true
+local hyperCompleted = false
+
+function jumpComplete()
+	hyperCompleted = true
+end
+
+function toggleCycle()
+	if (cycle) then
+		cycle = false
+		Note("AutoCargo will stop once the end of list is reached.")
+	else
+		cycle = true
+		Note("AutoCargo will cycle to beginning of list once the end is reached.")
+	end
+end
+
+function gainMoney(name, list, args)
+	local earned = tonumber(args[1]) - tonumber(args[2])
+	amountEarned = amountEarned + earned
+	--tradeCargo()
+end
+
+function loseMoney(name, list, args)
+	amountEarned = amountEarned - tonumber(args[1])
+end
+
+function displayEfficiency()
+	local newTime = os.time()
+	local elapsed = newTime - startTime
+	Note("Credits made: " .. amountEarned .. " Elapsed: " .. displayTime(elapsed) .. " (" .. elapsed .. ")")
+	Note("Credits per hour: " .. string.format("%.1f", ((amountEarned / (elapsed / 60) * 60))))
+end
+
+function displayTime(time)
+	local retval = {}
+	local secs = tonumber(time)
+
+	if (secs >= 315705600) then
+		local decades = secs / 315705600
+		secs = secs - (decades * 315705600)
+		retval[#retval + 1] = tostring(string.format("%.1f", decades) .. " decades")
+	end
+	if (secs >= 31570560) then
+		local years = secs / 31570560
+		secs = secs - (years * 31570560)
+		retval[#retval + 1] = tostring(string.format("%.1f", years) .. " years")
+	end
+	if (secs >= 2630880) then
+		local months = secs / 2630880
+		secs = secs - (months * 2630880)
+		retval[#retval + 1] = tostring(string.format("%.1f", months) .. " months")
+	end
+	if (secs >= 604800) then
+		local weeks = secs / 604800
+		secs = secs - (weeks * 604800)
+		retval[#retval + 1] = tostring(string.format("%.1f", weeks) .. " weeks")
+	end
+	if (secs >= 86400) then
+		local days = secs / 86400
+		secs = secs - (days * 86400)
+		retval[#retval + 1] = tostring(string.format("%.1f", days) .. " days")
+	end
+	if (secs >= 3600) then
+		local hours = secs / 3600
+		secs = secs - (hours * 3600)
+		retval[#retval + 1] = tostring(string.format("%.1f", hours) .. " hours")
+	end
+	if (secs >= 60) then
+		local mins = secs / 60
+		secs = secs - (mins * 60)
+		retval[#retval + 1] = tostring(string.format("%.1f", mins) .. " mins")
+	end
+	if (secs >= 1) then
+		retval[#retval + 1] = tostring(string.format("%.1f", secs) .. " secs")
+	end
+	--1,60,3600,86400,604800,2630880,31570560,315705600
+	return table.concat(retval, ", ")
+end
+		
+	
+
+function waitSell()
+	EnableTimer("keeptrading", false)
+	DoAfterSpecial (5, 'resumeSell()', sendto.script)
+end
+
+function resumeSell()
+	if hyperCompleted then
+		EnableTimer("keeptrading", true)
+	end
+end
+
+function soldCargo(name, list, args)
+	--cargoCur = cargoCur - tonumber(args[1])
+	soldAmt = soldAmt + tonumber(args[1])
+end
+
+function boughtCargo(name, list, args)
+	--cargoCur = cargoCur + tonumber(args[1])
+	if hyperCompleted then  -- only count a purchased amount IF we've already flown to the next planet
+		boughtAmt = boughtAmt + tonumber(args[1])
+	end
+end
+
+function cargoStart()
+	cVar = 1
+	amountEarned = 0
+	startTime = os.time()
+	toggleACOn()
+	if (cPlanets[cVar].resource ~= "" and cPlanets[cVar].resource ~= "none") then
+		buyCargo(cargoCap)
+	end
+	flyNext()
+end
+
+function buyCargo(amount)
+	Send("buycargo " .. shipName .. " '" .. cPlanets[cVar].resource .. "' " .. amount)
+end
+
+function sellCargo(amount)
+	Send("sellcargo " .. shipName .. " '" .. cargoHauling .. "' " .. amount)
+end
+
+function tradeCargo()
+	--Note("cargoHauling: '" .. cargoHauling .. "' cPlanets[cVar].resource: '" .. cPlanets[cVar].resource .. "' sold: " .. soldAmt .. "/" .. soldGoal .. " bought: " .. boughtAmt .. "/" .. boughtGoal .. " cap: " .. cargoCap)
+	if not hyperCompleted then -- if we haven't completed a hyperspace jump, avoid buying/selling errors by just aborting
+		return
+	end
+	if ((cargoHauling ~= "") and (cargoHauling ~= "none") and (soldAmt < soldGoal)) then -- we are hauling something that needs to be sold
+		sellCargo(500)
+	end
+	if ((cPlanets[cVar].resource ~= "") and (cPlanets[cVar].resource ~= "none") and (boughtAmt < boughtGoal)) then -- we need to buy something
+		buyCargo(500)
+	end
+	if (boughtAmt == boughtGoal and soldAmt == soldGoal) then -- we've bought and sold everything, time to move on
+		EnableTimer("keeptrading", false)
+		flyNext()
+	end
+end
+
+function cargoResume()
+	amountEarned = 0
+	startTime = os.time()
+	toggleACOn()
+	if (cPlanets[cVar].resource ~= "" and cPlanets[cVar].resource ~= "none") then
+		buyCargo(cargoCap)
+	end
+	cVar = cVar - 1
+	flyNext()
+end
+	
+
+function flyNext()
+	if (cVar > 0) then
+		cargoHauling = cPlanets[cVar].resource	-- if we are in the middle of the list
+		if (cargoHauling ~= "" and cargoHauling ~= "none") then -- if we need to sell what we're hauling
+			soldGoal = cargoCap
+			soldAmt = 0
+		end
+	end
+	cVar = cVar + 1
+	if (cVar > #cPlanets) then  -- if we're at the end of the list
+		if (cycle) then         -- wrap to the beginning
+			cVar = 1
+		else
+			cVar = 1
+			toggleACOff()		-- abort out and quit
+			return
+		end
+	end
+	if (cPlanets[cVar].resource ~= "" and cPlanets[cVar].resource ~= "none") then -- if we need to buy something
+		boughtGoal = cargoCap
+		boughtAmt = 0
+	end
+	
+	hyperCompleted = false
+	Execute("flyto " .. cPlanets[cVar].name)
+end
+
+function toggleACOn()
+	autoCargo = true
+	EnableTriggerGroup("AutoCargo", true)
+	EnableTimer("EfficiencyTimer", true)
+	Note("AutoCargo activated.")
+end
+function toggleACOff()
+	autoCargo = false
+	EnableTriggerGroup("AutoCargo", false)
+	EnableTimer("EfficiencyTimer", false)
+	EnableTimer("keeptrading", false)
+	Note("AutoCargo deactivated.")
+end
+
+function cargoSetup()
+	cPlanets = {}
+	local planet = { name = "", resource = "" }
+	local numWorlds = tonumber(utils.inputbox("Number of worlds on cargo route?", "Number", "2", "Courier", 9))
+	for i = 1, numWorlds, 1 do
+		planet.name = utils.inputbox("Name of world " .. i .. "?", "Name of world " .. i, "Name", "Courier", 9)
+		planet.resource = utils.inputbox("Resource to be bought on world " .. i .. "?", "Resource of world " .. i, "Resource", "Courier", 9)
+		cPlanets[#cPlanets + 1] = planet
+		planet = { name = "", resource = ""}
+	end
+	shipName = utils.inputbox("Name of cargo vessel?", "Cargo vessel", "", "Courier", 9)
+	cargoCap = tonumber(utils.inputbox("Capacity of cargo vessel?", "Cargo Capacity", "14000", "Courier", 9))
+end
+
+function listSystems(name, list, args)
+	Note(tprint(systems))
+end
+
+function cargoClear(name, list, args)
+	cPlanets = {}
+	startTime = 0
+	amountEarned = 0
+	cVar = 0
+	shipName = ""
+	cargoCap = 0
+	--cargoCur = 0
+	boughtAmt = 0
+	soldAmt = 0
+	boughtGoal = 0
+	soldGoal = 0
+	cargoHauling = ""
+	cycle = true
+	hyperCompleted = false
+	Note("Cargo list cleared.")
+	toggleACOff()
+end
+
+function cargoAuto(name, list, args)
+   if (args[1] == "on") then
+      toggleACOn()
+   else
+      if (args[1] == "off") then
+         toggleACOff()
+      else
+         if(autoCargo == true) then
+            toggleACOff()
+         else
+            toggleACOn()
+         end
+      end
+   end
+end
+
+function cargoBestRoute(name, list, args)					-- find the most profitable route in the entire galaxy
+	foundPlanet = false
+	bestRouteValue = 0
+	bestPlanet1 = {}
+	bestPlanet2 = {}
+	bestGoResource = {}
+	bestRetResource = {}
+	for system1key, system1value in pairs(systems) do
+		for system2key, system2value in pairs(systems) do
+			if (system1value ~= system2value) then
+				for body1key, body1value in pairs(system1value.bodies) do
+					for body2key, body2value in pairs(system2value.bodies) do
+						if (body1value ~= body2value) then
+							local tax1 = body1value.tax
+							local tax2 = body2value.tax
+							for resourcego1key, resourcego1value in pairs(body1value.resources) do
+								for resourcego2key, resourcego2value in pairs(body2value.resources) do
+									if (resourcego1value.name == resourcego2value.name) then
+										for resourceret1key, resourceret1value in pairs(body1value.resources) do
+											for resourceret2key, resourceret2value in pairs(body2value.resources) do
+												if ((resourceret1value.name == resourceret2value.name) and (resourcego1value.name ~= resourceret1value.name)) then
+													if (((args[2] ~= "") and (string.lower(body1value.name) == string.lower(args[2]))) or args[2]=="") then
+														foundPlanet = true
+														local curGoValue = calculateRouteValue(system1value, system2value, resourcego2value.price, resourcego1value.price, tax2, tax1)
+														local curRetValue = calculateRouteValue(system1value, system2value, resourceret1value.price, resourceret2value.price, tax1, tax2)
+														local curTotalValue = curGoValue + curRetValue
+														if (curTotalValue > bestRouteValue) then
+															bestRouteValue = curTotalValue
+															bestPlanet1 = body1value
+															bestPlanet2 = body2value
+															bestGoResource = resourcego1value
+															bestRetResource = resourceret1value
+															Note("New best found! Start: " .. body1value.name .. " (".. resourcego1value.name .. ") Tax: ".. tax1 .. " End: " .. body2value.name .. " (".. resourceret1value.name .. ") Tax: " .. tax2 .. " Value: " .. bestRouteValue)
+														end
+													end
+												end
+											end
+										end
+									end
+								end
+							end
+						end
+					end
+				end
+			end
+		end
+	end
+
+	if (foundPlanet == false) then
+		Note("Planet '" .. Trim(args[1]) .. "' either not found or does not possess cargo resources.")
+		return
+	end
+	if (args[2] ~= "") then
+		Note("Best route from " .. bestPlanet1.name .. ":")
+	else
+		Note("Best route in the entire galaxy:")
+	end
+	Note("Start: " .. bestPlanet1.name .. " ("  .. bestGoResource.name .. ") End: " .. bestPlanet2.name .. " (" .. bestRetResource.name .. ") Value: " .. bestRouteValue)
+end
+
+function calculateRouteValue(sys1, sys2, resourcecost1, resourcecost2, tax1, tax2)
+	local distance = distance(sys1, sys2)
+	local time = (((((distance * 10) / 130) * 1000) / 50) * 2)
+	-- extra time it takes to get from A to B not including hyperspace. Launch time/calculation time/land time
+	local constant = 270
+	time = time + constant
+	local profit = ((resourcecost1 * ((100-tax1)/100)) - (resourcecost2 * ((100-tax2)/100)))
+	--Note("sys1: "..sys1.name.." sys2: "..sys2.name.." res1: "..resourcecost1.." res2: "..resourcecost2.." distance: "..distance.." profit: "..profit.." value: "..profit/distance)
+	return profit/time
+end
+
+function distance(a, b)
+	return math.sqrt(((a.x-b.x)*(a.x-b.x))+((a.y-b.y)*(a.y-b.y)))
+end
+
+
+
+function showplanetSuccess(name, list, args)
+	EnableTriggerGroup("ResourceCap", true)
+	EnableTriggerGroup("GagAll", true)
+end
+
+function showplanetFailure(name, list, args)
+	EnableTriggerGroup("ResourceCap", false)
+	EnableTriggerGroup("GagAll", false)
+	EnableTriggerGroup("ResourceStart", false)
+	Note("Invalid planet, unable to continue.")
+end
+
+function resourceEnd(name, list, args)
+	EnableTriggerGroup("ResourceCap", false)
+	DeleteLines(1)
+	percent = percent + 1
+	Note(string.format("%.0f", (percent*100)/(numBodies*2)) .. "% complete.")
+	if (percent >= (numBodies*2)) then
+		percent = 0
+		EnableTriggerGroup("GagAll", false)
+		scanNext()
+	end
+end
+
+function storeTempPlanet(name, list, args)
+	tempPlanet = Trim(args[1])
+end
+
+function storeTempSystem(name, list, args)
+	tempSystem = Trim(args[1])
+end
+
+function cleanUp()
+	DeleteLines(1)
+end
+
+function scanNext(name, list, args)
+	toggleSystemCapOff()
+	toggleBodyCapOff()
+	if (scanned == "none") then
+		SendNoEcho("config -prompt")
+		clearTables()
+		Note("Starting resource scan... this may take a few moments.")
+		scanned = "systems"
+		SendNoEcho("stars")
+		SendNoEcho("show")
+		toggleSystemCapOn()
+	elseif (scanned == "systems") then
+		scanned = "planet"
+		SendNoEcho("planets")
+		toggleBodyCapOn()
+	elseif (scanned == "planet") then
+		scanned = "moon"
+		SendNoEcho("moons")
+		toggleBodyCapOn()
+	elseif (scanned == "moon") then
+		scanned = "resources"
+		numBodies = 0
+			for k, v in pairs(systems) do
+				for ka, va in pairs(v.bodies) do
+					numBodies = numBodies + 1
+					tempPlanet = ""
+					tempSystem = ""
+					SendNoEcho("showplanet \"" .. va.name .. "\"")
+					SendNoEcho("showplanet \"" .. va.name .. "\" resources")
+					SendNoEcho("show")
+					EnableTriggerGroup("ResourceStart", true)
+				end
+			end
+	elseif (scanned == "resources") then
+		scanned = "none"
+		EnableTriggerGroup("ResourceStart", false)
+		SendNoEcho("config +prompt")
+		Note("Finished scanning galaxy resources. Found " .. #systems .. " systems with " .. numBodies .. " planets.")
+		--listSystems()
+	end
+end
+
+function cargoList()
+   Note("Cargo List Contains: ")
+   for k, v in ipairs(cPlanets) do
+   		if (k == cVar) then
+   			ColourNote("lime","", "--]>"..v.name.." ("..v.resource..") <[--")
+   		else
+   			Note(v.name.." ("..v.resource..")")
+   		end -- if
+   	end -- for
+end -- listSystems
+
+function storeBody(name, list, args)
+	local storage = {
+		name = "",
+		type = "",
+		tax = 0,
+		x = 0,
+		y = 0,
+		z = 0,
+		resources = {}
+	}
+	for k, v in pairs(systems) do
+		local sysName = v.name
+		if (string.find(args[1], sysName)) then -- if the system name was found in the grab text
+			local bodyName = Trim(string.sub(args[1], 1, string.find(args[1], sysName)-1))  -- cut body name out of the grab text
+			storage.name = bodyName															-- using system name as a point of reference
+			storage.type = scanned
+			table.insert(v.bodies, storage) 		-- insert body
+		end
+	end
+end
+
+function storeCoords(name, list, args)
+	for k, v in pairs(systems) do
+		for ka, va in pairs(v.bodies) do
+			if (va.name == tempPlanet) then
+				va.x = tonumber(args[1])
+				va.y = tonumber(args[2])
+				va.z = tonumber(args[3])
+			end
+		end
+	end
+end
+
+function storeTax(name, list, args)
+	for k, v in pairs(systems) do
+		for ka, va in pairs(v.bodies) do
+			if (va.name == tempPlanet) then
+				va.tax = tonumber(args[1])
+			end
+		end
+	end
+end
+
+function storeResource(name, list, args)
+	local storage = {
+		name = "",
+		price = 0
+	}
+	for k, v in pairs(systems) do
+		for ka, va in pairs(v.bodies) do
+			local bodyName = va.name
+			if (bodyName == tempPlanet) then
+				storage.name = Trim(args[1])
+				storage.price = tonumber(args[2])
+				table.insert(va.resources, storage)
+			end
+		end	
+	end
+end
+		
+
+function toggleBodyCapOn(name, list, args)
+	EnableTriggerGroup("BodyCap", true)
+end
+
+function toggleSystemCapOn(name, list, args)
+	EnableTriggerGroup("SystemCap", true)
+end
+
+function storeSystem(name, list, args)
+	local storage = {
+		name = "",
+		x = 0,
+		y = 0,
+		bodies = {}
+		}
+	if (args[1] and args[2] and args[3]) then
+		storage.name = Trim(args[1])
+		storage.x = tonumber(args[2])
+		storage.y = tonumber(args[3])
+		table.insert(systems, storage)
+	end
+end
+
+function clearTables()
+	systems = {}
+	Note("Cargo Tables cleared.")
+end
+
+function toggleSystemCapOff(name, list, args)
+	EnableTriggerGroup("SystemCap", false)
+end
+
+function toggleBodyCapOff(name, list, args)
+	EnableTriggerGroup("BodyCap", false)
+end
+
+function cargoHelp(name, list, args)
+	Note("    LotJ Cargo Commands:")
+	Note("------------------------------")
+	Note("CargoScan              - Scans every system to find planets/moons with")
+	Note("                         resources for sale")
+	Note("CargoBest              - Checks every resource on every planet/moon")
+	Note("                         and calculates the best route in the entire galaxy")
+	Note("CargoBest <planetname> - Checks every resource on the given planet and")
+	Note("                         Calculates the best possible route")
+	Note("ListSystems            - Displays every system scanned into the cargo tables")
+	Note("CargoSetup             - Setup cargo running parameters (must enter at")
+	Note("                       - least 2 planets to make a round trip cargo route)")
+	Note("CargoList              - Shows current cargo running parameters")
+	Note("CargoStart             - Begins cargo running at the first planet specified, must")
+	Note("                         be used while standing outside your cargo vessel")
+	Note("CargoResume            - Resumes cargo running from where you left off. Must be used while")
+	Note("                         standing outside your cargo vessel")
+	Note("CargoCycle             - Toggle whether to fly endlessly or a single route")
+	Note("CargoAuto (on/off)     - Toggle on or off automatic cargo running")
+	Note("CargoClear             - Clear current cargo running settings")
+	Note("CargoHelp              - display this help menu")
+	Note("\n")
+end
+
+require "checkplugin"
+function OnPluginListChanged()
+	do_plugin_check_now ("680bf1a4e5e600854747c379", "LotJFlight") -- check we have LotJFlight Plugin
+	do_plugin_check_now ("b2c06b3dcc775c0ede861316", "LotJCalc") -- check we have LotJCalc Plugin
+end
+
+
+  ]]> 
+  </script>
+ <!--   Plugin help    -->
+  <aliases>
+  <alias script="OnHelp" match="LotJCargo:help" enabled="y" /> 
+  </aliases>
+ <script>
+ <![CDATA[ function OnHelp ()
+  world.Note (world.GetPluginInfo (world.GetPluginID (), 3))
+end
+
+  ]]> 
+  </script>
+  </muclient>
