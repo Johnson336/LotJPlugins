@@ -146,10 +146,31 @@ function study(name, line, args)
 end
 
 function finishedItem()
-	RemoveStudyItem(currentPos)
+	if (studyContainer ~= "") then      -- if you're using a container
+		Send("put " .. studyList[currentPos] .. " " .. studyContainer)   -- return item to container
+	end
+	internalRemove(currentPos)
 	currentPos = currentPos - 1 -- decrement list pointer to properly get/take from container	
 	studyNext()
 end
+
+function internalRemove(item)
+   t = #studyList
+   for i, v in ipairs(studyList) do
+      if (v == item or (i == tonumber(item))) then
+         Note("Removed '" .. v .. "' from study list.")
+         table.remove(studyList, i)
+         if (currentPos > i) then  -- if our item is higher in the list than what we remove
+         	currentPos = currentPos - 1  -- decrement the pointer to follow the current item
+         end
+         break
+      else
+         if (t == i) then
+            Note("Item '" .. item .. "' not found in study list.")
+         end -- if
+      end -- if
+   end -- for
+end -- function
 
 function studyNext(name, line, args)
 	if (currentPos > 0) then           -- if you're working on an previous item
@@ -234,7 +255,7 @@ function RemoveStudyItem(name, line, wildcards)
    t = #studyList
    for i, v in ipairs(studyList) do
       if (v == wildcards[1] or (i == tonumber(wildcards[1]))) then
-         Note("Removed '" .. v .. "' from study listt.")
+         Note("Removed '" .. v .. "' from study list.")
          table.remove(studyList, i)
          if (currentPos > i) then  -- if our item is higher in the list than what we remove
          	currentPos = currentPos - 1  -- decrement the pointer to follow the current item

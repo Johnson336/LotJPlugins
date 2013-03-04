@@ -108,7 +108,7 @@ currentShip = 0
 currentPart = 0
 
 function addShip(name, line, wildcards)
-	local addLines = utils.split(wildcards[1], ",")
+	local addLines = utils.split(wildcards[1], ",") -- add multiple items using commas as delimiters
 	if addLines then
 		for i=1,#addLines, 1 do
 			shipQueue[#shipQueue + 1] = addLines[i]

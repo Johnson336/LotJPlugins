@@ -32,6 +32,11 @@ v1.42 -
 	<trigger name="LandComp" match="^Landing sequence complete\.$" script="endFlight" group="Flight" enabled="n" regexp="y" sequence="100" />
 	<trigger name="Proximity" match="^You are too close to (.*) to make the jump to lightspeed\!$" script="waitHyper" group="Flight" enabled="n" regexp="y" sequence="100" />
 	<trigger name="landsitelocked" match="^Restricted Landing pad\. Limited to clans members and ships only\.$" script="landNext" group="Flight" enabled="n" regexp="y" sequence="100" />
+	
+	<!-- triggers relating to space capturing -->
+	<trigger name="StoreSpaceCoordinate" match="^(.*) (\-?\d+) (\-?\d+) (\-?\d+)(.*)?$" script="spaceCapStore" omit_from_output="y" keep_evaluating="y" group="SpaceCap" enabled="n" regexp="y" sequence="100" />
+	<trigger name="CapStop" match="^Your Coordinates\: (.*)$" script="spaceCapStop" group="SpaceCap" enabled="n" regexp="y" sequence="100" />
+
 </triggers>
 
 <aliases>
@@ -41,6 +46,10 @@ v1.42 -
 	<alias name="Flyauto" match="^flyauto( +(.*))?$" script="flyAuto" enabled="y" regexp="y" group="FlightCmd" ignore_case="y" sequence="100" />
 	<alias name="Flyclear" match="flyclear" script="flyClear" enabled="y" regexp="n" group="FlightCmd" ignore_case="y" sequence="100" />
 	<alias name="FlyHelp" match="^flyhelp$" script="flightHelp" enabled="y" regexp="y" group="FlightCmd" ignore_case="y" sequence="100" />
+	
+	<!-- aliases relating to space coord capturing -->
+	<alias name="CoordCapStart" match="rad" script="spaceCapStart" enabled="y" group="FlightCmd" ignore_case="y" sequence="100" />
+	<alias name="CoordCalc" match="lcalc *" script="spaceCapCalc" enabled="y" group="FlightCmd" ignore_case="y" sequence="100" />
 </aliases>
 <!--   Script    --> 
 <script>
@@ -57,6 +66,57 @@ landingSiteNum = 0
 landgrabbing = false
 landPreference = -1
 
+local spaceCoords = {}
+
+
+function spaceCapStart()
+	EnableTriggerGroup("SpaceCap", true)
+	spaceCoords = {}
+	Send("radar")
+	Note("capping coords")
+end
+function spaceCapStop()
+	EnableTriggerGroup("SpaceCap", false)
+	Note("coords capped: "..#spaceCoords)
+	--for i, v in ipairs(spaceCoords) do
+	--	Note(i..") "..v.name)
+	--end
+end
+
+function spaceCapStore(name, line, args)
+	--for i=1,#args,1 do
+	--	Note(i..") "..args[i])
+	--end
+	
+	local body = {
+		name=Trim(args[1]),
+		x=tonumber(args[2]),
+		y=tonumber(args[3]),
+		z=tonumber(args[4])
+	}
+	if (body.name ~= "Your Coordinates:") then
+		spaceCoords[#spaceCoords + 1] = body
+		ColourNote("yellow", "", #spaceCoords..") "..body.name.." "..body.x.." "..body.y.." "..body.z)
+	else
+		ColourNote("yellow", "", body.name.." "..body.x.." "..body.y.." "..body.z)
+	end
+
+end
+function spaceCapCalc(name, line, args)
+	local found = nil
+	for i, v in ipairs(spaceCoords) do
+		if ((tonumber(args[1]) == i) or string.find(v.name, tostring(args[1]), 0)) then
+			found = v
+			--Note("found "..found.name)
+		end
+	end
+	if not found then
+		Note("Invalid argument given to spaceCapCalc: ".. args[1])
+	else
+		Note("Entering coordinates for "..found.name)
+		Send("calc local "..found.x.." "..found.y.." "..found.z)
+	end
+end
 function flyClear()
 	shipName = ""
 	hatchCode = -1
