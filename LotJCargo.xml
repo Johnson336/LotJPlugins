@@ -68,7 +68,9 @@
 </timers>
 <!--   Script    --> 
 <script>
-<![CDATA[require "tprint"
+<![CDATA[
+require "tprint"
+require "commas"
 local systems = {}
 local tempPlanet = ""
 local tempSystem = ""
@@ -119,8 +121,8 @@ end
 function displayEfficiency()
 	local newTime = os.time()
 	local elapsed = newTime - startTime
-	Note("Credits made: " .. amountEarned .. " Elapsed: " .. displayTime(elapsed) .. " (" .. elapsed .. ")")
-	Note("Credits per hour: " .. string.format("%.1f", ((amountEarned / (elapsed / 60) * 60))))
+	Note("Credits made: " .. commas(amountEarned) .. " Elapsed: " .. displayTime(elapsed) .. " (" .. elapsed .. ")")
+	Note("Credits per hour: " .. commas(string.format("%.1f", ((amountEarned / (elapsed / 60) * 60)))))
 end
 
 function displayTime(time)
@@ -215,16 +217,19 @@ end
 
 function tradeCargo()
 	--Note("cargoHauling: '" .. cargoHauling .. "' cPlanets[cVar].resource: '" .. cPlanets[cVar].resource .. "' sold: " .. soldAmt .. "/" .. soldGoal .. " bought: " .. boughtAmt .. "/" .. boughtGoal .. " cap: " .. cargoCap)
-	if not hyperCompleted then -- if we haven't completed a hyperspace jump, avoid buying/selling errors by just aborting
+	if not hyperCompleted then -- if we haven't completed a hyperspace jump, avoid buying/selling errors by shutting off the timer and aborting
+		EnableTimer("keeptrading", false)
 		return
 	end
-	if ((cargoHauling ~= "") and (cargoHauling ~= "none") and (soldAmt < soldGoal)) then -- we are hauling something that needs to be sold
+	needtosell = ((cargoHauling ~= "") and (cargoHauling ~= "none") and (soldAmt < soldGoal))
+	if needtosell then -- we are hauling something that needs to be sold
 		sellCargo(500)
 	end
-	if ((cPlanets[cVar].resource ~= "") and (cPlanets[cVar].resource ~= "none") and (boughtAmt < boughtGoal)) then -- we need to buy something
+	needtobuy = ((cPlanets[cVar].resource ~= "") and (cPlanets[cVar].resource ~= "none") and (boughtAmt < boughtGoal) and (cycle and (cVar == #cPlanets)))
+	if needtobuy then -- we need to buy something
 		buyCargo(500)
 	end
-	if (boughtAmt == boughtGoal and soldAmt == soldGoal) then -- we've bought and sold everything, time to move on
+	if (((boughtAmt == boughtGoal and needtobuy) or (boughtAmt ~= boughtGoal and not needtobuy)) and soldAmt == soldGoal) then -- we've bought and sold everything, time to move on
 		EnableTimer("keeptrading", false)
 		flyNext()
 	end
@@ -238,6 +243,9 @@ function cargoResume()
 		buyCargo(cargoCap)
 	end
 	cVar = cVar - 1
+	if (cVar < 1) then
+		cVar = #cPlanets
+	end
 	flyNext()
 end
 	
@@ -260,9 +268,13 @@ function flyNext()
 			return
 		end
 	end
-	if (cPlanets[cVar].resource ~= "" and cPlanets[cVar].resource ~= "none") then -- if we need to buy something
-		boughtGoal = cargoCap
-		boughtAmt = 0
+	if not cycle and (cVar == #cPlanets) then
+		return
+	else
+		if (cPlanets[cVar].resource ~= "" and cPlanets[cVar].resource ~= "none") then -- if we need to buy something
+			boughtGoal = cargoCap
+			boughtAmt = 0
+		end
 	end
 	
 	hyperCompleted = false
