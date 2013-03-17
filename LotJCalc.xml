@@ -21,11 +21,20 @@ Automatically calculate hyperjumps to the specified sector.
   <trigger enabled="n" group="CalcCap" match="^Coordinates\: (.*) (.*) (.*)$" name="CoordCap" script="setCoords" regexp="y" omit_from_log="y" omit_from_output="y" sequence="100"></trigger>
   <trigger enabled="n" group="GagAll" match="^(.*)$" name="GagAll" regexp="y" keep_evaluating="y" omit_from_log="y" omit_from_output="y" sequence="100"></trigger>
   <trigger enabled="n" group="CalcCap" match="^Use \'SHOWPLANET \<planet\> RESOURCES\' for current resources\.$" name="CalcEnd" regexp="y" omit_from_log="y" omit_from_output="y" script="calculate" sequence="100"></trigger>
+	
+	<!-- triggers relating to space capturing -->
+	<trigger name="StoreSpaceCoordinate" match="^(.*) (\-?\d+) (\-?\d+) (\-?\d+)(.*)?$" script="spaceCapStore" omit_from_output="y" keep_evaluating="y" group="SpaceCap" enabled="n" regexp="y" sequence="100" />
+	<trigger name="CapStop" match="^Your Coordinates\: (.*)$" script="spaceCapStop" group="SpaceCap" enabled="n" regexp="y" sequence="100" />
+
   </triggers>
 <!--   Aliases    --> 
 <aliases>
   <alias name="calculate" script="showPlanet" match="^calculate (.*)$" enabled="y" regexp="y" group="LotJCalc" sequence="100"></alias>
   <alias name="calc" script="showPlanet" match="^calc (.*)$" enabled="y" regexp="y" group="LotJCalc" sequence="100"></alias>
+	
+	<!-- aliases relating to space coord capturing -->
+	<alias name="CoordCapStart" match="rad" script="spaceCapStart" enabled="y" group="FlightCmd" ignore_case="y" sequence="100" />
+	<alias name="CoordCalc" match="lcalc *" script="spaceCapCalc" enabled="y" group="FlightCmd" ignore_case="y" sequence="100" />
   </aliases>
 <!--   Script    --> 
 <script>
@@ -36,6 +45,45 @@ local systemname = ""
 local coordX = 0
 local coordY = 0
 local coordZ = 0
+
+local spaceCoords = {}
+
+function spaceCapStart()
+	EnableTriggerGroup("SpaceCap", true)
+	spaceCoords = {}
+	Send("radar")
+end
+function spaceCapStop()
+	EnableTriggerGroup("SpaceCap", false)
+end
+
+function spaceCapStore(name, line, args, styles)
+	local body = {
+		name=Trim(args[1]),
+		x=tonumber(args[2]),
+		y=tonumber(args[3]),
+		z=tonumber(args[4])
+	}
+	if (body.name ~= "Your Coordinates:" and body.name ~= "New course set, approaching" and not string.find(body.name, "Speed:", 0, true)) then
+		spaceCoords[#spaceCoords + 1] = body
+		ColourTell("silver", "black", #spaceCoords..") ")		
+	end
+	for k, v in pairs(styles) do
+    ColourTell (RGBColourToName(v.textcolour), RGBColourToName(v.backcolour), v.text)
+  end
+  Note("")
+end
+
+function spaceCapCalc(name, line, args)
+	for i, v in ipairs(spaceCoords) do
+		if ((tonumber(args[1]) == i) or string.find(string.lower(v.name), string.lower(args[1]), 0, true)) then
+  		ColourNote("lime", "black", "Entering coordinates for "..v.name)
+	  	Send("calc local "..v.x.." "..v.y.." "..v.z+500)
+	  	return
+		end
+	end
+	ColourNote("red","black","Invalid argument given to lcalc: ".. args[1])
+end
 
 function showPlanet(name, list, args)
 	if (args[1] ~= nil and args[1] ~= "stop") then
