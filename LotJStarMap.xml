@@ -22,7 +22,7 @@ Click on a system to calculate a jump to the planet within that system.
 	<trigger name="systemCapDone" script="findPlanets" match="^Show what to whom\?$" regexp="y" group="StarCap" omit_from_log="y" omit_from_output="y" sequence="100" />
 	<trigger name="planetCapTitle" match="Planet*Starsystem*Governed By*Popular Support" enabled="n" group="PlanetCap" omit_from_log="y" omit_from_output="y" sequence="100" />
 	<trigger name="planetCapture" script="storePlanet" match="^(.*)\.\d$" regexp="y" enabled="n" group="PlanetCap" omit_from_log="y" omit_from_output="y" sequence="100" />
-	<trigger name="planetCapDone" script="createWindow" match="^Use SHOWPLANET for more information\.$" regexp="y" enabled="n" group="PlanetCap" omit_from_log="y" omit_from_output="y" sequence="100" />
+	<trigger name="planetCapDone" script="setupWindow" match="^Use SHOWPLANET for more information\.$" regexp="y" enabled="n" group="PlanetCap" omit_from_log="y" omit_from_output="y" sequence="100" />
 
   </triggers>
 <!--   Aliases    --> 
@@ -37,10 +37,17 @@ Click on a system to calculate a jump to the planet within that system.
 require "movewindow"
 win = "galaxy_map_" .. GetPluginID()  -- unique window name
 systems = {}
-system = { name = "", x = 0, y = 0, planet = "" }
+system = { name = "", x = 0, y = 0, planet = "", left = 0, top = 0, right = 0, bottom = 0 }
 font = "f"
 maxX = 0
+minX = 0
 maxY = 0
+minY = 0
+smaxX = 0
+smaxY = 0
+sminX = 0
+sminY = 0
+failsafe = 0
 
 function storePlanet(name, list, args)
 	--Note("1: '" .. args[1] .. "'")
@@ -75,13 +82,15 @@ function toggleOn(name, list, args)
 	WindowFont (win, font, "Arial", 10, true, false, false, false) -- define font
 end
 
+require "tprint"
+
 function storeSystem(name, list, args)
 	if (args[1] and args[2] and args[3]) then
 		system.name = Trim(args[1])
 		system.x = tonumber(args[2])
 		system.y = tonumber(args[3])
 		systems[#systems + 1] = system
-        system = { name = "", x = 0, y = 0, planet = "" }
+    system = { name = "", x = 0, y = 0, planet = "", left = 0, top = 0, right = 0, bottom = 0 }
 	end
 end
 
@@ -93,39 +102,158 @@ function togglePlanetsOff(name, list, args)
 	EnableTriggerGroup("PlanetCap", false)
 end
 
-
-function createWindow(name, line, args)
+function setupWindow(name, line, args)
 	toggleOff()
 	togglePlanetsOff()
 	
+	-- find our real max and min values so we can scale accordingly
 	for i=1,#systems,1 do
 		local sys = systems[i]
-		if (math.abs(sys.x) > maxX) then
-			maxX = math.abs(sys.x)
+		if (sys.x > maxX) then
+			maxX = sys.x
 		end
-		if (math.abs(sys.y) > maxY) then
-			maxY = math.abs(sys.y)
+		if (sys.x < minX) then
+		  minX = sys.x
+		end
+		if (sys.y > maxY) then
+			maxY = sys.y
+		end
+		if (sys.y < minY) then
+		  minY = sys.y
 		end
 	end	
+	
+	
+	setupConflicts()
+	
+  drawWindow()
+end
+
+function setupConflicts()
+  -- setup our text boundaries since we just now figured out our max and min values for scaling
+  for i, v in ipairs(systems) do
+  	v.left = scaleXCoord(v.x) - WindowTextWidth(win, "f", ((v.planet~="" and v.planet) or v.name))/2 + 5
+		v.top = scaleYCoord(v.y) + 5
+		v.right = v.left + WindowTextWidth(win, "f", ((v.planet~="" and v.planet) or v.name)) -- font width
+		v.bottom = v.top + WindowFontInfo(win, "f", 1) -- font height
+  end
+  -- find our scaled max and mins
+  smaxX = scaleXCoord(maxX)
+  smaxY = scaleYCoord(maxY)
+  sminX = scaleXCoord(minX)
+  sminY = scaleYCoord(minY)
+  --Note("maxX: "..maxX.." minX: "..minX.." maxY: "..maxY.." minY: "..minY)
+  --Note("smaxX: "..smaxX.." sminX: "..sminX.." smaxY: "..smaxY.." sminY: "..sminY)
+  
+  -- recursively resolve conflicts with other systems
+  failsafe = 0
+  resolveConflicts()
+end
+
+function resolveConflicts()
+  if failsafe <= 20 then -- we don't want to get stuck in an infinite recursion loop
+  -- resolve window boundary conflicts
+  for i, v in ipairs(systems) do
+  --Note("system: "..v.name.." left: "..v.left.." top: "..v.top.." right: "..v.right.." bottom:"..v.bottom)
+    if v.right > smaxX then
+      v.left = smaxX - WindowTextWidth(win, "f", ((v.planet~="" and v.planet) or v.name))
+      v.right = smaxX
+    end
+    if v.left < sminX then
+      v.left = sminX
+      v.right = v.left + WindowTextWidth(win, "f", ((v.planet~="" and v.planet) or v.name))
+    end
+    if v.bottom > sminY then
+      v.top = sminY - WindowFontInfo(win, "f", 1) - 5
+      v.bottom = sminY - 5
+    end
+  end
+  -- resolve system conflicts
+  for i, v in ipairs(systems) do
+    for j, k in ipairs(systems) do
+      if (i ~= j) then -- don't check a system against itself
+        if conflicts(v, k) then -- uh oh we have a collision!
+          failsafe = failsafe + 1
+          resolveConflicts()
+        end
+      end
+    end
+  end
+  end
+end
+
+-- this needs to be done better TODO
+-- at the moment this works, but I am envisioning a system of 
+-- calculating many different label positions, finding the
+-- distance of the label from the marker, then choosing the label positions 
+-- that maintain the best position for all systems in the vicinity
+-- maybe it's overkill but if it's worth doing, it's worth overdoing.
+function conflicts(sys1, sys2)
+  if topleftconflicts(sys1, sys2) then
+    --Note("Top Left Collision detected! ("..sys1.name..","..sys2.name..")")
+    -- top left collided, try shifting down (add pixels)
+    sys1.top = sys2.bottom + 1
+    sys1.bottom = sys1.top + WindowFontInfo(win, "f", 1)
+    return true
+  elseif bottomleftconflicts(sys1, sys2) then
+    --Note("Bottom Left Collision detected! ("..sys1.name..","..sys2.name..")")
+    -- bottom left collided, try shifting the other guy down (add pixels)
+    sys2.top = sys1.bottom + 1
+    sys2.bottom = sys2.top + WindowFontInfo(win, "f", 1)
+    return true
+  elseif toprightconflicts(sys1, sys2) then
+    --Note("Top Right Collision detected! ("..sys1.name..","..sys2.name..")")
+    -- try shifting down first (add pixels)
+    sys1.top = sys2.bottom + 1
+    sys1.bottom = sys1.top + WindowFontInfo(win, "f", 1)
+    return true
+  elseif bottomrightconflicts(sys1, sys2) then
+    --Note("Bottom Right Collision detected! ("..sys1.name..","..sys2.name..")")
+    -- bottom right collided, try shifting the other guy down (add pixels)
+    sys2.top = sys1.bottom + 1
+    sys2.bottom = sys2.top + WindowFontInfo(win, "f", 1)
+    return true
+  else
+    return false
+  end
+end
+
+function topleftconflicts(s1, s2)
+  return ((s1.left >= s2.left and s1.left <= s2.right) and (s1.top <= s2.bottom and s1.top >= s2.top))
+end
+
+function bottomleftconflicts(s1, s2)
+  return ((s1.left >= s2.left and s1.left <= s2.right) and (s1.bottom <= s2.bottom and s1.bottom >= s2.top))
+end
+
+function toprightconflicts(s1, s2)
+  return ((s1.right >= s2.left and s1.right <= s2.right) and (s1.top <= s2.bottom and s1.top >= s2.top))
+end
+
+function bottomrightconflicts(s1, s2)
+  return ((s1.right >= s2.left and s1.right <= s2.right) and (s1.bottom <= s2.bottom and s1.bottom >= s2.top))
+end
+
+function drawWindow(name, line, args)
 	
 	for i=1,#systems,1 do
 		local sys = systems[i]
 		local x = scaleXCoord(sys.x)  -- scale X coordinate
-		local y =  scaleYCoord(sys.y) -- scale Y coordinate
+		local y = scaleYCoord(sys.y) -- scale Y coordinate
 		
-		WindowText (win, "f", sys.name,   -- text
-                x+5, y+5, 0, 0,        -- rectangle
+		WindowText (win, "f", ((sys.planet~="" and sys.planet) or sys.name),   -- text
+                sys.left, sys.top, sys.right, sys.bottom,        -- rectangle
                 ColourNameToRGB ("white"), -- colour
                 false)              -- not Unicode
                 
     	WindowCircleOp (win, miniwin.circle_ellipse, -- circle
-                x, y, x+5, y+5,                -- Left, Top, Right, Bottom
-                ColourNameToRGB("blue"), miniwin.pen_solid, 1, -- pen width 1
-                ColourNameToRGB("blue"), miniwin.brush_solid)  -- brush
+                x-5, y-5, x+5, y+5,                -- Left, Top, Right, Bottom
+                ColourNameToRGB("lawngreen"), miniwin.pen_solid, 1, -- pen width 1
+                ColourNameToRGB("lawngreen"), miniwin.brush_solid)  -- brush
         
         WindowAddHotspot(win, i,  
                 -- x, y, WindowTextWidth (win, "f", tostring(sys.name)), WindowFontInfo (win, "f", 1),   -- rectangle, left, top, right, bottom
-                 x, y, x+5+WindowTextWidth (win, "f", tostring(sys.name)), y+5+WindowFontInfo (win, "f", 1),
+                 sys.left, sys.top, sys.right, sys.bottom,
                  "drawPaths", -- mousehover
                  "hidePaths",        -- mousecancelhover
                  "onClick",         -- mousedown
@@ -177,16 +305,24 @@ end
 
 function hidePaths(flags, hotspot_id)
 	WindowRectOp (win, miniwin.rect_fill, 0, 0, 800, 600, ColourNameToRGB("black"))  -- draw blank rectangle to "erase" window contents
-	createWindow() -- redraw window
+	drawWindow() -- redraw window
 	
 end
 
 function scaleXCoord(coord)
-	return ((( coord / (maxX + 10)) * 400) + 400)
+  if coord > 0 then
+    return ((( coord / maxX) * 400) + 390)
+  else
+    return (410 - (( coord / minX) * 400))
+  end
 end
 
 function scaleYCoord(coord)
-	return (300 - ((( coord / (maxY + 10)) * 300)))
+  if coord > 0 then
+  	return (300 - ((( coord / maxY) * 300)-10))
+  else
+    return (300 + ((( coord / minY) * 300)-10))
+  end
 end
 
 function onClick(flags, hotspot_id)
@@ -209,9 +345,9 @@ function drawPaths(flags, hotspot_id)
 		if (v ~= sys) then
 			local bx = scaleXCoord(tonumber(v.x))
 			local by = scaleYCoord(tonumber(v.y))
-			WindowLine (win, ax+2.5, ay+2.5, bx+2.5, by+2.5, ColourNameToRGB ("orange"), miniwin.pen_solid, 1)
+			WindowLine (win, ax, ay, bx, by, ColourNameToRGB ("orange"), miniwin.pen_solid, 1)
 			WindowText (win, "f", distance(sys, v),   -- text
-                scaleXCoord((sys.x+v.x)/2), scaleYCoord((sys.y+v.y)/2), 0, 0,        --draw distance in the middle of draw path
+                (ax+bx)/2, (ay+by)/2, 0, 0,        --draw distance in the middle of draw path
                 ColourNameToRGB ("white"), -- colour
                 false)              -- not Unicode
 			
