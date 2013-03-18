@@ -140,7 +140,7 @@ function drawWindows()
 	if (visualSpaceStatVisible == 1) then
 		drawStatWindow()
 	end
-	BroadcastPlugin (999, "repaint")
+	--BroadcastPlugin (999, "repaint")
 end
 
 function drawConfigWindow()
@@ -587,7 +587,9 @@ function storeLevel(name, list, args)
 		--for i=1, #args, 1 do
 		--	Note(i .. " : '" .. args[i] .. "'")
 		--end
-		drawStatWindow()
+		if (visualSpaceStatVisible == 1) then
+			drawStatWindow()
+		end
 
 end
 
@@ -602,7 +604,10 @@ function storeLevel2(name, list, args)
 	storage.class_level = Trim(args[2])
 	storage.class_max = Trim(args[3])
 	levels[storage.class_name] = storage
-	drawStatWindow()
+	
+	if (visualSpaceStatVisible == 1) then
+		drawStatWindow()
+	end
 end
 
 function abbrev_class(classname)
@@ -1654,8 +1659,7 @@ function OnPluginBroadcast (msg, id, name, text)
 			return
 		end
 	end
-	drawWindows()  -- redraw windows every time new information is received
-	BroadcastPlugin(999, "repaint")
+  drawWindows()  -- redraw windows every time new information is received
 end
 
 --============================================================================
