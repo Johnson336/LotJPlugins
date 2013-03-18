@@ -66,10 +66,14 @@ function spaceCapStore(name, line, args, styles)
 	}
 	if (body.name ~= "Your Coordinates:" and body.name ~= "New course set, approaching" and not string.find(body.name, "Speed:", 0, true)) then
 		spaceCoords[#spaceCoords + 1] = body
-		ColourTell("silver", "black", #spaceCoords..") ")		
-	end
-	for k, v in pairs(styles) do
-    ColourTell (RGBColourToName(v.textcolour), RGBColourToName(v.backcolour), v.text)
+		ColourTell("silver", "black", #spaceCoords..") ")
+		for k, v in pairs(styles) do
+      Hyperlink("lcalc "..#spaceCoords, v.text, "Jump to "..spaceCoords[#spaceCoords].name, RGBColourToName(v.textcolour), RGBColourToName(v.backcolour), false)
+    end
+  else
+    for k, v in pairs(styles) do
+      ColourTell (RGBColourToName(v.textcolour), RGBColourToName(v.backcolour), v.text) 
+    end   
   end
   Note("")
 end
@@ -88,6 +92,7 @@ end
 function showPlanet(name, list, args)
 	if (args[1] ~= nil and args[1] ~= "stop") then
 		planetname = Trim(args[1])
+		SetVariable("planetname", planetname)
 		Send("showplanet '" .. planetname .. "'")
 		EnableTriggerGroup("CalcStart", true)
 	elseif (args[1] == "stop") then
