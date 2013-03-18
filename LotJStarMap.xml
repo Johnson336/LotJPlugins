@@ -23,31 +23,48 @@ Click on a system to calculate a jump to the planet within that system.
 	<trigger name="planetCapTitle" match="Planet*Starsystem*Governed By*Popular Support" enabled="n" group="PlanetCap" omit_from_log="y" omit_from_output="y" sequence="100" />
 	<trigger name="planetCapture" script="storePlanet" match="^(.*)\.\d$" regexp="y" enabled="n" group="PlanetCap" omit_from_log="y" omit_from_output="y" sequence="100" />
 	<trigger name="planetCapDone" script="setupWindow" match="^Use SHOWPLANET for more information\.$" regexp="y" enabled="n" group="PlanetCap" omit_from_log="y" omit_from_output="y" sequence="100" />
-
+	<!-- Lightspeed triggers -->
+	<trigger name="partialJump" match="^Remaining jump distance\: (.*)$" script="storePartialJump" group="LotJStarMap" enabled="y" regexp="y" sequence="100" />
+	<trigger name="jumpComplete" match="^Hyperjump complete\.$" script="clearJump" group="LotJStarMap" enabled="y" regexp="y" sequence="100" />
+	
   </triggers>
 <!--   Aliases    --> 
 <aliases>
   <alias name="initCommand" script="findStars" match="^hypmap$" enabled="y" regexp="y" group="LotJStarMap" sequence="100" />
   <alias name="removeWindow" script="destroyWindow" match="^hidemap$" enabled="y" regexp="y" group="LotJStarMap" sequence="100" />
   </aliases>
+<timers>
+	<timer name="hyperJumpTicker" script="hyperJumpTick" enabled="n" second="2" group="LotJStarMap" />
+</timers>
 <!--   Script    --> 
 <script>
 <![CDATA[ 
 
 require "movewindow"
-win = "galaxy_map_" .. GetPluginID()  -- unique window name
-systems = {}
-system = { name = "", x = 0, y = 0, planet = "", left = 0, top = 0, right = 0, bottom = 0 }
-font = "f"
-maxX = 0
-minX = 0
-maxY = 0
-minY = 0
-smaxX = 0
-smaxY = 0
-sminX = 0
-sminY = 0
-failsafe = 0
+local win = "galaxy_map_" .. GetPluginID()  -- unique window name
+local systems = {}
+local system = { name = "", x = 0, y = 0, planet = "", left = 0, top = 0, right = 0, bottom = 0 }
+local font = "f"
+local maxX = 0
+local minX = 0
+local maxY = 0
+local minY = 0
+local smaxX = 0
+local smaxY = 0
+local sminX = 0
+local sminY = 0
+local failsafe = 0
+local visible = false
+
+-- hyperjump stuff
+local totalJump = 0
+local partialJump = 0
+local startx = nil
+local starty = nil
+local realx = nil
+local realy = nil
+
+local msdp = {}
 
 function storePlanet(name, list, args)
 	--Note("1: '" .. args[1] .. "'")
@@ -123,9 +140,9 @@ function setupWindow(name, line, args)
 		end
 	end	
 	
-	
 	setupConflicts()
 	
+	visible = true
   drawWindow()
 end
 
@@ -235,7 +252,9 @@ function bottomrightconflicts(s1, s2)
 end
 
 function drawWindow(name, line, args)
-	
+
+	WindowRectOp (win, miniwin.rect_fill, 0, 0, 800, 600, ColourNameToRGB("black"))  -- draw blank rectangle to "erase" window contents
+
 	for i=1,#systems,1 do
 		local sys = systems[i]
 		local x = scaleXCoord(sys.x)  -- scale X coordinate
@@ -261,7 +280,6 @@ function drawWindow(name, line, args)
                  "",           -- mouseup
                  sys.name.. " (" .. sys.x .. "," .. sys.y .. ")",  -- tooltip text
                  1, 0)
-                
     end
 
 	 -- draw border
@@ -286,10 +304,96 @@ function drawWindow(name, line, args)
   
   	-- heading line
  	WindowText (win, font, "Galaxy Map", 5, 5, 0, 0, ColourNameToRGB  "white")
+ 	
+  drawHyperpath()
+  WindowShow (win,  true)  -- show it
+  	--BroadcastPlugin(999, "repaint")
+end
+
+function drawHyperpath()
+	if haveCoords() then
+	  drawCoords()
+	end
+	
+	if haveDestination() then
+	  drawRoute()
+	end
+end
+
+function haveCoords()
+  local currentX = tonumber(getmsdp("SHIPGALX") or 0)
+  local currentY = tonumber(getmsdp("SHIPGALY") or 0)
+  local currentSystem = getmsdp("SHIPSYSNAME")
+  local currentPlanet = getmsdp("PLANET")
   
+  if ((currentX ~= 0 and currentY ~= 0) and (currentSystem ~= "" or currentPlanet ~= "")) then
+    return true
+  end
+  return false
+end
+function drawCoords()
+  local curX = tonumber(getmsdp("SHIPGALX") or 0)
+  local curY = tonumber(getmsdp("SHIPGALY") or 0)
+  local curSystem = getmsdp("SHIPSYSNAME")
+  local curPlanet = getmsdp("PLANET")
   
-  	WindowShow (win,  true)  -- show it
+  if curX ~= 0 and curY ~= 0 then
+    realx = scaleXCoord(curX)
+    realy = scaleYCoord(curY)
+    WindowCircleOp(win, 1, realx-3, realy-3, realx+3, realy+3, ColourNameToRGB("red"), 0, 0, ColourNameToRGB("red"), 0)
+  else
+    for k, v in pairs(systems) do
+      if curSystem ~= "" and (string.lower(v.name) == string.lower(curSystem)) then
+        realx = scaleXCoord(v.x)
+        realy = scaleYCoord(v.y)
+        WindowCircleOp(win, 1, realx-3, realy-3, realx+3, realy+3, ColourNameToRGB("red"), 0, 0, ColourNameToRGB("red"), 0)
+      elseif curPlanet ~= "" and (string.lower(v.planet) == string.lower(curPlanet)) then
+        realx = scaleXCoord(v.x)
+        realy = scaleYCoord(v.y)
+        WindowCircleOp(win, 1, realx-3, realy-3, realx+3, realy+3, ColourNameToRGB("red"), 0, 0, ColourNameToRGB("red"), 0)
+      end
+    end
+  end
+end
+function haveDestination()
+  local storedsystem = GetPluginVariable("b2c06b3dcc775c0ede861316", "planetname") or ""
   
+  for k, v in pairs(systems) do
+    if storedsystem ~= "" and ((string.lower(v.name) == string.lower(storedsystem)) or (string.lower(v.planet) == string.lower(storedsystem))) then
+      if realx ~= nil and realy ~= nil then
+        return true
+      end
+    end
+  end
+  return false
+end
+function drawRoute()
+  local storedsystem = GetPluginVariable("b2c06b3dcc775c0ede861316", "planetname") or ""
+  local endX = 0
+  local endY = 0
+  
+	local percent = 0
+	local pixels = 0
+	
+	if (totalJump > 0 and partialJump > 0) then
+		percent = (totalJump - partialJump) / totalJump
+	end
+  
+  -- find our ending location
+  for k, v in pairs(systems) do
+    if storedsystem ~= "" and ((string.lower(v.name) == string.lower(storedsystem)) or (string.lower(v.planet) == string.lower(storedsystem))) then
+      endX = scaleXCoord(v.x)
+      endY = scaleYCoord(v.y)
+    end
+  end
+  -- find our starting position to draw a line from
+  if startx == nil and starty == nil then
+    startx = realx
+    starty = realy
+  end
+  -- draw our route and place on that route
+  WindowLine(win, startx, starty, endX, endY, ColourNameToRGB("white"), miniwin.pen_solid, 2)
+  WindowCircleOp(win, 1, (((1-percent)*startx)+(percent*endX))-3, (((1-percent)*starty)+(percent*endY))-3, (((1-percent)*startx)+(percent*endX))+3, (((1-percent)*starty)+(percent*endY))+3, ColourNameToRGB("red"), 0, 0, ColourNameToRGB("red"), 0)
 end
 
 function togglePaths(flags, hotspot_id)
@@ -354,6 +458,7 @@ function drawPaths(flags, hotspot_id)
 		end
 	end
 	WindowShow (win,  true)  -- show it
+		--BroadcastPlugin(999, "repaint")
 
 end
 
@@ -361,6 +466,7 @@ function destroyWindow(name, list, args)
 	systems = {}
 	system = { }
 	WindowShow (win, false)
+	visible = false
 	--WindowDelete(win)
 end
 
@@ -368,6 +474,99 @@ function distance(a, b)
 	return string.format("%.0f", math.sqrt(((a.x-b.x)*(a.x-b.x))+((a.y-b.y)*(a.y-b.y))))
 end
 
+function hyperJumpTick()
+	if (totalJump > 0 and partialJump > 0) then
+		partialJump = partialJump - 50
+		if (visible) then
+			--Note("Tick: " .. partialJump .. "/" .. totalJump)
+			drawWindow()
+		end
+	end
+end
+
+function storeTotalJump(name, list, args)
+	if (args[1] and tonumber(args[1]) > 0) then
+		totalJump = tonumber(args[1])
+	end
+	if (visible) then
+		drawWindow()
+	end
+end
+
+function storePartialJump(name, list, args)
+	if (args[1] and tonumber(args[1]) > 0) then
+		if (totalJump == 0) then
+			totalJump = tonumber(args[1])
+			EnableTimer("hyperJumpTicker", true)
+		end
+		partialJump = tonumber(args[1])
+	end
+	if (visible) then
+		--Note("Tock: " .. partialJump .. "/" .. totalJump)
+		drawWindow()
+	end
+end
+
+function clearJump()
+  startx = nil
+  starty = nil
+  realx = nil
+  realy = nil
+	totalJump = 0
+	partialJump = 0
+	EnableTimer("hyperJumpTicker", false)
+	if (visible) then
+		drawWindow()
+	end
+end
+
+
+--============================================================================
+-- Central function for listening to data broadcast by LotJMSDPHandler.xml
+-- Stores broadcast information locally to be easily accessed by plugin
+--============================================================================
+
+function OnPluginBroadcast (msg, id, name, text)
+	-- Look for MSDP Handler.
+	if (id == 'b3aae34498d5bf19b5b2e2af') then
+		-- HUGE FIXME.. not an idea solution
+		if (msg == 91) then -- we got table information from MSDP handler
+			-- store information in our own msdp table
+			key = string.sub(text, 0, string.find(text,",",0,true)-1)  -- parse the variable key
+			val = utils.base64decode(string.sub(text, string.find(text,",",0,true)+1, string.len(text))) -- parse the variable value
+			msdp[key] = val -- store it
+			--Note("key: " .. key .. " val: " .. msdp[key])
+			key = ""
+			val = ""
+		end
+	end
+	if visible then
+	  drawWindow()  -- redraw windows every time new information is received
+	  --BroadcastPlugin(999, "repaint")
+	end
+end
+
+--============================================================================
+-- Function to be used to retrieve msdp information. Returns either the
+-- information stored in the local msdp table or gets the requested variable
+-- from msdp_helper, if it doesn't exist locally
+--============================================================================
+
+function getmsdp(key)
+	if not IsConnected() then  -- don't try to get stuff if we aren't connected to the mud
+		return ""
+	end
+	if (msdp[key] ~= nil) then  -- if the key has been updated by msdp handler already, retrieve it
+		return msdp[key]
+	elseif (GetPluginVariable("b3aae34498d5bf19b5b2e2af", key) ~= nil) then  -- if the key hasn't been updated, but msdp handler has it cached, retrieve it and store in local table for next time
+		msdp[key] = utils.base64decode(GetPluginVariable("b3aae34498d5bf19b5b2e2af", key))
+		return msdp[key]
+	else
+		ColourNote("red","black", "Warning: Unable to find key " .. key)
+		return ""   -- should never get here  -- can't find the requested key
+	end
+	return "" -- should never ever get here
+end
 
 function OnPluginInstall ()
 
@@ -387,6 +586,11 @@ function OnPluginSaveState ()
   movewindow.save_state (win)
 end -- function OnPluginSaveState
 
+require "checkplugin"
+function OnPluginListChanged()
+	do_plugin_check_now ("b3aae34498d5bf19b5b2e2af", "LotJMSDPHandler") -- check we have MSDP handler plugin
+	do_plugin_check_now ("b2c06b3dcc775c0ede861316", "LotJCalc") -- check we have LotJCalc
+end
 
   ]]> 
   </script>
