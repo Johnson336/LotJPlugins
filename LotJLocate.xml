@@ -70,7 +70,7 @@ function locateNext()
 end
 
 function setMaxTries(name, line, args)
-  if not args then
+  if args[1] == "" then
     Note("Huh?")
   else
     maxtries = tonumber(args[1])
