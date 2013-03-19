@@ -2,7 +2,7 @@
 <!DOCTYPE muclient> 
 <!--  Saved on Sunday, July 04, 2012, 6:29 PM   -->  
 <muclient>
-<plugin name="LotJCalc" author="@Johnson" id="b2c06b3dcc775c0ede861316" language="Lua" purpose="Calculate Sectors Easily" save_state="y" requires="4.40" version="1.04">
+<plugin name="LotJCalc" author="@Johnson" id="b2c06b3dcc775c0ede861316" language="Lua" purpose="Calculate Sectors Easily" save_state="y" requires="4.40" version="1.06">
 <description trim="y">
 <![CDATA[ 
 Automatically calculate hyperjumps to the specified sector.
