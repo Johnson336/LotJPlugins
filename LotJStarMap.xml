@@ -25,8 +25,11 @@ Click on a system to calculate a jump to the planet within that system.
 	<trigger name="planetCapDone" script="setupWindow" match="^Use SHOWPLANET for more information\.$" regexp="y" enabled="n" group="PlanetCap" omit_from_log="y" omit_from_output="y" sequence="100" />
 	<!-- Lightspeed triggers -->
 	<trigger name="partialJump" match="^Remaining jump distance\: (.*)$" script="storePartialJump" group="LotJStarMap" enabled="y" regexp="y" sequence="100" />
-	<trigger name="jumpComplete" match="^Hyperjump complete\.$" script="clearJump" group="LotJStarMap" enabled="y" regexp="y" sequence="100" />
-	
+	<trigger name="completedjump" match="^Hyperjump complete\.$" script="clearJump" group="LotJStarMap" enabled="y" regexp="y" sequence="100" />
+	<trigger name="calculatingjump" match="^Checking hyperspace course integrity\. Please wait\.$" script="jumpChecking" group="LotJStarMap" enabled="y" regexp="y" sequence="100" />
+  <trigger name="lowfueljump" match="^Warning \- Not enough fuel to complete the jump to hyperspace\!$" script="jumpError" group="LotJStarMap" enabled="y" regexp="y" sequence="100" />
+  <trigger name="calculatedjump" match="^\[Status\]\: Hyperspace Calculations have been completed\.$" script="jumpChecked" group="LotJStarMap" enabled="y" regexp="y" sequence="100" />
+	<trigger name="abortedjump" match="^Hyperjump aborting\! Shutting down the Hyperdrive\.$" script="jumpAborted" group="LotJStarMap" enabled="y" regexp="y" sequence="100" />
   </triggers>
 <!--   Aliases    --> 
 <aliases>
@@ -63,6 +66,13 @@ local startx = nil
 local starty = nil
 local realx = nil
 local realy = nil
+local currentX = 0
+local currentY = 0
+local currentPlanet = ""
+local currentSystem = ""
+local endX = nil
+local endY = nil
+local routeType = ""
 
 local msdp = {}
 
@@ -98,8 +108,6 @@ function toggleOn(name, list, args)
 	WindowCreate (win, 0, 0, 800, 600, miniwin.pos_center_all, 0, ColourNameToRGB("black"))  -- create window
 	WindowFont (win, font, "Arial", 10, true, false, false, false) -- define font
 end
-
-require "tprint"
 
 function storeSystem(name, list, args)
 	if (args[1] and args[2] and args[3]) then
@@ -254,7 +262,7 @@ end
 function drawWindow(name, line, args)
 
 	WindowRectOp (win, miniwin.rect_fill, 0, 0, 800, 600, ColourNameToRGB("black"))  -- draw blank rectangle to "erase" window contents
-
+	
 	for i=1,#systems,1 do
 		local sys = systems[i]
 		local x = scaleXCoord(sys.x)  -- scale X coordinate
@@ -305,49 +313,49 @@ function drawWindow(name, line, args)
   	-- heading line
  	WindowText (win, font, "Galaxy Map", 5, 5, 0, 0, ColourNameToRGB  "white")
  	
-  drawHyperpath()
+  -- draw hyper path and ship so they are always on top
+	drawHyperpath()
+ 	
   WindowShow (win,  true)  -- show it
   	--BroadcastPlugin(999, "repaint")
 end
 
 function drawHyperpath()
-	if haveCoords() then
+	if haveCoords() then -- if we are in a location that can be drawn on the map
 	  drawCoords()
-	end
-	
-	if haveDestination() then
-	  drawRoute()
+	  if haveDestination() then -- if we have a destination that can be drawn on the map
+	    drawRoute()
+	  end
 	end
 end
 
 function haveCoords()
-  local currentX = tonumber(getmsdp("SHIPGALX") or 0)
-  local currentY = tonumber(getmsdp("SHIPGALY") or 0)
-  local currentSystem = getmsdp("SHIPSYSNAME")
-  local currentPlanet = getmsdp("PLANET")
+  currentX = tonumber(getmsdp("SHIPGALX")) or 0
+  currentY = tonumber(getmsdp("SHIPGALY")) or 0
+  currentSystem = getmsdp("SHIPSYSNAME")
+  currentPlanet = getmsdp("PLANET")
   
-  if ((currentX ~= 0 and currentY ~= 0) and (currentSystem ~= "" or currentPlanet ~= "")) then
+  if (startx ~= nil and starty ~= nil) then -- if we have a starting spot on the map (we should be in hyper)
     return true
   end
+  if ((currentX ~= 0 and currentY ~= 0) or currentSystem ~= "" or currentPlanet ~= "") then -- if we are in regular space
+    return true
+  end -- we arent anywhere! abort!!
   return false
 end
+
 function drawCoords()
-  local curX = tonumber(getmsdp("SHIPGALX") or 0)
-  local curY = tonumber(getmsdp("SHIPGALY") or 0)
-  local curSystem = getmsdp("SHIPSYSNAME")
-  local curPlanet = getmsdp("PLANET")
-  
-  if curX ~= 0 and curY ~= 0 then
-    realx = scaleXCoord(curX)
-    realy = scaleYCoord(curY)
+  if currentX ~= 0 and currentY ~= 0 then -- our coords are in the x,y form
+    realx = scaleXCoord(currentX)
+    realy = scaleYCoord(currentY)
     WindowCircleOp(win, 1, realx-3, realy-3, realx+3, realy+3, ColourNameToRGB("red"), 0, 0, ColourNameToRGB("red"), 0)
-  else
+  else  -- not x,y coords
     for k, v in pairs(systems) do
-      if curSystem ~= "" and (string.lower(v.name) == string.lower(curSystem)) then
+      if currentSystem ~= "" and (string.lower(v.name) == string.lower(currentSystem)) then -- scroll planet list and see if our current system matches one of the system names
         realx = scaleXCoord(v.x)
         realy = scaleYCoord(v.y)
         WindowCircleOp(win, 1, realx-3, realy-3, realx+3, realy+3, ColourNameToRGB("red"), 0, 0, ColourNameToRGB("red"), 0)
-      elseif curPlanet ~= "" and (string.lower(v.planet) == string.lower(curPlanet)) then
+      elseif currentPlanet ~= "" and (string.lower(v.planet) == string.lower(currentPlanet)) then -- scroll planet list and see if our current planet matches one of the planet names
         realx = scaleXCoord(v.x)
         realy = scaleYCoord(v.y)
         WindowCircleOp(win, 1, realx-3, realy-3, realx+3, realy+3, ColourNameToRGB("red"), 0, 0, ColourNameToRGB("red"), 0)
@@ -355,45 +363,85 @@ function drawCoords()
     end
   end
 end
+
 function haveDestination()
   local storedsystem = GetPluginVariable("b2c06b3dcc775c0ede861316", "planetname") or ""
+  local storedX = nil
+  local storedY = nil
   
-  for k, v in pairs(systems) do
-    if storedsystem ~= "" and ((string.lower(v.name) == string.lower(storedsystem)) or (string.lower(v.planet) == string.lower(storedsystem))) then
-      if realx ~= nil and realy ~= nil then
-        return true
-      end
+  if storedsystem == "" then -- we didn't get anything from lotjcalc
+    return false
+  end
+  if string.find(storedsystem, "%([%d-]+%,[%d-]+%)") then -- we got an uncharted coordinate from lotjcalc
+    local ax, bx = string.find(storedsystem, "%([%d-]+%,", 0, false)
+    storedX = tonumber(string.sub(storedsystem, ax+1, bx-1))
+    local ay, by = string.find(storedsystem, "%,[%d-]+%)", bx, false)
+    storedY = tonumber(string.sub(storedsystem, ay+1, by-1))
+    endX = scaleXCoord(storedX)
+    endY = scaleYCoord(storedY)
+    return true
+  
+  end
+  -- if we make it this far, it means we got a planet or system name from lotjcalc, scroll through and find out who it belongs to
+  for k, v in pairs(systems) do -- check to see if lotjcalc's system belongs to one of the known systems or planets
+    if ((string.lower(v.name) == string.lower(storedsystem)) or (string.lower(v.planet) == string.lower(storedsystem))) then
+      endX = scaleXCoord(v.x)
+      endY = scaleYCoord(v.y)
+      return true
     end
   end
   return false
 end
+
 function drawRoute()
-  local storedsystem = GetPluginVariable("b2c06b3dcc775c0ede861316", "planetname") or ""
-  local endX = 0
-  local endY = 0
-  
 	local percent = 0
 	local pixels = 0
+  local routeColor = "gray"
+	local shipsize = 8
 	
 	if (totalJump > 0 and partialJump > 0) then
 		percent = (totalJump - partialJump) / totalJump
 	end
   
-  -- find our ending location
-  for k, v in pairs(systems) do
-    if storedsystem ~= "" and ((string.lower(v.name) == string.lower(storedsystem)) or (string.lower(v.planet) == string.lower(storedsystem))) then
-      endX = scaleXCoord(v.x)
-      endY = scaleYCoord(v.y)
-    end
-  end
   -- find our starting position to draw a line from
   if startx == nil and starty == nil then
     startx = realx
     starty = realy
   end
+  -- check our route status to draw appropriate color
+  if (routeType == "checking" or routeType == "aborted") then
+    routeColor = "gray"
+  elseif (routeType == "error") then
+    routeColor = "darkred"
+  elseif (routeType == "checked") then
+    routeColor = "white"
+  elseif (routeType == "completed") then
+    routeColor = "lime"
+  end
+    
   -- draw our route and place on that route
-  WindowLine(win, startx, starty, endX, endY, ColourNameToRGB("white"), miniwin.pen_solid, 2)
-  WindowCircleOp(win, 1, (((1-percent)*startx)+(percent*endX))-3, (((1-percent)*starty)+(percent*endY))-3, (((1-percent)*startx)+(percent*endX))+3, (((1-percent)*starty)+(percent*endY))+3, ColourNameToRGB("red"), 0, 0, ColourNameToRGB("red"), 0)
+  WindowLine(win, startx, starty, endX, endY, ColourNameToRGB(routeColor), miniwin.pen_solid, 2)
+  WindowCircleOp(win, 1, (((1-percent)*startx)+(percent*endX))-(shipsize/2), (((1-percent)*starty)+(percent*endY))-(shipsize/2), (((1-percent)*startx)+(percent*endX))+(shipsize/2), (((1-percent)*starty)+(percent*endY))+(shipsize/2), ColourNameToRGB("red"), 0, 0, ColourNameToRGB("red"), 0)
+end
+
+function jumpChecking()
+  routeType = "checking"
+end
+function jumpError()
+  routeType = "error"
+end
+function jumpAborted()
+  routeType = "aborted"
+end
+function jumpChecked()
+  if (routeType == "checking") then
+    routeType = "checked"
+  end
+end
+function jumpCompleted()
+  if (routeType == "checked") then
+    routeType = "completed"
+  end
 end
 
 function togglePaths(flags, hotspot_id)
@@ -512,8 +560,14 @@ function clearJump()
   starty = nil
   realx = nil
   realy = nil
+  storedsystem = ""
+  storedX = nil
+  storedY = nil
+  endX = nil
+  endY = nil
 	totalJump = 0
 	partialJump = 0
+	jumpCompleted()
 	EnableTimer("hyperJumpTicker", false)
 	if (visible) then
 		drawWindow()

@@ -90,13 +90,40 @@ function spaceCapCalc(name, line, args)
 end
 
 function showPlanet(name, list, args)
-	if (args[1] ~= nil and args[1] ~= "stop") then
+  if not args or args[1] == "" then -- we entered "calc" with no args, so pass it through
+    Send("calculate")
+    return
+  end
+  if args[1] == "stop" then -- entered "calc stop", pass it through
+    SetVariable("planetname", "")
+    Send("calculate stop")
+    return
+  end
+  if string.find(args[1], "local", 0, true) then -- we entered calc local x y z, pass it through
+    SetVariable("planetname", "local")
+    Send("calculate "..args[1])
+    return
+  end
+  if string.find(args[1], "%'[%d-]* [%d-]*%'", 0, false) then -- we entered an uncharted sector in 'x y' x y z format
+    -- set our planetname to the x y coordinates
+    local xstart, xend = string.find(args[1], "%'[%d-]+", 0, false)
+    local xcoord = string.sub(args[1], xstart+1, xend)
+    local ystart, yend = string.find(args[1], "[%d-]+%'", xend, false)
+    local ycoord = string.sub(args[1], ystart, yend-1)
+    --Note("xstart: "..xstart.." xend: "..xend.." xcoord: "..xcoord)
+    --Note("ystart: "..ystart.." yend: "..yend.." ycoord: "..ycoord)
+
+    SetVariable("planetname", "("..xcoord..","..ycoord..")")
+    --Note(GetVariable("planetname"))
+    Send("calculate "..args[1])
+    return
+  end
+  -- add option to enter calc x y x y z for uncharted sectors here
+  if (args[1] ~= nil and args[1] ~= "stop") then -- we entered a standard planetname
 		planetname = Trim(args[1])
 		SetVariable("planetname", planetname)
 		Send("showplanet '" .. planetname .. "'")
 		EnableTriggerGroup("CalcStart", true)
-	elseif (args[1] == "stop") then
-		Send("calculate stop")
 	else
 		Note("Invalid planet name!")
 	end
