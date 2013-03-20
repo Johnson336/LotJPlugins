@@ -127,7 +127,7 @@ end -- function OnPluginTelnetSubnegotiation
 function StoreVariable (MSDP_var, MSDP_val)
 	--Note('Variable: '..MSDP_var..' = ['..MSDP_val..']')
 	if MSDP_var == "SERVER_ID" then
-		SendPkt ("\255\250\69\1PLUGIN_ID\2LotJVisualSpace MUSHclient plugin (version 0.47)\255\240")
+		SendPkt ("\255\250\69\1PLUGIN_ID\2LotJMSPDHandler MUSHclient plugin (version 0.49)\255\240")
 	else -- store the variable
 		msdp = msdp or {}
 		msdp[MSDP_var] = MSDP_val

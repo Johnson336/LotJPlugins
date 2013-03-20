@@ -39,11 +39,13 @@ local maxtries = tonumber(GetVariable("maxtries")) or 3
 local cycle = false
 
 function locate(name, line, args)
-  if not args then -- entered nothing
+  if not args or args[1] == "" then -- entered nothing
     if locpos > 0 then -- if we're using a list
-      Send("locateship "..loclist[locpos])
-    else -- not using a list
-      Send("locateship "..locitem)
+      Send("locateship \""..loclist[locpos].."\"")
+    elseif locitem ~= "" then -- not using a list
+      Send("locateship \""..locitem.."\"")
+    else
+      locateStop()
     end
   elseif string.find(args[1], ",", 0, true) then -- entered many items
     locateClear() -- clear the list and start fresh
@@ -57,7 +59,7 @@ function locate(name, line, args)
     locitem = Trim(args[1])
     locpos = 0
     loctries = 1
-    Send("locateship "..locitem)
+    Send("locateship \""..locitem.."\"")
   end
   EnableTriggerGroup("LotJLocate", true)
 end
@@ -80,7 +82,7 @@ function locateNext()
         locateStop()
       end
     else -- we're in the middle of the list
-      locate(loclist[locpos])
+      locate()
     end
   end
 end
