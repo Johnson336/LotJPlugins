@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="iso-8859-1" ?> 
 <!DOCTYPE muclient> 
 <muclient>
-<plugin name="LotJMemory" author="@Johnson" id="ef6468111c356c67de0326a0" language="Lua" purpose="Keeps tabs on your dubs/greets" save_state="y" date_written="2013-03-20 19:38:54" requires="4.73" version="1.0">
+<plugin name="LotJMemory" author="@Johnson" id="ef6468111c356c67de0326a0" language="Lua" purpose="DUB/GREET Management" save_state="y" date_written="2013-03-20 19:38:54" requires="4.73" version="1.0">
 <description trim="y">
 <![CDATA[ 
 Plugin for maintaining a list of your dubs greets and their corresponding racial features.
@@ -22,6 +22,7 @@ LotJMemory v 1.0 by Johnson. Enter 'memhelp' for general command information.
   <alias name="memoryrename" match="^memrename (.*) (.*)$" script="memRename" enabled="y" group="LotJMemory" regexp="y" ignore_case="y" sequence="100" />
   <alias name="memremove" match="^memremove (.*)" script="memRemove" enabled="y" group="LotJMemory" regexp="y" ignore_case="y" sequence="100" />
   <alias name="memhelp" match="^memhelp(\s*(.*))?$" script="memHelp" enabled="y" group="LotJMemory" regexp="y" ignore_case="y" sequence="100" />
+  <alias name="memoryclear" match="^memclear$" script="memClear" enabled="y" group="LotJMemory" regexp="y" ignore_case="y" sequence="100" />
 
 
   </aliases>
@@ -40,6 +41,11 @@ function stripName(name, line, args)
 	  memory[args.who] = {what = args.what, when = os.date("%x", os.time())}
 	  Note("Saved ".. args.who .. " description.")
 	end
+end
+
+function memClear()
+  memory = {}
+  ColourNote("lime","black","Stored dub/greet description memory cleared.")
 end
 
 function memRemove(name, line, args)
@@ -96,8 +102,8 @@ function memCheck(name, line, args)
     ColourNote("red","black",name.." not found in memory.")
     return
   end
-  
   ColourNote("lime","black","Stored memory information:")
+  ColourNote("silver","black","   Greet/dub         : LastSeen : Player description")
   for k, v in pairs(memory) do
     i = i + 1
     ColourNote("green","black",string.format("%-20s : %8s : %-20s", k, v.when, v.what))
