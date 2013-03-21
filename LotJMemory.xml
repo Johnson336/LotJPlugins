@@ -1,0 +1,167 @@
+<?xml version="1.0" encoding="iso-8859-1" ?> 
+<!DOCTYPE muclient> 
+<muclient>
+<plugin name="LotJMemory" author="@Johnson" id="ef6468111c356c67de0326a0" language="Lua" purpose="Keeps tabs on your dubs/greets" save_state="y" date_written="2013-03-20 19:38:54" requires="4.73" version="1.0">
+<description trim="y">
+<![CDATA[ 
+Plugin for maintaining a list of your dubs greets and their corresponding racial features.
+LotJMemory v 1.0 by Johnson. Enter 'memhelp' for general command information.
+   Enter 'memhelp <command>' for more detailed information on that command.
+  ]]> 
+  </description>
+  </plugin>
+<!--   Get our standard constants   --> 
+  <include name="constants.lua" /> 
+<!--   Triggers    --> 
+<triggers>
+  <trigger name="chartochar" match="\A(?P<who>.+?) (has come cuts|has a few bruises|is slightly scratched|is in perfect health)\.\n(?P=who) is (?P<what>.+?)\.\Z" script="stripName" regexp="y" enabled="y" lines_to_match="2" multi_line="y" group="LotJMemory" sequence="100" />
+  </triggers>
+<!--   Aliases    --> 
+<aliases>
+  <alias name="checkmemory" match="^memcheck( +(.*)?)*$" script="memCheck" enabled="y" group="LotJMemory" regexp="y" ignore_case="y" sequence="100" />
+  <alias name="memoryrename" match="^memrename (.*) (.*)$" script="memRename" enabled="y" group="LotJMemory" regexp="y" ignore_case="y" sequence="100" />
+  <alias name="memremove" match="^memremove (.*)" script="memRemove" enabled="y" group="LotJMemory" regexp="y" ignore_case="y" sequence="100" />
+  <alias name="memhelp" match="^memhelp(\s*(.*))?$" script="memHelp" enabled="y" group="LotJMemory" regexp="y" ignore_case="y" sequence="100" />
+
+
+  </aliases>
+<!--   Script    --> 
+<script>
+<![CDATA[
+require "serialize"
+memory = {}
+loadstring(GetVariable("memory") or "")()
+
+require "tprint"
+
+function stripName(name, line, args)
+	assert (args, "nil arg passed to stripName")
+	if not string.find(args.who, " ", 0) then -- avoid saving multi-word names, like armor restrings
+	  memory[args.who] = {what = args.what, when = os.date("%x", os.time())}
+	  Note("Saved ".. args.who .. " description.")
+	end
+end
+
+function memRemove(name, line, args)
+  assert (args, "nil arg passed to memRemove")
+  local namefind
+  if args[1] ~= "" then
+    namefind = Trim(args[1])
+    for k, v in pairs(memory) do
+      if (string.lower(k) == string.lower(namefind)) then
+        memory[k] = nil
+        ColourNote("lime","black", k.." removed from memory.")
+        return
+      end
+    end
+    ColourNote("red","black",k.." not found in memory.")
+    return
+  end
+  ColourNote("red","black","Usage: memremove <name>")
+end
+
+function memRename(name, line, args)
+  assert (args, "nil arg passed to memRename")
+  local namefind, replace
+  if args[1] ~= "" and args[2] ~= "" then
+    namefind = Trim(args[1])
+    replace = Trim(args[2])
+    for k, v in pairs(memory) do
+      if (string.lower(k) == string.lower(namefind)) then
+        memory[replace] = memory[k]
+        ColourNote("lime","black", k.." renamed to "..replace)
+        memory[k] = nil
+        return
+      end
+    end
+    ColourNote("red","black",namefind.." not found in memory.")
+    return
+  end
+  ColourNote("red","black","Usage: memrename <name> <rename>")
+end
+
+function memCheck(name, line, args)
+  assert (args, "nil arg passed to memCheck")
+  --tprint(memory)
+  local i = 0
+  
+  if args[1] ~= "" then
+    name = Trim(args[1])
+    for k, v in pairs(memory) do
+      if string.lower(name) == string.lower(k) then
+        ColourNote("green","black","You last saw "..k.." on "..v.when..". They were "..v.what)
+        return
+      end
+    end
+    ColourNote("red","black",name.." not found in memory.")
+    return
+  end
+  
+  ColourNote("lime","black","Stored memory information:")
+  for k, v in pairs(memory) do
+    i = i + 1
+    ColourNote("green","black",string.format("%-20s : %8s : %-20s", k, v.when, v.what))
+  end
+  ColourNote("silver","black","You can remember a total of "..i.." descriptions.")
+end
+
+function OnPluginSaveState()
+  SetVariable("memory", serialize.save("memory"))
+end
+
+-- define our help command structure
+local commands = { { name = "memcheck", desc = "Displays all of your saved player descriptions.",
+                         args = { { name = "<none>", desc = "Lists your entire description memory."},
+                                  { name = "<argument1>", desc = "Searches for a specific person's description in your memory."}, }
+                          },
+               { name = "memrename", desc = "Used to rename a saved player description.",
+                        args = { { name = "<argument1> <argument2>", desc = "Keep argument1's description and last-seen date, but give it argument2's name."}, }
+                          },
+               { name = "memremove", desc = "Removes an description from memory.",
+                        args = { { name = "<argument1>", desc = "Removes the specified name's description from memory. Useful in the event of receiving a player's greet that didn't get updated properly."} }
+                          },
+               { name = "memclear", desc = "Deletes your entire description memory.",
+                        args = { }
+                          },
+               { name = "memhelp", desc = "Display this help file.",
+                        args = { { name = "<argument1>", desc = "Display more detailed help information on the given command."} }
+                          },           
+                           }
+
+function memHelp(name, line, args)
+  local found = false
+  if args[1] == "" then -- show general help
+    ColourNote("green","black","LotJMemory v 1.0 by Johnson. Enter 'memhelp <command>' for more detailed information.")
+    for a, b in ipairs(commands) do -- commands
+      local command = b
+      ColourNote("green","black",string.format("%-20s", command.name).." : "..command.desc)
+    end
+    Note("")
+  else -- entered something
+    ColourNote("green","black","LotJMemory v 1.0 by Johnson. Enter 'memhelp' for more general information.")
+
+    for a, b in ipairs(commands) do -- scroll through commands
+    
+      if (string.lower(b.name) == string.lower(Trim(args[1]))) then -- found our argument
+        found = true
+        ColourNote("green","black",b.name .. " : " .. b.desc)
+        ColourNote("green","black","Available arguments:")
+        if #b.args == 0 then -- no arguments
+          ColourNote("green","black","   None.")
+        else -- arguments to print
+          for i, k in ipairs(b.args) do
+            ColourNote("green","black",string.format("%20s", k.name).." : " .. k.desc)
+          end -- end print arguments
+        end -- end no arguments
+        Note("")
+      end -- end found command
+    end -- end scroll commands
+    if not found then
+      ColourNote("green","black","Command '"..args[1].."' not found.")
+    end
+  end -- end no input
+end
+
+]]> 
+</script>
+</muclient>
