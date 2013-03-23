@@ -72,7 +72,7 @@ local currentPlanet = ""
 local currentSystem = ""
 local endX = nil
 local endY = nil
-local routeType = ""
+local routeType = ""local shipsize = 8
 
 local msdp = {}
 
@@ -345,23 +345,22 @@ function haveCoords()
 end
 
 function drawCoords()
-  if currentX ~= 0 and currentY ~= 0 then -- our coords are in the x,y form
+  if ((currentX ~= 0) and (currentY ~= 0)) then -- our coords are in the x,y form
     realx = scaleXCoord(currentX)
     realy = scaleYCoord(currentY)
-    WindowCircleOp(win, 1, realx-3, realy-3, realx+3, realy+3, ColourNameToRGB("red"), 0, 0, ColourNameToRGB("red"), 0)
   else  -- not x,y coords
     for k, v in pairs(systems) do
       if currentSystem ~= "" and (string.lower(v.name) == string.lower(currentSystem)) then -- scroll planet list and see if our current system matches one of the system names
         realx = scaleXCoord(v.x)
         realy = scaleYCoord(v.y)
-        WindowCircleOp(win, 1, realx-3, realy-3, realx+3, realy+3, ColourNameToRGB("red"), 0, 0, ColourNameToRGB("red"), 0)
       elseif currentPlanet ~= "" and (string.lower(v.planet) == string.lower(currentPlanet)) then -- scroll planet list and see if our current planet matches one of the planet names
         realx = scaleXCoord(v.x)
         realy = scaleYCoord(v.y)
-        WindowCircleOp(win, 1, realx-3, realy-3, realx+3, realy+3, ColourNameToRGB("red"), 0, 0, ColourNameToRGB("red"), 0)
       end
     end
   end
+  WindowCircleOp(win, 1, realx-(shipsize/2), realy-(shipsize/2), realx+(shipsize/2), realy+(shipsize/2), ColourNameToRGB("red"), 0, 0, ColourNameToRGB("red"), 0)
+  --WindowText (win, "f", string.format("%.0f,%.0f",realx,realy), realx-30, realy+5, 0, 0, ColourNameToRGB ("white"), false)
 end
 
 function haveDestination()
@@ -377,6 +376,7 @@ function haveDestination()
     storedX = tonumber(string.sub(storedsystem, ax+1, bx-1))
     local ay, by = string.find(storedsystem, "%,[%d-]+%)", bx, false)
     storedY = tonumber(string.sub(storedsystem, ay+1, by-1))
+    --Note("x,y = "..storedX.. ","..storedY)
     endX = scaleXCoord(storedX)
     endY = scaleYCoord(storedY)
     return true
@@ -387,6 +387,7 @@ function haveDestination()
     if ((string.lower(v.name) == string.lower(storedsystem)) or (string.lower(v.planet) == string.lower(storedsystem))) then
       endX = scaleXCoord(v.x)
       endY = scaleYCoord(v.y)
+      --Note("planet x,y = "..endX..","..endY)
       return true
     end
   end
@@ -397,7 +398,6 @@ function drawRoute()
 	local percent = 0
 	local pixels = 0
   local routeColor = "gray"
-	local shipsize = 8
 	
 	if (totalJump > 0 and partialJump > 0) then
 		percent = (totalJump - partialJump) / totalJump
@@ -592,6 +592,8 @@ function OnPluginBroadcast (msg, id, name, text)
 			--Note("key: " .. key .. " val: " .. msdp[key])
 			key = ""
 			val = ""
+		elseif (msg == 1) and (text == "reload") then
+		  msdp = {}
 		end
 	end
 	if visible then
