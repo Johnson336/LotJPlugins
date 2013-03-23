@@ -30,6 +30,7 @@ Click on a system to calculate a jump to the planet within that system.
   <trigger name="lowfueljump" match="^Warning \- Not enough fuel to complete the jump to hyperspace\!$" script="jumpError" group="LotJStarMap" enabled="y" regexp="y" sequence="100" />
   <trigger name="calculatedjump" match="^\[Status\]\: Hyperspace Calculations have been completed\.$" script="jumpChecked" group="LotJStarMap" enabled="y" regexp="y" sequence="100" />
 	<trigger name="abortedjump" match="^Hyperjump aborting\! Shutting down the Hyperdrive\.$" script="jumpAborted" group="LotJStarMap" enabled="y" regexp="y" sequence="100" />
+  <trigger name="enterhyper" match="^The stars become streaks of light as you enter hyperspace\.$" script="enterHyper" group="LotJStarMap" enabled="y" regexp="y" sequence="100" />
   </triggers>
 <!--   Aliases    --> 
 <aliases>
@@ -72,7 +73,9 @@ local currentPlanet = ""
 local currentSystem = ""
 local endX = nil
 local endY = nil
-local routeType = ""local shipsize = 8
+local routeType = ""
+local shipsize = 8
+local inHyper = false
 
 local msdp = {}
 
@@ -219,24 +222,28 @@ function conflicts(sys1, sys2)
     -- top left collided, try shifting down (add pixels)
     sys1.top = sys2.bottom + 1
     sys1.bottom = sys1.top + WindowFontInfo(win, "f", 1)
+    --sys1, sys2 = findbestsolution(sys1, sys2)
     return true
   elseif bottomleftconflicts(sys1, sys2) then
     --Note("Bottom Left Collision detected! ("..sys1.name..","..sys2.name..")")
     -- bottom left collided, try shifting the other guy down (add pixels)
     sys2.top = sys1.bottom + 1
     sys2.bottom = sys2.top + WindowFontInfo(win, "f", 1)
+    --sys1, sys2 = findbestsolution(sys1, sys2)
     return true
   elseif toprightconflicts(sys1, sys2) then
     --Note("Top Right Collision detected! ("..sys1.name..","..sys2.name..")")
     -- try shifting down first (add pixels)
     sys1.top = sys2.bottom + 1
     sys1.bottom = sys1.top + WindowFontInfo(win, "f", 1)
+    --sys1, sys2 = findbestsolution(sys1, sys2)
     return true
   elseif bottomrightconflicts(sys1, sys2) then
     --Note("Bottom Right Collision detected! ("..sys1.name..","..sys2.name..")")
     -- bottom right collided, try shifting the other guy down (add pixels)
     sys2.top = sys1.bottom + 1
     sys2.bottom = sys2.top + WindowFontInfo(win, "f", 1)
+    --sys1, sys2 = findbestsolution(sys1, sys2)
     return true
   else
     return false
@@ -259,6 +266,56 @@ function bottomrightconflicts(s1, s2)
   return ((s1.right >= s2.left and s1.right <= s2.right) and (s1.bottom <= s2.bottom and s1.bottom >= s2.top))
 end
 
+local offsetgrid = { {-1, -1}, {-1, 0}, {-1, 1},
+                     {0 , -1}, {0 , 0}, {0 , 1},
+                     {1 , -1}, {1 , 0}, {1 , 1} }
+
+function findbestsolution(sys1, sys2)
+  local best = 10000 -- arbitrarily large number so we should always find something smaller
+  local startsys1 = sys1
+  local startsys2 = sys2
+  local testsys1 = sys1
+  local testsys2 = sys2
+  local bestsys1 = sys1
+  local bestsys2 = sys2
+  for i=10, 200, 10 do
+    for a, b in ipairs(offsetgrid) do
+      testsys1.left = startsys1.left + b[1]*i
+      testsys1.right = startsys1.right + b[1]*i
+      testsys1.top = startsys1.top + b[2]*i
+      testsys1.bottom = startsys1.bottom + b[2]*i
+      for j, k in ipairs(offsetgrid) do
+        testsys2.left = startsys2.left + k[1]*i
+        testsys2.right = startsys2.right + k[1]*i
+        testsys2.top = startsys2.top + k[2]*i
+        testsys2.bottom = startsys2.bottom + k[2]*i
+        if a~=j then -- don't test the same thing twice
+          local test = systemnamedistance(testsys1, testsys2)
+          if test < best then
+            best = test
+            bestsys1 = testsys1
+            bestsys2 = testsys2
+            Note("better solution found: 1="..bestsys1.name..":"..bestsys1.left..","..bestsys1.top.." 2="..bestsys2.name..":"..bestsys2.left..","..bestsys2.top.." dist: "..best)
+          end
+        end
+      end
+    end
+  end
+  Note("best solution found: 1="..bestsys1.name..":"..bestsys1.left..","..bestsys1.top.." 2="..bestsys2.name..":"..bestsys2.left..","..bestsys2.top.." dist: "..best)
+  return bestsys1, bestsys2
+end
+
+function systemnamedistance(sys1, sys2)
+  return sysdistance(sys1) + sysdistance(sys2)
+end
+   
+
+function sysdistance(sys)
+  local bx = (sys.left + ((sys.right-sys.left)/2))
+  local by = (sys.top + ((sys.bottom-sys.top)/2))
+  return math.sqrt(((sys.x-bx)*(sys.x-bx))+((sys.y-by)*(sys.y-by)))
+end
+  
 function drawWindow(name, line, args)
 
 	WindowRectOp (win, miniwin.rect_fill, 0, 0, 800, 600, ColourNameToRGB("black"))  -- draw blank rectangle to "erase" window contents
@@ -335,32 +392,39 @@ function haveCoords()
   currentSystem = getmsdp("SHIPSYSNAME")
   currentPlanet = getmsdp("PLANET")
   
-  if (startx ~= nil and starty ~= nil) then -- if we have a starting spot on the map (we should be in hyper)
+  if (startx ~= nil and starty ~= nil and inHyper) then -- if we have a starting spot on the map (we should be in hyper)
+    --Note("passed havecoords 1")
+    --Note("startx: "..startx.." starty: "..starty)
     return true
   end
-  if ((currentX ~= 0 and currentY ~= 0) or currentSystem ~= "" or currentPlanet ~= "") then -- if we are in regular space
+  if (currentX ~= 0 or currentY ~= 0 or currentSystem ~= "" or currentPlanet ~= "") then -- if we are in regular space
+    --Note("passed havecoords 2")
     return true
   end -- we arent anywhere! abort!!
   return false
 end
 
 function drawCoords()
-  if ((currentX ~= 0) and (currentY ~= 0)) then -- our coords are in the x,y form
+  if currentX ~= 0 or currentY ~= 0 then -- our coords are in the x,y form
+    --Note("passed drawcoords 1")
     realx = scaleXCoord(currentX)
     realy = scaleYCoord(currentY)
   else  -- not x,y coords
     for k, v in pairs(systems) do
       if currentSystem ~= "" and (string.lower(v.name) == string.lower(currentSystem)) then -- scroll planet list and see if our current system matches one of the system names
+        --Note("passed drawcoords 2")
         realx = scaleXCoord(v.x)
         realy = scaleYCoord(v.y)
       elseif currentPlanet ~= "" and (string.lower(v.planet) == string.lower(currentPlanet)) then -- scroll planet list and see if our current planet matches one of the planet names
+        --Note("passed drawcoords 3")
         realx = scaleXCoord(v.x)
         realy = scaleYCoord(v.y)
       end
     end
   end
-  WindowCircleOp(win, 1, realx-(shipsize/2), realy-(shipsize/2), realx+(shipsize/2), realy+(shipsize/2), ColourNameToRGB("red"), 0, 0, ColourNameToRGB("red"), 0)
-  --WindowText (win, "f", string.format("%.0f,%.0f",realx,realy), realx-30, realy+5, 0, 0, ColourNameToRGB ("white"), false)
+  if not inHyper then
+    WindowCircleOp(win, 1, realx-(shipsize/2), realy-(shipsize/2), realx+(shipsize/2), realy+(shipsize/2), ColourNameToRGB("red"), 0, 0, ColourNameToRGB("red"), 0)
+  end
 end
 
 function haveDestination()
@@ -369,6 +433,9 @@ function haveDestination()
   local storedY = nil
   
   if storedsystem == "" then -- we didn't get anything from lotjcalc
+    startx = nil
+    starty = nil
+    --Note("failed havedest 1")
     return false
   end
   if string.find(storedsystem, "%([%d-]+%,[%d-]+%)") then -- we got an uncharted coordinate from lotjcalc
@@ -376,9 +443,10 @@ function haveDestination()
     storedX = tonumber(string.sub(storedsystem, ax+1, bx-1))
     local ay, by = string.find(storedsystem, "%,[%d-]+%)", bx, false)
     storedY = tonumber(string.sub(storedsystem, ay+1, by-1))
-    --Note("x,y = "..storedX.. ","..storedY)
     endX = scaleXCoord(storedX)
     endY = scaleYCoord(storedY)
+    --Note("passed havedest 2")
+    --Note("x,y = "..endX.. ","..endY)
     return true
   
   end
@@ -387,10 +455,12 @@ function haveDestination()
     if ((string.lower(v.name) == string.lower(storedsystem)) or (string.lower(v.planet) == string.lower(storedsystem))) then
       endX = scaleXCoord(v.x)
       endY = scaleYCoord(v.y)
+      --Note("passed havedest 3")
       --Note("planet x,y = "..endX..","..endY)
       return true
     end
   end
+  Note("failed havedest 4")
   return false
 end
 
@@ -421,7 +491,9 @@ function drawRoute()
     
   -- draw our route and place on that route
   WindowLine(win, startx, starty, endX, endY, ColourNameToRGB(routeColor), miniwin.pen_solid, 2)
-  WindowCircleOp(win, 1, (((1-percent)*startx)+(percent*endX))-(shipsize/2), (((1-percent)*starty)+(percent*endY))-(shipsize/2), (((1-percent)*startx)+(percent*endX))+(shipsize/2), (((1-percent)*starty)+(percent*endY))+(shipsize/2), ColourNameToRGB("red"), 0, 0, ColourNameToRGB("red"), 0)
+  if inHyper then
+    WindowCircleOp(win, 1, (((1-percent)*startx)+(percent*endX))-(shipsize/2), (((1-percent)*starty)+(percent*endY))-(shipsize/2), (((1-percent)*startx)+(percent*endX))+(shipsize/2), (((1-percent)*starty)+(percent*endY))+(shipsize/2), ColourNameToRGB("red"), 0, 0, ColourNameToRGB("red"), 0)
+  end
 end
 
 function jumpChecking()
@@ -443,6 +515,9 @@ function jumpCompleted()
     routeType = "completed"
   end
 end
+function enterHyper()
+  inHyper = true
+end
 
 function togglePaths(flags, hotspot_id)
 	if(showPaths == true) then
@@ -456,25 +531,19 @@ end
 
 
 function hidePaths(flags, hotspot_id)
-	WindowRectOp (win, miniwin.rect_fill, 0, 0, 800, 600, ColourNameToRGB("black"))  -- draw blank rectangle to "erase" window contents
+	--WindowRectOp (win, miniwin.rect_fill, 0, 0, 800, 600, ColourNameToRGB("black"))  -- draw blank rectangle to "erase" window contents
 	drawWindow() -- redraw window
 	
 end
 
 function scaleXCoord(coord)
-  if coord > 0 then
-    return ((( coord / maxX) * 400) + 390)
-  else
-    return (410 - (( coord / minX) * 400))
-  end
+  local percent = ((coord + math.abs(minX)) / (math.abs(minX)+maxX))*100
+  return ((((100-percent) / 100) * 10) + ((percent) / 100) * 790)
 end
 
 function scaleYCoord(coord)
-  if coord > 0 then
-  	return (300 - ((( coord / maxY) * 300)-10))
-  else
-    return (300 + ((( coord / minY) * 300)-10))
-  end
+  local percent = ((coord + math.abs(minY)) / (math.abs(minY)+maxY))*100
+  return ((((100-percent) / 100) * 590) + ((percent) / 100) * 10)
 end
 
 function onClick(flags, hotspot_id)
@@ -544,6 +613,7 @@ end
 function storePartialJump(name, list, args)
 	if (args[1] and tonumber(args[1]) > 0) then
 		if (totalJump == 0) then
+		  inHyper = true
 			totalJump = tonumber(args[1])
 			EnableTimer("hyperJumpTicker", true)
 		end
@@ -567,6 +637,7 @@ function clearJump()
   endY = nil
 	totalJump = 0
 	partialJump = 0
+	inHyper = false
 	jumpCompleted()
 	EnableTimer("hyperJumpTicker", false)
 	if (visible) then
@@ -593,6 +664,7 @@ function OnPluginBroadcast (msg, id, name, text)
 			key = ""
 			val = ""
 		elseif (msg == 1) and (text == "reload") then
+		  Note("LotJStarMap resetting data.")
 		  msdp = {}
 		end
 	end
