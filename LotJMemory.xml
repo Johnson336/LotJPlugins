@@ -45,7 +45,7 @@ function OnPluginConnect()
 end
 function stripName(name, line, args)
 	assert (args, "nil arg passed to stripName")
-	if not string.find(args.who, " ", 0) then -- avoid saving multi-word names, like armor restrings
+	if not string.find(args.who, " ", 0) and idnum ~= 0 then -- avoid saving multi-word names, like armor restrings
 	  memory[args.who] = {what = args.what, when = os.time()}
 	  Note("Saved ".. args.who .. " description.")
 	end
@@ -184,33 +184,33 @@ local commands = { { name = "memcheck", desc = "Displays all of your saved playe
 function memHelp(name, line, args)
   local found = false
   if args[1] == "" then -- show general help
-    ColourNote("green","black","LotJMemory v 1.0 by Johnson. Enter 'memhelp <command>' for more detailed information.")
+    ColourNote("white","black","LotJMemory v 1.0 by Johnson. Enter 'memhelp <command>' for more detailed information.")
     for a, b in ipairs(commands) do -- commands
       local command = b
-      ColourNote("green","black",string.format("%-20s", command.name).." : "..command.desc)
+      ColourNote("silver","black",string.format("%-20s", command.name).." : "..command.desc)
     end
     Note("")
   else -- entered something
-    ColourNote("green","black","LotJMemory v 1.0 by Johnson. Enter 'memhelp' for more general information.")
+    ColourNote("white","black","LotJMemory v 1.0 by Johnson. Enter 'memhelp' for more general information.")
 
     for a, b in ipairs(commands) do -- scroll through commands
     
       if (string.lower(b.name) == string.lower(Trim(args[1]))) then -- found our argument
         found = true
-        ColourNote("green","black",b.name .. " : " .. b.desc)
-        ColourNote("green","black","Available arguments:")
+        ColourNote("silver","black",b.name .. " : " .. b.desc)
+        ColourNote("silver","black","Available arguments:")
         if #b.args == 0 then -- no arguments
-          ColourNote("green","black","   None.")
+          ColourNote("silver","black","   None.")
         else -- arguments to print
           for i, k in ipairs(b.args) do
-            ColourNote("green","black",string.format("%20s", k.name).." : " .. k.desc)
+            ColourNote("silver","black",string.format("%20s", k.name).." : " .. k.desc)
           end -- end print arguments
         end -- end no arguments
         Note("")
       end -- end found command
     end -- end scroll commands
     if not found then
-      ColourNote("green","black","Command '"..args[1].."' not found.")
+      ColourNote("silver","black","Command '"..args[1].."' not found.")
     end
   end -- end no input
 end
