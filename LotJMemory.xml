@@ -15,6 +15,7 @@ LotJMemory v 1.0 by Johnson. Enter 'memhelp' for general command information.
 <!--   Triggers    --> 
 <triggers>
   <trigger name="chartochar" match="\A(?P<who>.+?) (has come cuts|has a few bruises|is slightly scratched|is in perfect health)\.\n(?P=who) is (?P<what>.+?)\.\Z" script="stripName" regexp="y" enabled="y" lines_to_match="2" multi_line="y" group="LotJMemory" sequence="100" />
+  <trigger name="idgrab" match="^Player id (?P<idnum>.+?) Player home (.*)$" script="storeID" group="LotJMemory" regexp="y" enabled="y" sequence="100" />
   </triggers>
 <!--   Aliases    --> 
 <aliases>
@@ -31,16 +32,30 @@ LotJMemory v 1.0 by Johnson. Enter 'memhelp' for general command information.
 <![CDATA[
 require "serialize"
 memory = {}
-loadstring(GetVariable("memory") or "")()
+local idnum = 0
+loadstring(GetVariable("memory"..idnum) or "")()
 
 require "tprint"
 
+function OnPluginConnect()
+  SaveState()
+  idnum = 0
+  memory = {}
+  loadstring(GetVariable("memory"..idnum) or "")()
+end
 function stripName(name, line, args)
 	assert (args, "nil arg passed to stripName")
 	if not string.find(args.who, " ", 0) then -- avoid saving multi-word names, like armor restrings
-	  memory[args.who] = {what = args.what, when = os.date("%x", os.time())}
+	  memory[args.who] = {what = args.what, when = os.time()}
 	  Note("Saved ".. args.who .. " description.")
 	end
+end
+
+function storeID(name, line, args)
+  SaveState()
+  idnum = args.idnum
+  memory = {}
+  loadstring(GetVariable("memory"..idnum) or "")()
 end
 
 function memClear()
@@ -90,35 +105,67 @@ function memCheck(name, line, args)
   assert (args, "nil arg passed to memCheck")
   --tprint(memory)
   local i = 0
+  local found = false
+  local name = ""
   
   if args[1] ~= "" then
     name = Trim(args[1])
-    for k, v in pairs(memory) do
-      if string.lower(name) == string.lower(k) then
-        ColourNote("green","black","You last saw "..k.." on "..v.when..". They were "..v.what)
+    if name == "full" then
+      ColourNote("silver","black","Full Dub/Greet description memory:")
+      ColourNote("silver","black","   Greet/dub         : LastSeen : Player description")
+      for k, v in pairs(memory) do
+        i = i + 1
+        ColourNote("gray","black",string.format("%-20s : %8s : %-20s", k, os.date("%x", tonumber(v.when)), v.what))
+      end
+      ColourNote("silver","black","You can remember a total of "..i.." dub/greet descriptions.")
+    else
+      for k, v in pairs(memory) do
+        if string.find(string.lower(k), string.lower(name), 0) or string.find(string.lower(v.what), string.lower(name), 0) then
+          local daysago = string.format("%1.0f", os.difftime(os.time(), tonumber(v.when))/86400)
+          ColourTell("silver","black","You last saw ")
+          ColourTell("cyan","black",k)
+          ColourTell("silver","black"," on ")
+          ColourTell("cyan","black",os.date("%x", tonumber(v.when)))
+          ColourTell("silver","black","(")
+          ColourTell("cyan","black",daysago)
+          ColourTell("silver","black"," days ago). They were "..v.what..".")
+          Note("")
+          found = true
+        end
+      end
+      if not found then
+        ColourNote("red","black",name.." not found in memory.")
         return
       end
     end
-    ColourNote("red","black",name.." not found in memory.")
-    return
+  else
+    ColourNote("silver","black","Dub/Greet description memory:")
+    for k, v in pairs(memory) do
+      i=i+1
+      local daysago = string.format("%1.0f", os.difftime(os.time(), tonumber(v.when))/86400)
+      ColourTell("gray","black",string.format("%-20s ", k))
+      ColourTell("cyan","black",string.format("%-3d ", daysago))
+      if math.fmod(i,3) == 0 then
+        Note("")
+      end
+    end
+    if math.fmod(i,3) ~= 0 then
+      Note("")
+    end
+    ColourNote("silver","black","You can remember a total of "..i.." dub/greet descriptions.")
   end
-  ColourNote("lime","black","Stored memory information:")
-  ColourNote("silver","black","   Greet/dub         : LastSeen : Player description")
-  for k, v in pairs(memory) do
-    i = i + 1
-    ColourNote("green","black",string.format("%-20s : %8s : %-20s", k, v.when, v.what))
-  end
-  ColourNote("silver","black","You can remember a total of "..i.." descriptions.")
+  Note("")
 end
 
 function OnPluginSaveState()
-  SetVariable("memory", serialize.save("memory"))
+  SetVariable("memory"..idnum, serialize.save("memory"))
 end
 
 -- define our help command structure
 local commands = { { name = "memcheck", desc = "Displays all of your saved player descriptions.",
-                         args = { { name = "<none>", desc = "Lists your entire description memory."},
-                                  { name = "<argument1>", desc = "Searches for a specific person's description in your memory."}, }
+                         args = { { name = "<none>", desc = "Lists shortened description memory."},
+                                  { name = "full", desc = "Lists every description memory in full detail."},
+                                  { name = "<argument1>", desc = "Searches your memory for the given keyword. Can be any part of the name or description to match."}, }
                           },
                { name = "memrename", desc = "Used to rename a saved player description.",
                         args = { { name = "<argument1> <argument2>", desc = "Keep argument1's description and last-seen date, but give it argument2's name."}, }
