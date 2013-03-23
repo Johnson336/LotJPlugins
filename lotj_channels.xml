@@ -22,6 +22,7 @@ USAGE:
 
    chats show       : show chats window
    chats hide       : hide chats window
+   resetchat        : return chat window to default settings
   
    Left-click a line to copy it to the clipboard
    Left-click-and-drag title bar to move window
@@ -34,200 +35,56 @@ USAGE:
 
 --- Begin IC chat grabs
 
-  <trigger
-   enabled="n"
-   name="say1"
-   match="*say*'*'"
-   regexp="n"
-   script="untagged_info"
-   sequence="100"
-  >
-  </trigger>  
-  
-  <trigger
-   enabled="n"
-   name="say2"
-   match="'*'*say*"
-   regexp="n"
-   script="untagged_info"
-   sequence="100"
-  >
-  </trigger>
-    <trigger
-   enabled="n"
-   name="translation"
-   match="* buzzes *"
-   regexp="n"
-   script="untagged_info"
-   sequence="100"
-  >
-  </trigger>
-  
-  <trigger
-   enabled="n"
-   name="ask1"
-   match="*ask*'*'"
-   regexp="n"
-   script="untagged_info"
-   sequence="100"
-  >
-  </trigger>  
-  
-  <trigger
-   enabled="n"
-   name="ask2"
-   match="'*'*ask*"
-   regexp="n"
-   script="untagged_info"
-   sequence="100"
-  >
-  </trigger>
-  
-  <trigger
-   enabled="n"
-   name="exclaim1"
-   match="*exclaim*'*'"
-   regexp="n"
-   script="untagged_info"
-   sequence="100"
-  >
-  </trigger>  
-  
-  <trigger
-   enabled="n"
-   name="exclaim2"
-   match="'*'*exclaim*"
-   regexp="n"
-   script="untagged_info"
-   sequence="100"
-  >
-  </trigger>
-
-  <trigger
-   enabled="n"
-   name="clan"
-   match="*{*}<*>[*]*:*"
-   regexp="n"
-   script="untagged_info"
-   sequence="100"
-  >
-  </trigger>
-
-  <trigger
-   enabled="n"
-   name="comms"
-   match="CommNet*:*"
-   regexp="n"
-   script="untagged_info"
-   sequence="100"
-  >
-  </trigger>
-
-  <trigger
-   enabled="n"
-   name="broadcast"
-   match="Broadcasting Network*:*"
-   regexp="n"
-   script="untagged_info"
-   sequence="100"
-  >
-  </trigger>
+  <trigger enabled="n" name="say1" match="*say*'*'" regexp="n" omit_from_output="n" script="untagged_info" sequence="100" />
+  <trigger enabled="n" name="say2" match="'*'*say*" regexp="n" omit_from_output="n" script="untagged_info" sequence="100" />
+  <trigger enabled="n" name="translation" match="* buzzes *" regexp="n" omit_from_output="n" script="untagged_info" sequence="100" />
+  <trigger enabled="n" name="ask1" match="*ask*'*'" regexp="n" omit_from_output="n" script="untagged_info" sequence="100" />
+  <trigger enabled="n" name="ask2" match="'*'*ask*" regexp="n" omit_from_output="n" script="untagged_info" sequence="100" />
+  <trigger enabled="n" name="exclaim1" match="*exclaim*'*'" regexp="n" omit_from_output="n" script="untagged_info" sequence="100" />
+  <trigger enabled="n" name="exclaim2" match="'*'*exclaim*" regexp="n" omit_from_output="n" script="untagged_info" sequence="100" />
+  <trigger enabled="n" name="clan" match="*{*}<*>[*]*:*" regexp="n" omit_from_output="n" script="untagged_info" sequence="100" />
+  <trigger enabled="n" name="clan2" match="$\[(Outgoing|Incoming) Transmission (to|from) (.*)\](.*)" regexp="y" omit_from_output="n" script="untagged_info" sequence="100" />
+  <trigger enabled="n" name="comms" match="CommNet*:*" regexp="n" omit_from_output="n" script="untagged_info" sequence="100" />
+  <trigger enabled="n" name="broadcast" match="Broadcasting Network*:*" regexp="n" omit_from_output="n" script="untagged_info" sequence="100" />
   
   --- begin OOC chat grabs
   
-  <trigger
-   enabled="n"
-   name="immchat"
-   match="( IMM | CHAT )*"
-   regexp="n"
-   script="untagged_info"
-   sequence="100"
-  >
-  </trigger>
-
-  <trigger
-   enabled="n"
-   name="rpcchat"
-   match="(R|P|C)*"
-   regexp="n"
-   script="untagged_info"
-   sequence="100"
-  >
-  </trigger>
-  <trigger
-   enabled="n"
-   name="ooc"
-   match="(OOC) *"
-   regexp="n"
-   script="untagged_info"
-   sequence="100"
-  >
-  </trigger>
-
-  <trigger
-   enabled="n"
-   name="newbie"
-   match="(NEWBIE) *"
-   regexp="n"
-   script="untagged_info"
-   sequence="100"
-  >
-  </trigger>
-
-  <trigger
-   enabled="n"
-   name="immooc"
-   match="(IMM) *"
-   regexp="n"
-   script="untagged_info"
-   sequence="100"
-  >
-  </trigger>
-
-  <trigger
-   enabled="n"
-   name="rpcooc"
-   match="(RPC) *"
-   regexp="n"
-   script="untagged_info"
-   sequence="100"
-  >
-  </trigger>
+  <trigger enabled="n" name="immchat" match="( IMM | CHAT )*" regexp="n" omit_from_output="n" script="untagged_info" sequence="100" />
+  <trigger enabled="n" name="rpcchat" match="(R|P|C)*" regexp="n" omit_from_output="n" script="untagged_info" sequence="100" />
+  <trigger enabled="n" name="ooc" match="(OOC) *" regexp="n" omit_from_output="n" script="untagged_info" sequence="100" />
+  <trigger enabled="n" name="newbie" match="(NEWBIE) *" regexp="n" omit_from_output="n" script="untagged_info" sequence="100" />
+  <trigger enabled="n" name="immooc" match="(IMM) *" regexp="n" omit_from_output="n" script="untagged_info" sequence="100" />
+  <trigger enabled="n" name="rpcooc" match="(RPC) *" regexp="n" omit_from_output="n" script="untagged_info" sequence="100" />
+  <trigger enabled="n" name="immnet" match="ImmNet[*]*" regexp="n" omit_from_output="n" script="untagged_info" sequence="100" />
+  <trigger enabled="n" name="councilnet" match="CouncilNet[*]*" regexp="n" omit_from_output="n" script="untagged_info" sequence="100" />
   
+  -- blank line gag
+  <trigger enabled="n" match="^$" regexp="y" name="say_end_gag" group="end_gag" omit_from_output="y" sequence="100" send_to="12" >
+<send>EnableTriggerGroup("end_gag", false)</send></trigger>
+  <trigger enabled="n" match="^$" regexp="y" name="clan_end_gag" group="end_gag" omit_from_output="y" sequence="100" send_to="12" >
+<send>EnableTriggerGroup("end_gag", false)</send></trigger>
+  <trigger enabled="n" match="^$" regexp="y" name="comms_end_gag" group="end_gag" omit_from_output="y" sequence="100" send_to="12" >
+<send>EnableTriggerGroup("end_gag", false)</send></trigger>
+  <trigger enabled="n" match="^$" regexp="y" name="immchat_end_gag" group="end_gag" omit_from_output="y" sequence="100" send_to="12" >
+<send>EnableTriggerGroup("end_gag", false)</send></trigger>
+  <trigger enabled="n" match="^$" regexp="y" name="rpcchat_end_gag" group="end_gag" omit_from_output="y" sequence="100" send_to="12" >
+<send>EnableTriggerGroup("end_gag", false)</send></trigger>
+  <trigger enabled="n" match="^$" regexp="y" name="ooc_end_gag" group="end_gag" omit_from_output="y" sequence="100" send_to="12" >
+<send>EnableTriggerGroup("end_gag", false)</send></trigger>
+  <trigger enabled="n" match="^$" regexp="y" name="newbie_end_gag" group="end_gag" omit_from_output="y" sequence="100" send_to="12" >
+<send>EnableTriggerGroup("end_gag", false)</send></trigger>
+  <trigger enabled="n" match="^$" regexp="y" name="immnet_end_gag" group="end_gag" omit_from_output="y" sequence="100" send_to="12" >
+<send>EnableTriggerGroup("end_gag", false)</send></trigger>
+  <trigger enabled="n" match="^$" regexp="y" name="councilnet_end_gag" group="end_gag" omit_from_output="y" sequence="100" send_to="12" >
+<send>EnableTriggerGroup("end_gag", false)</send></trigger>
   
-
-
-
-
-
 </triggers>
 
 <aliases>
 
-<alias
-   match="resetchat"
-   enabled="y"
-   sequence="100"
-   ignore_case="y"
-   script="reset_lotj"
-></alias>
-
-<alias
-   script="chat_show"
-   match="chats show"
-   enabled="y"
-   sequence="100"
-   ignore_case="y"
-></alias>
-
-<alias
-   script="chat_hide"
-   match="chats hide"
-   enabled="y"
-   sequence="100"
-   ignore_case="y"
-></alias>
-
+<alias match="resetchat" enabled="y" sequence="100" ignore_case="y" script="reset_lotj" />
+<alias script="chat_show" match="chats show" enabled="y" sequence="100" ignore_case="y" />
+<alias script="chat_hide" match="chats hide" enabled="y" sequence="100" ignore_case="y" />
 </aliases>
 
 <script>
@@ -301,9 +158,23 @@ show_ooc = tonumber(GetVariable("show_ooc")) or 1
 show_newbie = tonumber(GetVariable("show_newbie")) or 1
 show_immchat = tonumber(GetVariable("show_immchat")) or 1
 show_rpcchat = tonumber(GetVariable("show_rpcchat")) or 1
+show_immnet = tonumber(GetVariable("show_immnet")) or 1
+show_councilnet = tonumber(GetVariable("show_councilnet")) or 1
+
+say_echo = tonumber(GetVariable("say_echo")) or 1
+clan_echo = tonumber(GetVariable("clan_echo")) or 1
+comms_echo = tonumber(GetVariable("comms_echo")) or 1
+ooc_echo = tonumber(GetVariable("ooc_echo")) or 1
+newbie_echo = tonumber(GetVariable("newbie_echo")) or 1
+immchat_echo = tonumber(GetVariable("immchat_echo")) or 1
+rpcchat_echo = tonumber(GetVariable("rpcchat_echo")) or 1
+immnet_echo = tonumber(GetVariable("immnet_echo")) or 1
+councilnet_echo = tonumber(GetVariable("councilnet_echo")) or 1
+
+
+
 SetTriggerOption("say1", "enabled", show_say)
 SetTriggerOption("say2", "enabled", show_say)
-SetTriggerOption("buzz", "enabled", show_say)
 SetTriggerOption("ask1", "enabled", show_say)
 SetTriggerOption("ask2", "enabled", show_say)
 SetTriggerOption("exclaim1", "enabled", show_say)
@@ -318,23 +189,26 @@ SetTriggerOption("ooc", "enabled", show_ooc)
 SetTriggerOption("newbie", "enabled", show_newbie)
 SetTriggerOption("immooc", "enabled", show_ooc)
 SetTriggerOption("rpcooc", "enabled", show_ooc)
+SetTriggerOption("immnet", "enabled", show_immnet)
+SetTriggerOption("councilnet", "enabled", show_councilnet)
 
+SetTriggerOption("say1", "omit_from_output", say_echo)
+SetTriggerOption("say2", "omit_from_output", say_echo)
+SetTriggerOption("ask1", "omit_from_output", say_echo)
+SetTriggerOption("ask2", "omit_from_output", say_echo)
+SetTriggerOption("exclaim1", "omit_from_output", say_echo)
+SetTriggerOption("exclaim2", "omit_from_output", say_echo)
+SetTriggerOption("clan", "omit_from_output", clan_echo)
+SetTriggerOption("comms", "omit_from_output", comms_echo)
+SetTriggerOption("ooc", "omit_from_output", ooc_echo)
+SetTriggerOption("immooc", "omit_from_output", ooc_echo)
+SetTriggerOption("rpcooc", "omit_from_output", ooc_echo)
+SetTriggerOption("newbie", "omit_from_output", newbie_echo)
+SetTriggerOption("immchat", "omit_from_output", immchat_echo)
+SetTriggerOption("rpcchat", "omit_from_output", rpcchat_echo)
+SetTriggerOption("immnet", "omit_from_output", immnet_echo)
+SetTriggerOption("councilnet", "omit_from_output", councilnet_echo)
 
-
-
---show_donations = tonumber(GetVariable("show_donations")) or 1
---info_on = tonumber(GetVariable("info_on")) or 0
---global_quest_on = tonumber(GetVariable("global_quest_on")) or 0
---remort_auction_on = tonumber(GetVariable("remort_auction_on")) or 0
---pray_on = tonumber(GetVariable("pray_on")) or 1
---warfare_on = tonumber(GetVariable("warfare_on")) or 0
---SetTriggerOption("warfare", "enabled", warfare_on)
---SetTriggerOption("info", "enabled", info_on)
---SetTriggerOption("raidinfo", "enabled", info_on)
---SetTriggerOption("claninfo", "enabled", info_on)
---SetTriggerOption("global_quest", "enabled", global_quest_on)
---SetTriggerOption("remort_auction", "enabled", remort_auction_on)
---SetTriggerOption("pray", "enabled", pray_on)
 
 function reset_lotj()
    width = default_width
@@ -350,9 +224,6 @@ function reset_lotj()
 end
 
 function ResizeMoveCallback ()
-   --if GetPluginVariable("c293f9e7f04dde889f65cb90", "lock_down_miniwindows") == "1" then
-   --   return
-   --end
    posx, posy = WindowInfo(win, 17), WindowInfo(win, 18)
    width = width+posx-startx
    startx = posx
@@ -388,11 +259,7 @@ end
 win = GetPluginID()
 require "checkplugin"
 function OnPluginListChanged ()
-   --do_plugin_check_now ("abc1a0944ae4af7586ce88dc", "aard_repaint_buffer") -- check we have the repaint buffer plugin
    do_plugin_check_now ("e2a1af0b5e462318bb423764", "lotj_repaint_buffer") -- check we have the repaint buffer
-   --do_plugin_check_now ("3e7dedbe37e44942dd46d264", "aard_GMCP_handler")    -- check we have GMCP plugin
-   --do_plugin_check_now("462b665ecb569efbf261422f", "aard_miniwindow_z_order_monitor")    -- check we have z order plugin
-   --do_plugin_check_now("55616ea13339bc68e963e1f8", "aard_chat_echo") -- check we have the echo plugin
 end -- OnPluginListChanged
 
 function OnPluginInstall ()
@@ -515,8 +382,7 @@ function init (firstTime)
 end
 
 function OnPluginConnect ()
-   -- first time after connect, get tags right
-   --Send_GMCP_Packet("rawcolor on")
+
 end --  OnPluginConnect
 
 function OnPluginClose ()
@@ -538,21 +404,15 @@ end -- OnPluginEnable
 
 require "serialize"
 function OnPluginSaveState()
-   -- save window current location for next time  
-   SetVariable("enabled", tostring (GetPluginInfo (GetPluginID(), 17)))
-   movewindow.save_state(win)
+  -- save window current location for next time  
+  SetVariable("enabled", tostring (GetPluginInfo (GetPluginID(), 17)))
+  movewindow.save_state(win)
    
-   SetVariable("font_name", font_name)
-   SetVariable("font_size", font_size)
-   SetVariable("date_format", date_format)
-   SetVariable("WINDOW_WIDTH", width)
-   SetVariable("WINDOW_HEIGHT", height)
- --  SetVariable("info_on", info_on)
- --  SetVariable("global_quest_on", global_quest_on)
- --  SetVariable("remort_auction_on", remort_auction_on)
- --  SetVariable("pray_on", pray_on)
- --  SetVariable("warfare_on", warfare_on)
-
+  SetVariable("font_name", font_name)
+  SetVariable("font_size", font_size)
+  SetVariable("date_format", date_format)
+  SetVariable("WINDOW_WIDTH", width)
+  SetVariable("WINDOW_HEIGHT", height)
 	SetVariable("show_say", show_say)
 	SetVariable("show_clan", show_clan)
 	SetVariable("show_broadcast", show_broadcast)
@@ -562,15 +422,23 @@ function OnPluginSaveState()
 	SetVariable("show_newbie", show_newbie)
 	SetVariable("show_immchat", show_immchat)
 	SetVariable("show_rpcchat", show_rpcchat)
- 
- 
- 
-   SetVariable("log_to_file", log_to_file)
-   SetVariable("log_filename", log_filename)
-   SetVariable("log_colour_codes", log_colour_codes)
-   SetVariable("log_timestamps", log_timestamps)
-   --SetVariable("show_donations", show_donations)
-   SetVariable("channels_table", serialize.save("channels_table"))
+	SetVariable("show_immnet", show_immnet)
+	SetVariable("show_councilnet", show_councilnet)
+	SetVariable("say_echo", say_echo)
+	SetVariable("clan_echo", clan_echo)
+	SetVariable("comms_echo", comms_echo)
+	SetVariable("ooc_echo", ooc_echo)
+	SetVariable("newbie_echo", newbie_echo)
+	SetVariable("immchat_echo", immchat_echo)
+	SetVariable("rpcchat_echo", rpcchat_echo)
+	SetVariable("immnet_echo", immnet_echo)
+	SetVariable("councilnet_echo", councilnet_echo)
+  SetVariable("log_to_file", log_to_file)
+  SetVariable("log_filename", log_filename)
+  SetVariable("log_colour_codes", log_colour_codes)
+  SetVariable("log_timestamps", log_timestamps)
+  --SetVariable("show_donations", show_donations)
+  SetVariable("channels_table", serialize.save("channels_table"))
 end --  OnPluginSaveState
 
 function OnPluginDisable()
@@ -963,7 +831,34 @@ function storeFromOutside(string)
 end
 
 function untagged_info (name, line, wildcards, styles)
-   stampAndStore(styles)
+  stampAndStore(styles)
+  if say_echo == 1 then
+  EnableTrigger("say_end_gag", true)
+  end
+  if clan_echo == 1 then
+  EnableTrigger("clan_end_gag", true)
+  end
+  if comms_echo == 1 then
+  EnableTrigger("comms_end_gag", true)
+  end
+  if immchat_echo == 1 then
+  EnableTrigger("immchat_end_gag", true)
+  end
+  if rpcchat_echo == 1 then
+  EnableTrigger("rpcchat_end_gag", true)  
+  end
+  if ooc_echo == 1 then
+  EnableTrigger("ooc_end_gag", true)
+  end
+  if newbie_echo == 1 then
+  EnableTrigger("newbie_end_gag", true)
+  end
+  if immnet_echo == 1 then
+  EnableTrigger("immnet_end_gag", true)
+  end
+  if councilnet_echo == 1 then
+  EnableTrigger("councilnet_end_gag", true)
+  end
 end -- untagged info
 
 function OnPluginBroadcast (msg, id, name, text)
@@ -1219,7 +1114,7 @@ end -- function chat_hide
 require "pairsbykeys"
 
 --local init_channel_names = {"advice","answer","auction","barter","claninfo","clantalk","curse","debate","dtell","ftalk","gametalk","gclan","gossip","gratz","gsocial","gtell","helper","immtalk","lasertag","ltalk","market","mobsay","music","mxit","newbie","nobletalk","pchat","pokerinfo","ptell","question","quote","racetalk","rauction","rp","say","sports","spouse","tech","tell","tiertalk","trivia","wangrp","wardrums"}
-local init_channel_names = {"Say","Clan","Comms","OOC","Newbie","Immchat","RPCchat"}
+local init_channel_names = {"Say","Clan","Comms","OOC","Newbie","Immchat","RPCchat","ImmNet","CouncilNet"}
 channels_table = {}
 loadstring(GetVariable("channels_table") or "")()
 
@@ -1251,24 +1146,49 @@ function right_click_menu (hotspot_id)
    end
    menustring = menustring.."Copy Selected Without Colors|Copy Selected|Copy All|-|Change Font"
    menustring = menustring .. "|>Timestamp|"..((date_format=="" and "+") or "").."No Timestamps|"..((date_format=="[%d %b %H:%M:%S] " and "+") or "").."30 Aug 13:29:49|"..((date_format=="[%d %b %I:%M:%S%p] " and "+") or "").."30 Aug 01:20:12PM|"..((date_format=="[%H:%M:%S] " and "+") or "").."13:29:08|"..((date_format=="[%I:%M:%S%p] " and "+") or "").."1:22:06 PM|<"
-
-   menustring = menustring .. "|Customize Channels"
-  -- menustring = menustring .. "|>Capture Other Info|"..((info_on==1 and "+") or "").."INFO:|"..((global_quest_on==1 and "+") or "").."Global Quest:|"..((remort_auction_on==1 and "+") or "").."Remort Auction:|"..((show_donations==1 and "+") or "").."Clan Donations|"..((pray_on==1 and "+") or "").."Pray|"..((warfare_on==1 and "+") or "").."WARFARE:|".."<|-"
+   
+   
+   menustring = menustring .. "|>Customize Channels|"..
+      ((show_say==1 and "+") or "")..
+      "Say|"..
+      ((show_clan==1 and "+") or "")..
+      "Clan|"..
+      ((show_comms==1 and "+") or "")..
+      "Comms|"..
+      ((show_immchat==1 and "+") or "")..
+      "ImmChat|"..
+      ((show_rpcchat==1 and "+") or "")..
+      "RpcChat|"..
+      ((show_ooc==1 and "+") or "")..
+      "OOC|"..
+      ((show_newbie==1 and "+") or "")..
+      "Newbie|"..
+      ((show_immnet==1 and "+") or "")..
+      "ImmNet|"..
+      ((show_councilnet==1 and "+") or "")..
+      "CouncilNet|"..
+      "<|-"
+      
    
   menustring = menustring .. "|>Capture Other Info|"..
   		((show_broadcast==1 and "+") or "")..
   		"Broadcast|"..
   		((show_translation==1 and "+") or "")..
   		"Translation Buzz|"..
-  	--((show_say==1 and "+") or "")..
-  	--"Say:|"..
-  	--((show_clan==1 and "+") or "")..
-  	--"Clan:|"..
-  	--((show_comms==1 and "+") or "")..
-  	--"Comms:|"..
-  	--((show_ooc==1 and "+") or "")..
-  	--"OOC|"..
   	"<|-"  
+  	
+  menustring = menustring .. "|>Echo Channels in Main Window|"..
+                              ((say_echo==0 and "+") or "").. "Say|"..
+                              ((clan_echo==0 and "+") or "").. "Clan|"..
+                              ((comms_echo==0 and "+") or "").. "Comms|"..
+                              ((immchat_echo==0 and "+") or "").. "ImmChat|"..
+                              ((rpcchat_echo==0 and "+") or "").. "RpcChat|"..
+                              ((ooc_echo==0 and "+") or "").. "OOC|"..
+                              ((newbie_echo==0 and "+") or "").. "Newbie|"..
+                              ((immnet_echo==0 and "+") or "").. "ImmNet|"..
+                              ((councilnet_echo==0 and "+") or "").. "CouncilNet|"..
+                              "<|-"
+                              
   
   -- if (IsPluginInstalled("55616ea13339bc68e963e1f8")) then
   --    info_echo = not GetPluginTriggerInfo ("55616ea13339bc68e963e1f8", "info", 8)
@@ -1352,111 +1272,199 @@ function right_click_menu (hotspot_id)
          date_format = "[%I:%M:%S%p] "
          ColourNote ("yellow", "", "Timestamps in communication window ENABLED using format like '1:22:06 PM'.")
       elseif numResult == 10+hyperlink_skip then
-         local tbl = {}
-         local defaults = {}
-         local i = 1
-         for k,v in pairsByKeys(channels_table) do
-            tbl[i] = k
-            defaults[i] = v["capture"]
-            i = i+1
-         end
-         local capture_result = utils.multilistbox ("Choose which channels to capture to this communication log window.", "Communication Log Channel Selection", tbl, defaults)
-         if capture_result and next(capture_result) then -- cancel if the list is empty
-            for i,v in ipairs(tbl) do
-               channels_table[v]["capture"] = capture_result[i]
-            end
-         end
+         --local tbl = {}
+         --local defaults = {}
+         --local i = 1
+         --for k,v in pairsByKeys(channels_table) do
+         --   tbl[i] = k
+         --   defaults[i] = v["capture"]
+         --   i = i+1
+         --end
+         --local capture_result = utils.multilistbox ("Choose which channels to capture to this communication log window.", "Communication Log Channel Selection", tbl, defaults)
+         --if capture_result and next(capture_result) then -- cancel if the list is empty
+         --   for i,v in ipairs(tbl) do
+         --      channels_table[v]["capture"] = capture_result[i]
+         --   end
+         --end
+
+	        if show_say == 0 then
+	          ColourNote("yellow","","Say capturing is now ENABLED.")
+	        else
+	          ColourNote("yellow","","Say capturing is now DISABLED.")
+	        end
+	        EnableTrigger("say1", 0 == show_say)
+	        EnableTrigger("say2", 0 == show_say)
+	        EnableTrigger("ask1", 0 == show_say)
+	        EnableTrigger("ask2", 0 == show_say)
+	        EnableTrigger("exclaim1", 0 == show_say)
+	        EnableTrigger("exclaim2", 0 == show_say)
+	        show_say = GetTriggerOption("say1", "enabled")       
       elseif numResult == 11+hyperlink_skip then
+      	if show_clan == 0 then
+      		ColourNote ("yellow", "", "Clan capturing is now ENABLED.")
+      	else
+      		ColourNote ("yellow", "", "Clan capturing is now DISABLED.")
+      	end
+      	EnableTrigger("clan", 0 == show_clan)
+      	EnableTrigger("clan2", 0 == show_clan)
+      	show_clan = GetTriggerOption("clan","enabled")
+      elseif numResult == 12+hyperlink_skip then
+      	if show_comms == 0 then
+      		ColourNote ("yellow", "", "Comms capturing is now ENABLED.")
+      	else
+      		ColourNote ("yellow", "", "Comms capturing is now DISABLED.")
+      	end
+      	EnableTrigger("comms", 0 == show_comms)
+      	show_comms = GetTriggerOption("comms","enabled")
+      elseif numResult == 13+hyperlink_skip then
+      	if show_immchat == 0 then
+      		ColourNote ("yellow", "", "ImmChat capturing is now ENABLED.")
+      	else
+      		ColourNote ("yellow", "", "ImmChat capturing is now DISABLED.")
+      	end
+      	EnableTrigger("immchat", 0 == show_immchat)
+      	show_immchat = GetTriggerOption("immchat","enabled")
+      elseif numResult == 14+hyperlink_skip then
+      	if show_rpcchat == 0 then
+      		ColourNote ("yellow", "", "RPC Chat capturing is now ENABLED.")
+      	else
+      		ColourNote ("yellow", "", "RPC Chat capturing is now DISABLED.")
+      	end
+      	EnableTrigger("rpcchat", 0 == show_rpcchat)
+      	show_rpcchat = GetTriggerOption("rpcchat","enabled")
+      elseif numResult == 15+hyperlink_skip then
+      	if show_ooc == 0 then
+      		ColourNote ("yellow", "", "OOC capturing is now ENABLED.")
+      	else
+      		ColourNote ("yellow", "", "OOC capturing is now DISABLED.")
+      	end
+      	EnableTrigger("immooc", 0 == show_ooc)
+      	EnableTrigger("rpcooc", 0 == show_ooc)
+      	EnableTrigger("ooc", 0 == show_ooc)
+      	show_ooc = GetTriggerOption("ooc","enabled")
+      elseif numResult == 16+hyperlink_skip then
+      	if show_newbie == 0 then
+      		ColourNote ("yellow", "", "Newbie capturing is now ENABLED.")
+      	else
+      		ColourNote ("yellow", "", "Newbie capturing is now DISABLED.")
+      	end
+      	EnableTrigger("newbie", 0 == show_newbie)
+      	show_newbie = GetTriggerOption("newbie","enabled")
+      elseif numResult == 17+hyperlink_skip then
+      	if show_immnet == 0 then
+      		ColourNote ("yellow", "", "ImmNet capturing is now ENABLED.")
+      	else
+      		ColourNote ("yellow", "", "ImmNet capturing is now DISABLED.")
+      	end
+      	EnableTrigger("immnet", 0 == show_immnet)
+      	show_immnet = GetTriggerOption("immnet","enabled")
+      elseif numResult == 18+hyperlink_skip then
+      	if show_councilnet == 0 then
+      		ColourNote ("yellow", "", "CouncilNet capturing is now ENABLED.")
+      	else
+      		ColourNote ("yellow", "", "CouncilNet capturing is now DISABLED.")
+      	end
+      	EnableTrigger("councilnet", 0 == show_councilnet)
+      	show_councilnet = GetTriggerOption("councilnet","enabled")
+      elseif numResult == 19+hyperlink_skip then
       	if show_broadcast == 0 then
-         --if info_on == 0 then
          	ColourNote ("yellow", "", "Broadcast capturing is now ENABLED.")
-         --   ColourNote ("yellow", "", "INFO capturing is now ENABLED.")
         else
-         --   ColourNote ("yellow", "", "INFO capturing is now DISABLED.")
          	ColourNote ("yellow", "", "Broadcast capturing is now DISABLED.")
         end
         EnableTrigger("broadcast", 0 == show_broadcast)
-        ---EnableTrigger("say2", 0 == show_say)
-        ---EnableTrigger("buzz", 0 == show_say)
-        ---EnableTrigger("ask1", 0 == show_say)
-        ---EnableTrigger("ask2", 0 == show_say)
-        ---EnableTrigger("exclaim1", 0 == show_say)
-        ---EnableTrigger("exclaim2", 0 == show_say)
         show_broadcast = GetTriggerOption("broadcast","enabled")
-        	
-         --EnableTrigger("info", 0 == info_on)
-         --EnableTrigger("raidinfo", 0 == info_on)
-         --EnableTrigger("claninfo", 0 == info_on)
-         --info_on = GetTriggerOption("info","enabled")
-      elseif numResult == 12+hyperlink_skip then
+      elseif numResult == 20+hyperlink_skip then
       	if show_translation == 0 then
       		ColourNote ("yellow", "", "Translation Buzz capturing is now ENABLED.")
       	else
       		ColourNote ("yellow", "", "Translation Buzz capturing is now DISABLED.")
       	end
       	EnableTrigger("translation", 0 == show_translation)
-      	show_translation = GetTriggerOption("translation","enabled")
-         --if global_quest_on == 0 then
-         --   ColourNote ("yellow", "", "Global Quest capturing is now ENABLED.")
-         --else
-         --   ColourNote ("yellow", "", "Global Quest capturing is now DISABLED.")
-         --end
-         --EnableTrigger("global_quest", 0 == global_quest_on)
-         --global_quest_on = GetTriggerOption("global_quest","enabled")
-      --elseif numResult == 13+hyperlink_skip then
-		---if show_comms == 0 then
-		---	ColourNote ("yellow", "", "Comms capturing is now ENABLED.")
-		---else
-		---	ColourNote ("yellow", "", "Comms capturing is now DISABLED.")
-		---end
-		---EnableTrigger("comms", 0 == show_comms)
-		---EnableTrigger("broadcast", 0 == show_comms)
-		---show_comms = GetTriggerOption("comms","enabled")
-      
-         --if remort_auction_on == 0 then
-         --   ColourNote ("yellow", "", "Remort Auction capturing is now ENABLED.")
-         --else
-         --   ColourNote ("yellow", "", "Remort Auction capturing is now DISABLED.")
-         --end
-         --EnableTrigger("remort_auction", 0 == remort_auction_on)
-         --remort_auction_on = GetTriggerOption("remort_auction","enabled")
-      --elseif numResult == 14+hyperlink_skip then
-      	---if show_ooc == 0 then
-      	---	ColourNote ("yellow", "", "OOC capturing is now ENABLED.")
-      	---else
-      	---	ColourNote ("yellow", "", "OOC capturing is now DISABLED.")
-      	---end
-      	---EnableTrigger("immchat", 0 == show_immchat)
-      	---EnableTrigger("rpcchat", 0 == show_rpcchat)
-      	---EnableTrigger("ooc", 0 == show_ooc)
-      	---EnableTrigger("newbie", 0 == show_newbie)
-      	---EnableTrigger("immooc", 0 == show_ooc)
-      	---EnableTrigger("rpcooc", 0 == show_ooc)
-      	---show_ooc = GetTriggerOption("ooc","enabled")
-         --if show_donations == 0 then
-         --   ColourNote ("yellow", "", "Clan donation capturing is now ENABLED.")
-         --else
-         --   ColourNote ("yellow", "", "Clan donation capturing is now DISABLED.")
-         --end
-         --show_donations = (((0 == show_donations) and 1) or 0)
-         --SetVariable("show_donations", show_donations)
-      --elseif numResult == 15+hyperlink_skip then
-         --if pray_on == 0 then
-         --   ColourNote ("yellow", "", "Pray capturing is now ENABLED.")
-         --else
-         --   ColourNote ("yellow", "", "Pray capturing is now DISABLED.")
-         --end
-         --EnableTrigger("pray", 0 == pray_on)
-         --pray_on = GetTriggerOption("pray","enabled")      
-      --elseif numResult == 16+hyperlink_skip then
-         --if warfare_on == 0 then
-         --   ColourNote ("yellow", "", "Warfare capturing is now ENABLED.")
-         --else
-         --   ColourNote ("yellow", "", "Warfare capturing is now DISABLED.")
-         --end
-         --EnableTrigger("warfare", 0 == warfare_on)
-         --warfare_on = GetTriggerOption("warfare","enabled") 
+      	show_translation = GetTriggerOption("translation","enabled") 
       end
+      
+      if numResult == 21+hyperlink_skip then
+        if say_echo == 0 then
+          ColourNote("yellow", "", "Say will NOT be shown in the main window.")
+        else
+          ColourNote("yellow", "", "Say will be shown in the main window.")
+        end
+        SetTriggerOption("say1", "omit_from_output", 0 == say_echo)
+        SetTriggerOption("say2", "omit_from_output", 0 == say_echo)
+        SetTriggerOption("ask1", "omit_from_output", 0 == say_echo)
+        SetTriggerOption("ask3", "omit_from_output", 0 == say_echo)
+        SetTriggerOption("exclaim1", "omit_from_output", 0 == say_echo)
+        SetTriggerOption("exclaim2", "omit_from_output", 0 == say_echo)
+        say_echo = GetTriggerOption("say1", "omit_from_output")
+      elseif numResult == 22+hyperlink_skip then
+        if clan_echo == 0 then
+          ColourNote("yellow", "", "Clan will NOT be shown in the main window.")
+        else
+          ColourNote("yellow", "", "Clan will be shown in the main window.")
+        end
+        SetTriggerOption("clan", "omit_from_output", 0 == clan_echo)
+        SetTriggerOption("clan2", "omit_from_output", 0 == clan_echo)
+        clan_echo = GetTriggerOption("clan", "omit_from_output")
+       elseif numResult == 23+hyperlink_skip then
+        if comms_echo == 0 then
+          ColourNote("yellow", "", "Comms will NOT be shown in the main window.")
+        else
+          ColourNote("yellow", "", "Comms will be shown in the main window.")
+        end
+        SetTriggerOption("comms", "omit_from_output", 0 == comms_echo)
+        comms_echo = GetTriggerOption("comms", "omit_from_output")
+      elseif numResult == 24+hyperlink_skip then
+        if immchat_echo == 0 then
+          ColourNote("yellow", "", "ImmChat will NOT be shown in the main window.")
+        else
+          ColourNote("yellow", "", "ImmChat will be shown in the main window.")
+        end
+        SetTriggerOption("immchat", "omit_from_output", 0 == immchat_echo)
+        immchat_echo = GetTriggerOption("immchat", "omit_from_output")
+      elseif numResult == 25+hyperlink_skip then
+        if rpcchat_echo == 0 then
+          ColourNote("yellow", "", "RpcChat will NOT be shown in the main window.")
+        else
+          ColourNote("yellow", "", "RpcChat will be shown in the main window.")
+        end
+        SetTriggerOption("rpcchat", "omit_from_output", 0 == rpcchat_echo)
+        rpcchat_echo = GetTriggerOption("rpcchat", "omit_from_output")
+      elseif numResult == 26+hyperlink_skip then
+        if ooc_echo == 0 then
+          ColourNote("yellow", "", "OOC will NOT be shown in the main window.")
+        else
+          ColourNote("yellow", "", "OOC will be shown in the main window.")
+        end
+        SetTriggerOption("ooc", "omit_from_output", 0 == ooc_echo)
+        SetTriggerOption("immooc", "omit_from_output", 0 == ooc_echo)
+        SetTriggerOption("rpcooc", "omit_from_output", 0 == ooc_echo)
+        ooc_echo = GetTriggerOption("ooc", "omit_from_output")
+      elseif numResult == 27+hyperlink_skip then
+        if newbie_echo == 0 then
+          ColourNote("yellow", "", "Newbie will NOT be shown in the main window.")
+        else
+          ColourNote("yellow", "", "Newbie will be shown in the main window.")
+        end
+        SetTriggerOption("newbie", "omit_from_output", 0 == newbie_echo)
+        newbie_echo = GetTriggerOption("newbie", "omit_from_output")
+      elseif numResult == 28+hyperlink_skip then
+        if immnet_echo == 0 then
+          ColourNote("yellow", "", "ImmNet will NOT be shown in the main window.")
+        else
+          ColourNote("yellow", "", "ImmNet will be shown in the main window.")
+        end
+        SetTriggerOption("immnet", "omit_from_output", 0 == immnet_echo)
+        immnet_echo = GetTriggerOption("immnet", "omit_from_output")
+      elseif numResult == 29+hyperlink_skip then
+        if councilnet_echo == 0 then
+          ColourNote("yellow", "", "CouncilNet will NOT be shown in the main window.")
+        else
+          ColourNote("yellow", "", "CouncilNet will be shown in the main window.")
+        end
+        SetTriggerOption("councilnet", "omit_from_output", 0 == councilnet_echo)
+        councilnet_echo = GetTriggerOption("councilnet", "omit_from_output")
+      end     
       
       --if echo_skip ~= 0 then
       --   if numResult == 17+hyperlink_skip then
@@ -1480,7 +1488,7 @@ function right_click_menu (hotspot_id)
       --   end
       --end
       
-      if numResult == 13+hyperlink_skip+echo_skip then
+      if numResult == 30+hyperlink_skip+echo_skip then
          log_to_file = (((0 == log_to_file) and 1) or 0)
          SetVariable("log_to_file", log_to_file)
          if log_to_file == 0 then
@@ -1488,13 +1496,13 @@ function right_click_menu (hotspot_id)
          else
             ColourNote ("yellow", "", "Logging to file is now ENABLED.")
          end
-      elseif numResult == 14+hyperlink_skip+echo_skip then
+      elseif numResult == 31+hyperlink_skip+echo_skip then
       		local newfile = utils.filepicker ("Choose log file...", "ChatLog.txt", "txt", { txt = "Text log file" }, true )
 				if newfile then
 					log_filename = newfile
 					ColourNote ("yellow", "", "Logging chat to "..log_filename..".")
 				end
-      elseif numResult == 15+hyperlink_skip+echo_skip then
+      elseif numResult == 32+hyperlink_skip+echo_skip then
          log_colour_codes = (((0 == log_colour_codes) and 1) or 0)
          SetVariable("log_colour_codes", log_colour_codes)
          if log_colour_codes == 0 then
@@ -1502,7 +1510,7 @@ function right_click_menu (hotspot_id)
          else
             ColourNote ("yellow", "", "Color codes will be included in the log file.")
          end
-      elseif numResult == 16+hyperlink_skip+echo_skip then
+      elseif numResult == 33+hyperlink_skip+echo_skip then
          log_timestamps = (((0 == log_timestamps) and 1) or 0)
          SetVariable("log_timestamps", log_timestamps)
          if log_timestamps == 0 then
