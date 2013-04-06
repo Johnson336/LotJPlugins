@@ -45,6 +45,8 @@ local systemname = ""
 local coordX = 0
 local coordY = 0
 local coordZ = 0
+SetVariable("planetname", "")
+
 
 local spaceCoords = {}
 
@@ -183,6 +185,10 @@ function setSystem(name, list, args)
 		ColourNote("red", "", "Invalid system name!")
 	end
 
+end
+
+function clearPlanet()
+  SetVariable("planetname", "")
 end
 
 function setCoords(name, list, args)

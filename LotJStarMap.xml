@@ -460,7 +460,7 @@ function haveDestination()
       return true
     end
   end
-  Note("failed havedest 4")
+  --Note("failed havedest 4")
   return false
 end
 
@@ -639,6 +639,7 @@ function clearJump()
 	partialJump = 0
 	inHyper = false
 	jumpCompleted()
+	CallPlugin("b2c06b3dcc775c0ede861316", "clearPlanet", "")
 	EnableTimer("hyperJumpTicker", false)
 	if (visible) then
 		drawWindow()

@@ -59,25 +59,8 @@ USAGE:
   <trigger enabled="n" name="councilnet" match="CouncilNet[*]*" regexp="n" omit_from_output="n" script="untagged_info" sequence="100" />
   
   -- blank line gag
-  <trigger enabled="n" match="^$" regexp="y" name="say_end_gag" group="end_gag" omit_from_output="y" sequence="100" send_to="12" >
+  <trigger enabled="n" match="^$" regexp="y" name="end_gag" group="end_gag" omit_from_output="y" sequence="100" send_to="12" >
 <send>EnableTriggerGroup("end_gag", false)</send></trigger>
-  <trigger enabled="n" match="^$" regexp="y" name="clan_end_gag" group="end_gag" omit_from_output="y" sequence="100" send_to="12" >
-<send>EnableTriggerGroup("end_gag", false)</send></trigger>
-  <trigger enabled="n" match="^$" regexp="y" name="comms_end_gag" group="end_gag" omit_from_output="y" sequence="100" send_to="12" >
-<send>EnableTriggerGroup("end_gag", false)</send></trigger>
-  <trigger enabled="n" match="^$" regexp="y" name="immchat_end_gag" group="end_gag" omit_from_output="y" sequence="100" send_to="12" >
-<send>EnableTriggerGroup("end_gag", false)</send></trigger>
-  <trigger enabled="n" match="^$" regexp="y" name="rpcchat_end_gag" group="end_gag" omit_from_output="y" sequence="100" send_to="12" >
-<send>EnableTriggerGroup("end_gag", false)</send></trigger>
-  <trigger enabled="n" match="^$" regexp="y" name="ooc_end_gag" group="end_gag" omit_from_output="y" sequence="100" send_to="12" >
-<send>EnableTriggerGroup("end_gag", false)</send></trigger>
-  <trigger enabled="n" match="^$" regexp="y" name="newbie_end_gag" group="end_gag" omit_from_output="y" sequence="100" send_to="12" >
-<send>EnableTriggerGroup("end_gag", false)</send></trigger>
-  <trigger enabled="n" match="^$" regexp="y" name="immnet_end_gag" group="end_gag" omit_from_output="y" sequence="100" send_to="12" >
-<send>EnableTriggerGroup("end_gag", false)</send></trigger>
-  <trigger enabled="n" match="^$" regexp="y" name="councilnet_end_gag" group="end_gag" omit_from_output="y" sequence="100" send_to="12" >
-<send>EnableTriggerGroup("end_gag", false)</send></trigger>
-  
 </triggers>
 
 <aliases>
@@ -833,31 +816,31 @@ end
 function untagged_info (name, line, wildcards, styles)
   stampAndStore(styles)
   if say_echo == 1 then
-  EnableTrigger("say_end_gag", true)
+  EnableTrigger("end_gag", true)
   end
   if clan_echo == 1 then
-  EnableTrigger("clan_end_gag", true)
+  EnableTrigger("end_gag", true)
   end
   if comms_echo == 1 then
-  EnableTrigger("comms_end_gag", true)
+  EnableTrigger("end_gag", true)
   end
   if immchat_echo == 1 then
-  EnableTrigger("immchat_end_gag", true)
+  EnableTrigger("end_gag", true)
   end
   if rpcchat_echo == 1 then
-  EnableTrigger("rpcchat_end_gag", true)  
+  EnableTrigger("end_gag", true)  
   end
   if ooc_echo == 1 then
-  EnableTrigger("ooc_end_gag", true)
+  EnableTrigger("end_gag", true)
   end
   if newbie_echo == 1 then
-  EnableTrigger("newbie_end_gag", true)
+  EnableTrigger("end_gag", true)
   end
   if immnet_echo == 1 then
-  EnableTrigger("immnet_end_gag", true)
+  EnableTrigger("end_gag", true)
   end
   if councilnet_echo == 1 then
-  EnableTrigger("councilnet_end_gag", true)
+  EnableTrigger("end_gag", true)
   end
 end -- untagged info
 
