@@ -5,6 +5,19 @@ LotJ MUSHclient Plugins
 
 This directory contains LotJ MUSHclient plugins. Updates for individual files as follows:
 
+LotJFlight.xml -
+  -Added squadron home ship labeling. Saves the ship that launched a fighter and displays that information when 
+   the fighter is seen via look, proximity, radar, or fleetradar in the format:
+   TIE-Fighter 'TwentySeven'  Prox: 0->[MotherShip]
+   
+LotJMemory.xml - 
+v1.0 -
+  -Released this plugin to save description information of people you look at. Each character has a unique memory
+   which must be loaded by typing 'score' when you log in. Memory can be viewed in short format via 'memcheck' or 
+   in long format via 'memcheck full'. You can search for a specific description or dub/greet via 'memcheck <name>'.
+   Example: 'memcheck human'
+   You last saw Hummale04 on 04/02/13(7 days ago). They were A strong, good looking white skinned Human male.
+
 LotJCalc.xml -
 v1.06
   -Added local space highlighting for easy in-sector calculating. Also added variable hook for StarMap to access.
