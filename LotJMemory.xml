@@ -108,7 +108,7 @@ function memCheck(name, line, args)
   local found = false
   local name = ""
   
-  if args[1] ~= "" then
+  if Trim(args[1]) ~= "" then
     name = Trim(args[1])
     if name == "full" then
       ColourNote("silver","black","Full Dub/Greet description memory:")
@@ -117,19 +117,18 @@ function memCheck(name, line, args)
         i = i + 1
         ColourNote("gray","black",string.format("%-20s : %8s : %-20s", k, os.date("%x", tonumber(v.when)), v.what))
       end
-      ColourNote("silver","black","You can remember a total of "..i.." dub/greet descriptions.")
+      ColourNote("silver","black","You can remember a total of "..i.." dub/greet description"..((i==1 and "") or "s")..".")
     else
       for k, v in pairs(memory) do
         if string.find(string.lower(k), string.lower(name), 0) or string.find(string.lower(v.what), string.lower(name), 0) then
           local daysago = string.format("%1.0f", os.difftime(os.time(), tonumber(v.when))/86400)
-          ColourTell("silver","black","You last saw ")
-          ColourTell("cyan","black",k)
-          ColourTell("silver","black"," on ")
-          ColourTell("cyan","black",os.date("%x", tonumber(v.when)))
-          ColourTell("silver","black","(")
-          ColourTell("cyan","black",daysago)
-          ColourTell("silver","black"," days ago). They were "..v.what..".")
-          Note("")
+          ColourTell("silver","black","You last saw ",
+                     "cyan","black",k,
+                     "silver","black"," on ",
+                     "cyan","black",os.date("%x", tonumber(v.when)),
+                     "silver","black","(",
+                     "cyan","black",daysago,
+                     "silver","black",((daysago == "1" and " day") or " days").." ago). They were "..v.what..".\r\n")
           found = true
         end
       end
@@ -143,8 +142,8 @@ function memCheck(name, line, args)
     for k, v in pairs(memory) do
       i=i+1
       local daysago = string.format("%1.0f", os.difftime(os.time(), tonumber(v.when))/86400)
-      ColourTell("gray","black",string.format("%-20s ", k))
-      ColourTell("cyan","black",string.format("%-3d ", daysago))
+      ColourTell("gray","black",string.format("%-20s ", k),
+                 "cyan","black",string.format("%-3d ", daysago))
       if math.fmod(i,3) == 0 then
         Note("")
       end
@@ -152,7 +151,7 @@ function memCheck(name, line, args)
     if math.fmod(i,3) ~= 0 then
       Note("")
     end
-    ColourNote("silver","black","You can remember a total of "..i.." dub/greet descriptions.")
+    ColourNote("silver","black","You can remember a total of "..i.." dub/greet description"..((i==1 and "") or "s")..".")
   end
   Note("")
 end
