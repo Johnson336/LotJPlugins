@@ -32,6 +32,9 @@ v1.42 -
 	<trigger name="LandComp" match="^Landing sequence complete\.$" script="endFlight" group="Flight" enabled="n" regexp="y" sequence="100" />
 	<trigger name="Proximity" match="^You are too close to (.*) to make the jump to lightspeed\!$" script="waitHyper" group="Flight" enabled="n" regexp="y" sequence="100" />
 	<trigger name="landsitelocked" match="^Restricted Landing pad\. Limited to clans members and ships only\.$" script="landNext" group="Flight" enabled="n" regexp="y" sequence="100" />
+  <trigger name="squadronlaunched" match="^(?P<fightertype>.+?) '(?P<fightername>.+?)' launches from a hangar on (?P<hangartype>.+?) '(?P<hangarname>.+?)'\,(.*)$" script="fighterGrab" group="Squadron" enabled="y" regexp="y" sequence="100" />
+  <trigger name="squadronview" match="^(L\[(.*)\]\:P\[(.*)\] )?(?P<fightertype>.+?) '(?P<fightername>.+?)'((\s+[\d-]+\s[\d-]+\s[\d-]+|\s+Prox\: \d+))?$" script="fighterShow" group="Squadron" enabled="y" regexp="y" sequence="100" />
+
 </triggers>
 
 <aliases>
@@ -41,6 +44,7 @@ v1.42 -
 	<alias name="Flyauto" match="^flyauto( +(.*))?$" script="flyAuto" enabled="y" regexp="y" group="FlightCmd" ignore_case="y" sequence="100" />
 	<alias name="Flyclear" match="flyclear" script="flyClear" enabled="y" regexp="n" group="FlightCmd" ignore_case="y" sequence="100" />
 	<alias name="FlyHelp" match="^flyhelp$" script="flightHelp" enabled="y" regexp="y" group="FlightCmd" ignore_case="y" sequence="100" />
+	<alias name="fighterclear" match="fighterclear" script="fighterClear" enabled="y" regexp="n" group="FlightCmd" ignore_case="y" sequence="100" />
 </aliases>
 <!--   Script    --> 
 <script>
@@ -56,6 +60,44 @@ landingSites = {}
 landingSiteNum = 0
 landgrabbing = false
 landPreference = -1
+local hangars = {}
+
+require "tprint"
+
+function fighterGrab(name, line, args)
+  assert(args, "Nil value passed to fighterGrab")
+  local squad = hangars[args.hangarname] or {}
+  squad[#squad + 1] = args.fightertype.." '"..args.fightername.."'"
+  hangars[args.hangarname] = squad
+  --tprint(hangars)
+end
+
+function fighterShow(name, line, args, styles)
+  if not args.fightertype or not args.fightername then
+    return
+  end
+  for k, v in pairs(hangars) do -- scroll through hangars
+    for i, j in ipairs(v) do -- scroll through every saved squad ship
+      if args.fightertype.." '"..args.fightername.."'" == j then
+        DeleteLines(1)
+        for a, b in pairs(styles) do
+          ColourTell (RGBColourToName(b.textcolour), RGBColourToName(b.backcolour), b.text) 
+        end 
+        ColourTell("yellow","","->",
+                   "gray","","[",
+                   "red","",k,
+                   "gray","","]\n")
+      end
+    end
+  end
+end
+
+function fighterClear()
+  hangars = {}
+  Note("Squadron information cleared.")
+end
+  
+    
 
 function flyClear()
 	shipName = ""
