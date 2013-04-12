@@ -153,8 +153,7 @@ function drawConfigWindow()
 	WindowRectOp (configwin, miniwin.rect_fill, 0, 0, right, bottom, ColourNameToRGB("black"))
 	WindowRectOp (configwin, 5, 0, 0, 0, 0, 5, 15 + 0x1000)
 	
-	--local font_height = WindowFontInfo (configwin, font, 1)
-	--movewindow.add_drag_handler (configwin, 0, 0, 0, font_height)
+	movewindow.add_drag_handler (configwin, 0, 0, 0, WindowFontInfo (configwin, font, 1))
 	
 	-- config window X
 	WindowLine (configwin, right-15, 5, right-5, 15, ColourNameToRGB ("white"), miniwin.pen_solid, 1)
