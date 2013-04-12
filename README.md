@@ -5,6 +5,14 @@ LotJ MUSHclient Plugins
 
 This directory contains LotJ MUSHclient plugins. Updates for individual files as follows:
 
+LotJStarMap.xml -
+-v2.18
+  -Added resizing capability. Also added automatic settings and planet information saving.
+  -New command "showmap" displays currently loaded planet settings without the need to scan every time.
+  -"hypmap" retains original scanning functionality
+-v2.15 
+  -Added support for ship coordinate display. Also added hyperjump route display.
+
 LotJFlight.xml -
   -Added squadron home ship labeling. Saves the ship that launched a fighter and displays that information when 
    the fighter is seen via look, proximity, radar, or fleetradar in the format:
@@ -21,10 +29,6 @@ v1.0 -
 LotJCalc.xml -
 v1.06
   -Added local space highlighting for easy in-sector calculating. Also added variable hook for StarMap to access.
-
-LotJStarMap.xml -
--v2.15 
-  -Added support for ship coordinate display. Also added hyperjump route display.
   
 LotJLocate.xml - 
 -v1.0 -
