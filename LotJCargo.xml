@@ -93,18 +93,19 @@ local startTime = 0
 local amountEarned = 0
 local cycle = true
 local hyperCompleted = false
+local cargoStatus = "halted"
 
 function jumpComplete()
 	hyperCompleted = true
 end
 
 function toggleCycle()
-	if (cycle) then
+	if cycle then
 		cycle = false
-		Note("AutoCargo will stop once the end of list is reached.")
+		ColourNote("yellow","","AutoCargo cycling is OFF.")
 	else
 		cycle = true
-		Note("AutoCargo will cycle to beginning of list once the end is reached.")
+		ColourNote("yellow","","AutoCargo cycling is ON.")
 	end
 end
 
@@ -170,8 +171,21 @@ function displayTime(time)
 	--1,60,3600,86400,604800,2630880,31570560,315705600
 	return table.concat(retval, ", ")
 end
-		
-	
+
+function handler(name, line, wildcards)
+  if cargoStatus == "halted" then
+    cargoStatus = "flying"
+    
+    return
+  elseif cargoStatus == "flying" then
+    cargoStatus = "trading"
+    return
+  elseif cargoStatus == "trading" then
+    cargoStatus = "halted"
+    return
+  end
+end
+
 
 function waitSell()
 	EnableTimer("keeptrading", false)
@@ -201,14 +215,14 @@ function cargoStart()
 	amountEarned = 0
 	startTime = os.time()
 	toggleACOn()
-	if (cPlanets[cVar].resource ~= "" and cPlanets[cVar].resource ~= "none") then
+	if (getResource() ~= "" and getResource() ~= "none") then
 		buyCargo(cargoCap)
 	end
 	flyNext()
 end
 
 function buyCargo(amount)
-	Send("buycargo " .. shipName .. " '" .. cPlanets[cVar].resource .. "' " .. amount)
+	Send("buycargo " .. shipName .. " '" .. getResource() .. "' " .. amount)
 end
 
 function sellCargo(amount)
@@ -216,7 +230,7 @@ function sellCargo(amount)
 end
 
 function tradeCargo()
-	--Note("cargoHauling: '" .. cargoHauling .. "' cPlanets[cVar].resource: '" .. cPlanets[cVar].resource .. "' sold: " .. soldAmt .. "/" .. soldGoal .. " bought: " .. boughtAmt .. "/" .. boughtGoal .. " cap: " .. cargoCap)
+	--Note("cVar: "..cVar.." cargoHauling: '" .. cargoHauling .. "' getResouce(): '" .. getResource() .. "' sold: " .. soldAmt .. "/" .. soldGoal .. " bought: " .. boughtAmt .. "/" .. boughtGoal .. " cap: " .. cargoCap)
 	if not hyperCompleted then -- if we haven't completed a hyperspace jump, avoid buying/selling errors by shutting off the timer and aborting
 		EnableTimer("keeptrading", false)
 		return
@@ -225,11 +239,11 @@ function tradeCargo()
 	if needtosell then -- we are hauling something that needs to be sold
 		sellCargo(500)
 	end
-	needtobuy = ((cPlanets[cVar].resource ~= "") and (cPlanets[cVar].resource ~= "none") and (boughtAmt < boughtGoal) and (cycle and (cVar == #cPlanets)))
+	needtobuy = ((getResource() ~= "") and (getResource() ~= "none") and (boughtAmt < boughtGoal) and (cycle and (cVar == #cPlanets)))
 	if needtobuy then -- we need to buy something
 		buyCargo(500)
 	end
-	if (((boughtAmt == boughtGoal and needtobuy) or (boughtAmt ~= boughtGoal and not needtobuy)) and soldAmt == soldGoal) then -- we've bought and sold everything, time to move on
+	if (((boughtAmt == boughtGoal and needtobuy) or (not needtobuy)) and soldAmt == soldGoal) then -- we've bought and sold everything, time to move on
 		EnableTimer("keeptrading", false)
 		flyNext()
 	end
@@ -252,7 +266,7 @@ end
 
 function flyNext()
 	if (cVar > 0) then
-		cargoHauling = cPlanets[cVar].resource	-- if we are in the middle of the list
+		cargoHauling = getResource()	-- if we are in the middle of the list
 		if (cargoHauling ~= "" and cargoHauling ~= "none") then -- if we need to sell what we're hauling
 			soldGoal = cargoCap
 			soldAmt = 0
@@ -260,25 +274,82 @@ function flyNext()
 	end
 	cVar = cVar + 1
 	if (cVar > #cPlanets) then  -- if we're at the end of the list
-		if (cycle) then         -- wrap to the beginning
+		if cycle then         -- wrap to the beginning
 			cVar = 1
 		else
-			cVar = 1
+		  cVar = #cPlanets
 			toggleACOff()		-- abort out and quit
 			return
 		end
 	end
-	if not cycle and (cVar == #cPlanets) then
+	if not cycle and (cVar >= #cPlanets) then
 		return
 	else
-		if (cPlanets[cVar].resource ~= "" and cPlanets[cVar].resource ~= "none") then -- if we need to buy something
+		if (getResource() ~= "" and getResource() ~= "none") then -- if we need to buy something
 			boughtGoal = cargoCap
 			boughtAmt = 0
 		end
 	end
 	
 	hyperCompleted = false
-	Execute("flyto " .. cPlanets[cVar].name)
+	Execute("flyto " .. getName())
+end
+
+function getNextName()
+  if #cPlanets == 0 then -- list is empty
+    return ""
+  end
+  if cVar == #cPlanets then -- we're at end of list
+    return cPlanets[1].name
+  else
+    return cPlanets[cVar+1].name -- we're in middle of list
+  end
+  return "" -- should never get here
+end
+
+function getNextResource()
+  if #cPlanets == 0 then
+    return ""
+  end
+  if cVar == #cPlanets then
+    return cPlanets[1].resource
+  else
+    return cPlanets[cVar+1].resource
+  end
+  return ""
+end
+
+function getNextPlanet()
+  if #cPlanets == 0 then
+    return ""
+  end
+  if cVar == #cPlanets then
+    return cPlanets[1]
+  else
+    return cPlanets[cVar+1]
+  end
+  return ""
+end
+
+function getName()
+  if #cPlanets == 0 then
+    return ""
+  end
+  return cPlanets[cVar].name
+end
+
+function getResource()
+  if #cPlanets == 0 then
+    return ""
+  end
+  return cPlanets[cVar].resource
+end
+
+function getPlanet()
+  if #cPlanets == 0 then
+    return ""
+  end
+  return cPlanets[cVar]
 end
 
 function toggleACOn()
