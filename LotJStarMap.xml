@@ -5,9 +5,10 @@
 <muclient>
 <plugin name="LotJStarMap" author="@Johnson" id="dd5080a41939faabc233da8f" language="Lua" purpose="Star System Map" save_state="y" requires="4.73" version="2.15">
 <description trim="y">
-<![CDATA[ 
-Type "hypmap" to find starsystems and plot on map.
+<![CDATA[
+Type "showmap" to open map window without scanning, loading your saved planetary information.
 Type "hidemap" to close map window, or click the X in the upper right to close.
+Type "hypmap" to scan for new starsystems and plot on map.
 Hover mouse over systems to see distances to other systems.
 Click on a system to calculate a jump to the planet within that system.
   ]]> 
@@ -34,8 +35,9 @@ Click on a system to calculate a jump to the planet within that system.
   </triggers>
 <!--   Aliases    --> 
 <aliases>
-  <alias name="initCommand" script="findStars" match="^hypmap$" enabled="y" regexp="y" group="LotJStarMap" sequence="100" />
-  <alias name="removeWindow" script="destroyWindow" match="^hidemap$" enabled="y" regexp="y" group="LotJStarMap" sequence="100" />
+  <alias name="initCommand" script="findStars" match="hypmap" enabled="y" regexp="n" group="LotJStarMap" ignore_case="y" sequence="100" />
+  <alias name="createWindow" script="setupWindow" match="showmap" enabled="y" regexp="n" group="LotJStarMap" ignore_case="y" sequence="100" />
+  <alias name="removeWindow" script="destroyWindow" match="hidemap" enabled="y" regexp="n" group="LotJStarMap" ignore_case="y" sequence="100" />
   </aliases>
 <timers>
 	<timer name="hyperJumpTicker" script="hyperJumpTick" enabled="n" second="2" group="LotJStarMap" />
@@ -45,9 +47,11 @@ Click on a system to calculate a jump to the planet within that system.
 <![CDATA[ 
 
 require "movewindow"
+require "serialize"
 local win = "galaxy_map_" .. GetPluginID()  -- unique window name
-local systems = {}
-local system = { name = "", x = 0, y = 0, planet = "", left = 0, top = 0, right = 0, bottom = 0 }
+systems = {}
+local system = { name = "", x = 99999, y = 99999, planet = "", left = 0, top = 0, right = 0, bottom = 0 }
+loadstring(GetVariable("systems") or "") ()
 local font = "f"
 local maxX = 0
 local minX = 0
@@ -63,19 +67,34 @@ local visible = false
 -- hyperjump stuff
 local totalJump = 0
 local partialJump = 0
-local startx = nil
-local starty = nil
-local realx = nil
-local realy = nil
-local currentX = 0
-local currentY = 0
+local startx = 99999
+local starty = 99999
+local realx = 99999
+local realy = 99999
+local currentX = 99999
+local currentY = 99999
 local currentPlanet = ""
 local currentSystem = ""
-local endX = nil
-local endY = nil
+local endX = 99999
+local endY = 99999
+local startrealx = 99999
+local startrealy = 99999
 local routeType = ""
 local shipsize = 8
 local inHyper = false
+
+
+-- Variables not saved.
+local startposx   = ""  
+local startposy   = ""
+local posx        = "" 
+local posy        = ""
+local RESIZE_TAG_SIZE = 10
+local MIN_WIDTH   = 50
+local MIN_HEIGHT  = 50
+
+local width       = tonumber(GetVariable("width")) or 800
+local height      = tonumber(GetVariable("height")) or 600
 
 local msdp = {}
 
@@ -92,6 +111,7 @@ end
 
 
 function findStars(name, list, args)
+  systems = {}
 	SendNoEcho("stars")
 	SendNoEcho("show")
 	toggleOn()
@@ -108,8 +128,8 @@ end
 
 function toggleOn(name, list, args)
 	EnableTriggerGroup("StarCap", true)
-	WindowCreate (win, 0, 0, 800, 600, miniwin.pos_center_all, 0, ColourNameToRGB("black"))  -- create window
-	WindowFont (win, font, "Arial", 10, true, false, false, false) -- define font
+	--WindowCreate (win, 0, 0, 800, 600, miniwin.pos_center_all, 0, ColourNameToRGB("black"))  -- create window
+	--WindowFont (win, font, "Arial", 10, true, false, false, false) -- define font
 end
 
 function storeSystem(name, list, args)
@@ -118,7 +138,7 @@ function storeSystem(name, list, args)
 		system.x = tonumber(args[2])
 		system.y = tonumber(args[3])
 		systems[#systems + 1] = system
-    system = { name = "", x = 0, y = 0, planet = "", left = 0, top = 0, right = 0, bottom = 0 }
+    system = { name = "", x = 99999, y = 99999, planet = "", left = 0, top = 0, right = 0, bottom = 0 }
 	end
 end
 
@@ -131,6 +151,10 @@ function togglePlanetsOff(name, list, args)
 end
 
 function setupWindow(name, line, args)
+  if #systems == 0 then -- failsafe in case we try to display window without any planet information
+    findStars()
+    return
+  end
 	toggleOff()
 	togglePlanetsOff()
 	
@@ -160,10 +184,10 @@ end
 function setupConflicts()
   -- setup our text boundaries since we just now figured out our max and min values for scaling
   for i, v in ipairs(systems) do
-  	v.left = scaleXCoord(v.x) - WindowTextWidth(win, "f", ((v.planet~="" and v.planet) or v.name))/2 + 5
+  	v.left = scaleXCoord(v.x) - WindowTextWidth(win, font, ((v.planet~="" and v.planet) or v.name))/2 + 5
 		v.top = scaleYCoord(v.y) + 5
-		v.right = v.left + WindowTextWidth(win, "f", ((v.planet~="" and v.planet) or v.name)) -- font width
-		v.bottom = v.top + WindowFontInfo(win, "f", 1) -- font height
+		v.right = v.left + WindowTextWidth(win, font, ((v.planet~="" and v.planet) or v.name)) -- font width
+		v.bottom = v.top + WindowFontInfo(win, font, 1) -- font height
   end
   -- find our scaled max and mins
   smaxX = scaleXCoord(maxX)
@@ -184,15 +208,15 @@ function resolveConflicts()
   for i, v in ipairs(systems) do
   --Note("system: "..v.name.." left: "..v.left.." top: "..v.top.." right: "..v.right.." bottom:"..v.bottom)
     if v.right > smaxX then
-      v.left = smaxX - WindowTextWidth(win, "f", ((v.planet~="" and v.planet) or v.name))
+      v.left = smaxX - WindowTextWidth(win, font, ((v.planet~="" and v.planet) or v.name))
       v.right = smaxX
     end
     if v.left < sminX then
       v.left = sminX
-      v.right = v.left + WindowTextWidth(win, "f", ((v.planet~="" and v.planet) or v.name))
+      v.right = v.left + WindowTextWidth(win, font, ((v.planet~="" and v.planet) or v.name))
     end
     if v.bottom > sminY then
-      v.top = sminY - WindowFontInfo(win, "f", 1) - 5
+      v.top = sminY - WindowFontInfo(win, font, 1) - 5
       v.bottom = sminY - 5
     end
   end
@@ -221,28 +245,28 @@ function conflicts(sys1, sys2)
     --Note("Top Left Collision detected! ("..sys1.name..","..sys2.name..")")
     -- top left collided, try shifting down (add pixels)
     sys1.top = sys2.bottom + 1
-    sys1.bottom = sys1.top + WindowFontInfo(win, "f", 1)
+    sys1.bottom = sys1.top + WindowFontInfo(win, font, 1)
     --sys1, sys2 = findbestsolution(sys1, sys2)
     return true
   elseif bottomleftconflicts(sys1, sys2) then
     --Note("Bottom Left Collision detected! ("..sys1.name..","..sys2.name..")")
     -- bottom left collided, try shifting the other guy down (add pixels)
     sys2.top = sys1.bottom + 1
-    sys2.bottom = sys2.top + WindowFontInfo(win, "f", 1)
+    sys2.bottom = sys2.top + WindowFontInfo(win, font, 1)
     --sys1, sys2 = findbestsolution(sys1, sys2)
     return true
   elseif toprightconflicts(sys1, sys2) then
     --Note("Top Right Collision detected! ("..sys1.name..","..sys2.name..")")
     -- try shifting down first (add pixels)
     sys1.top = sys2.bottom + 1
-    sys1.bottom = sys1.top + WindowFontInfo(win, "f", 1)
+    sys1.bottom = sys1.top + WindowFontInfo(win, font, 1)
     --sys1, sys2 = findbestsolution(sys1, sys2)
     return true
   elseif bottomrightconflicts(sys1, sys2) then
     --Note("Bottom Right Collision detected! ("..sys1.name..","..sys2.name..")")
     -- bottom right collided, try shifting the other guy down (add pixels)
     sys2.top = sys1.bottom + 1
-    sys2.bottom = sys2.top + WindowFontInfo(win, "f", 1)
+    sys2.bottom = sys2.top + WindowFontInfo(win, font, 1)
     --sys1, sys2 = findbestsolution(sys1, sys2)
     return true
   else
@@ -318,14 +342,20 @@ end
   
 function drawWindow(name, line, args)
 
-	WindowRectOp (win, miniwin.rect_fill, 0, 0, 800, 600, ColourNameToRGB("black"))  -- draw blank rectangle to "erase" window contents
+	WindowRectOp (win, miniwin.rect_fill, 0, 0, width, height, ColourNameToRGB("black"))  -- draw blank rectangle to "erase" window contents
+	
+	 -- draw border
+  WindowRectOp (win, 5, 0, 0, 0, 0, 5, 15 + 0x1000)
+	
+	--drag handler
+	movewindow.add_drag_handler (win, 0, 0, 0, WindowFontInfo(win, font, 1))
 	
 	for i=1,#systems,1 do
 		local sys = systems[i]
 		local x = scaleXCoord(sys.x)  -- scale X coordinate
 		local y = scaleYCoord(sys.y) -- scale Y coordinate
 		
-		WindowText (win, "f", ((sys.planet~="" and sys.planet) or sys.name),   -- text
+		WindowText (win, font, ((sys.planet~="" and sys.planet) or sys.name),   -- text
                 sys.left, sys.top, sys.right, sys.bottom,        -- rectangle
                 ColourNameToRGB ("white"), -- colour
                 false)              -- not Unicode
@@ -336,7 +366,7 @@ function drawWindow(name, line, args)
                 ColourNameToRGB("lawngreen"), miniwin.brush_solid)  -- brush
         
         WindowAddHotspot(win, i,  
-                -- x, y, WindowTextWidth (win, "f", tostring(sys.name)), WindowFontInfo (win, "f", 1),   -- rectangle, left, top, right, bottom
+                -- x, y, WindowTextWidth (win, font, tostring(sys.name)), WindowFontInfo (win, font, 1),   -- rectangle, left, top, right, bottom
                  sys.left, sys.top, sys.right, sys.bottom,
                  "drawPaths", -- mousehover
                  "hidePaths",        -- mousecancelhover
@@ -346,19 +376,16 @@ function drawWindow(name, line, args)
                  sys.name.. " (" .. sys.x .. "," .. sys.y .. ")",  -- tooltip text
                  1, 0)
     end
-
-	 -- draw border
-  	WindowRectOp (win, 5, 0, 0, 0, 0, 5, 15 + 0x1000)
   
   	-- add the drag handler so they can move the window around
-  	local font_height = WindowFontInfo (win, font, 1)
-  	movewindow.add_drag_handler (win, 0, 0, 0, font_height)
+  	--local font_height = WindowFontInfo (win, font, 1)
+  	--movewindow.add_drag_handler (win, 0, 0, 0, font_height)
   	
   	-- draw X in the corner to close the window
-  	WindowLine (win, 785, 5, 795, 15, ColourNameToRGB ("white"), miniwin.pen_solid, 1)
-  	WindowLine (win, 785, 15, 795, 5, ColourNameToRGB ("white"), miniwin.pen_solid, 1)
+  	WindowLine (win, width-15, 5, width-5, 15, ColourNameToRGB ("white"), miniwin.pen_solid, 1)
+  	WindowLine (win, width-15, 15, width-5, 5, ColourNameToRGB ("white"), miniwin.pen_solid, 1)
   	WindowAddHotspot(win, "windowX",
-  			785, 5, 795, 15,
+  			width-15, 5, width-5, 15,
   			"",                   --mousehover
   			"",                   --mouseoffhover
   			"destroyWindow",      --mousedown
@@ -372,6 +399,8 @@ function drawWindow(name, line, args)
  	
   -- draw hyper path and ship so they are always on top
 	drawHyperpath()
+	
+  drawResizer(win, width, height)
  	
   WindowShow (win,  true)  -- show it
   	--BroadcastPlugin(999, "repaint")
@@ -392,9 +421,8 @@ function haveCoords()
   currentSystem = getmsdp("SHIPSYSNAME")
   currentPlanet = getmsdp("PLANET")
   
-  if (startx ~= nil and starty ~= nil and inHyper) then -- if we have a starting spot on the map (we should be in hyper)
+  if ((startx ~= 99999 or starty ~= 99999) and inHyper) then -- if we have a starting spot on the map (we should be in hyper)
     --Note("passed havecoords 1")
-    --Note("startx: "..startx.." starty: "..starty)
     return true
   end
   if (currentX ~= 0 or currentY ~= 0 or currentSystem ~= "" or currentPlanet ~= "") then -- if we are in regular space
@@ -409,16 +437,34 @@ function drawCoords()
     --Note("passed drawcoords 1")
     realx = scaleXCoord(currentX)
     realy = scaleYCoord(currentY)
+    startrealx = currentX
+    startrealy = currentY
+    --Note("Assigning new real values in x,y coords")
+    --Tell("realx: "..string.format("%.0f",realx).." realy: "..string.format("%.0f",realy))
+    --Tell(" startx: "..string.format("%.0f",startx or 0).." starty: "..string.format("%.0f",starty or 0))
+    --Tell(" endX: "..string.format("%.0f",endX or 0).." endY: "..string.format("%.0f\n",endY or 0))
   else  -- not x,y coords
     for k, v in pairs(systems) do
       if currentSystem ~= "" and (string.lower(v.name) == string.lower(currentSystem)) then -- scroll planet list and see if our current system matches one of the system names
         --Note("passed drawcoords 2")
         realx = scaleXCoord(v.x)
         realy = scaleYCoord(v.y)
+        startrealx = v.x
+        startrealy = v.y
+        --Note("Assigning new real values in system coords")
+        --Tell("realx: "..string.format("%.0f",realx).." realy: "..string.format("%.0f",realy))
+        --Tell(" startx: "..string.format("%.0f",startx or 0).." starty: "..string.format("%.0f",starty or 0))
+        --Tell(" endX: "..string.format("%.0f",endX or 0).." endY: "..string.format("%.0f\n",endY or 0))
       elseif currentPlanet ~= "" and (string.lower(v.planet) == string.lower(currentPlanet)) then -- scroll planet list and see if our current planet matches one of the planet names
         --Note("passed drawcoords 3")
         realx = scaleXCoord(v.x)
         realy = scaleYCoord(v.y)
+        startrealx = v.x
+        startrealy = v.y
+        --Note("Assigning new real values in planet coords")
+        --Tell("realx: "..string.format("%.0f",realx).." realy: "..string.format("%.0f",realy))
+        --Tell(" startx: "..string.format("%.0f",startx or 0).." starty: "..string.format("%.0f",starty or 0))
+        --Tell(" endX: "..string.format("%.0f",endX or 0).." endY: "..string.format("%.0f\n",endY or 0))
       end
     end
   end
@@ -429,12 +475,16 @@ end
 
 function haveDestination()
   local storedsystem = GetPluginVariable("b2c06b3dcc775c0ede861316", "planetname") or ""
-  local storedX = nil
-  local storedY = nil
+  local storedX = 99999
+  local storedY = 99999
+  
+  --Note("storedsystem: "..storedsystem)
   
   if storedsystem == "" then -- we didn't get anything from lotjcalc
-    startx = nil
-    starty = nil
+    startx = 99999
+    starty = 99999
+    startrealx = 99999
+    startrealy = 99999
     --Note("failed havedest 1")
     return false
   end
@@ -446,7 +496,8 @@ function haveDestination()
     endX = scaleXCoord(storedX)
     endY = scaleYCoord(storedY)
     --Note("passed havedest 2")
-    --Note("x,y = "..endX.. ","..endY)
+    --Note("storedX = "..string.format("%.0f",storedX).." storedY = "..string.format("%.0f",storedY))
+    --Note("x,y = "..string.format("%.0f",endX).. ","..string.format("%.0f",endY))
     return true
   
   end
@@ -456,7 +507,7 @@ function haveDestination()
       endX = scaleXCoord(v.x)
       endY = scaleYCoord(v.y)
       --Note("passed havedest 3")
-      --Note("planet x,y = "..endX..","..endY)
+      --Note("planet x,y = "..string.format("%.0f",endX)..","..string.format("%.0f",endY))
       return true
     end
   end
@@ -474,9 +525,12 @@ function drawRoute()
 	end
   
   -- find our starting position to draw a line from
-  if startx == nil and starty == nil then
-    startx = realx
-    starty = realy
+  if ((startx == 99999) or (starty == 99999)) then
+    --startx = realx
+    --starty = realy
+    startx = startrealx
+    starty = startrealy
+    --Note("changed startx to: "..string.format("%.0f",startx).." changed starty to: "..string.format("%.0f",starty))
   end
   -- check our route status to draw appropriate color
   if (routeType == "checking" or routeType == "aborted") then
@@ -488,11 +542,20 @@ function drawRoute()
   elseif (routeType == "completed") then
     routeColor = "lime"
   end
-    
+  
+  --Tell("realx: "..string.format("%.0f",realx).." realy: "..string.format("%.0f",realy))
+  --Tell(" startx: "..string.format("%.0f",startx).." starty: "..string.format("%.0f",starty))
+  --Tell(" endX: "..string.format("%.0f",endX).." endY: "..string.format("%.0f\n",endY))
   -- draw our route and place on that route
-  WindowLine(win, startx, starty, endX, endY, ColourNameToRGB(routeColor), miniwin.pen_solid, 2)
+  --WindowLine(win, startx, starty, endX, endY, ColourNameToRGB(routeColor), miniwin.pen_solid, 2)
+  WindowLine(win, scaleXCoord(startx), scaleYCoord(starty), endX, endY, ColourNameToRGB(routeColor), miniwin.pen_solid, 2)
   if inHyper then
-    WindowCircleOp(win, 1, (((1-percent)*startx)+(percent*endX))-(shipsize/2), (((1-percent)*starty)+(percent*endY))-(shipsize/2), (((1-percent)*startx)+(percent*endX))+(shipsize/2), (((1-percent)*starty)+(percent*endY))+(shipsize/2), ColourNameToRGB("red"), 0, 0, ColourNameToRGB("red"), 0)
+    if partialJump < 0 then
+      WindowCircleOp(win, 1, endX-(shipsize/2), endY-(shipsize/2), endX+(shipsize/2), endY+(shipsize/2), ColourNameToRGB("red"), 0, 0, ColourNameToRGB("red"), 0)
+    else
+      --WindowCircleOp(win, 1, (((1-percent)*startx)+(percent*endX))-(shipsize/2), (((1-percent)*starty)+(percent*endY))-(shipsize/2), (((1-percent)*startx)+(percent*endX))+(shipsize/2), (((1-percent)*starty)+(percent*endY))+(shipsize/2), ColourNameToRGB("red"), 0, 0, ColourNameToRGB("red"), 0)
+      WindowCircleOp(win, 1, (((1-percent)*scaleXCoord(startx))+(percent*endX))-(shipsize/2), (((1-percent)*scaleYCoord(starty))+(percent*endY))-(shipsize/2), (((1-percent)*scaleXCoord(startx))+(percent*endX))+(shipsize/2), (((1-percent)*scaleYCoord(starty))+(percent*endY))+(shipsize/2), ColourNameToRGB("red"), 0, 0, ColourNameToRGB("red"), 0)
+    end
   end
 end
 
@@ -538,12 +601,12 @@ end
 
 function scaleXCoord(coord)
   local percent = ((coord + math.abs(minX)) / (math.abs(minX)+maxX))*100
-  return ((((100-percent) / 100) * 10) + ((percent) / 100) * 790)
+  return ((((100-percent) / 100) * 10) + ((percent) / 100) * (width-10))
 end
 
 function scaleYCoord(coord)
   local percent = ((coord + math.abs(minY)) / (math.abs(minY)+maxY))*100
-  return ((((100-percent) / 100) * 590) + ((percent) / 100) * 10)
+  return ((((100-percent) / 100) * (height-10)) + ((percent) / 100) * 10)
 end
 
 function onClick(flags, hotspot_id)
@@ -551,7 +614,7 @@ function onClick(flags, hotspot_id)
 	if (sys.planet ~= "") then
 		Execute("calculate " .. sys.planet)
 	else
-		Execute("calcu '" .. sys.x .. " " .. sys.y .. "'")
+		Execute("calculate '" .. sys.x .. " " .. sys.y .. "'")
 	end
 end
 
@@ -567,7 +630,7 @@ function drawPaths(flags, hotspot_id)
 			local bx = scaleXCoord(tonumber(v.x))
 			local by = scaleYCoord(tonumber(v.y))
 			WindowLine (win, ax, ay, bx, by, ColourNameToRGB ("orange"), miniwin.pen_solid, 1)
-			WindowText (win, "f", distance(sys, v),   -- text
+			WindowText (win, font, distance(sys, v),   -- text
                 (ax+bx)/2, (ay+by)/2, 0, 0,        --draw distance in the middle of draw path
                 ColourNameToRGB ("white"), -- colour
                 false)              -- not Unicode
@@ -580,8 +643,6 @@ function drawPaths(flags, hotspot_id)
 end
 
 function destroyWindow(name, list, args)
-	systems = {}
-	system = { }
 	WindowShow (win, false)
 	visible = false
 	--WindowDelete(win)
@@ -626,15 +687,17 @@ function storePartialJump(name, list, args)
 end
 
 function clearJump()
-  startx = nil
-  starty = nil
-  realx = nil
-  realy = nil
+  startx = 99999
+  starty = 99999
+  startrealx = 99999
+  startrealy = 99999
+  realx = 99999
+  realy = 99999
   storedsystem = ""
-  storedX = nil
-  storedY = nil
-  endX = nil
-  endY = nil
+  storedX = 99999
+  storedY = 99999
+  endX = 99999
+  endY = 99999
 	totalJump = 0
 	partialJump = 0
 	inHyper = false
@@ -644,6 +707,135 @@ function clearJump()
 	if (visible) then
 		drawWindow()
 	end
+end
+
+----------------------------------------------------------------------
+-- Called as the windows are dragged around.
+----------------------------------------------------------------------
+function ResizeMoveCallback(flags, hotspot_id)
+   posx, posy = WindowInfo (win, 17), WindowInfo (win, 18)
+   width = width + posx - startposx
+   startposx = posx
+   if (width < MIN_WIDTH) then
+      width = MIN_WIDTH
+      startposx = windowinfo.window_left+width
+   elseif (windowinfo.window_left+width > GetInfo(281)) then
+      width = GetInfo(281)-windowinfo.window_left
+      startposx = GetInfo(281)
+   end
+   
+   height = height + posy - startposy
+   startposy = posy
+   if (height < MIN_HEIGHT) then
+   	height = MIN_HEIGHT
+   	startposy = windowinfo.window_top+height
+   elseif (windowinfo.window_top+height > GetInfo(280)) then
+   	height = GetInfo(280)-windowinfo.window_top
+   	startposy = GetInfo(280)
+   end
+   
+   
+	if (utils.timer() - lastRefresh > 0.0333) then
+		SetUpHotspotsAndDraw(false)
+		lastRefresh = utils.timer()
+	end
+end
+
+lastRefresh = 0
+
+---------------------------------------------------------------------------------
+-- Called after the resize widget is released.
+---------------------------------------------------------------------------------
+function ResizeReleaseCallback ()
+   SetUpHotspotsAndDraw(false) -- true here causes old lines to re-wrap at the new size
+end
+
+---------------------------------------------------------------------------------
+-- Called when mouse button is pressed on hotspot.
+---------------------------------------------------------------------------------
+function MouseDown(flags, hotspot_id)
+   if (hotspot_id == "resize") then
+     startposx, startposy = WindowInfo (win, 17), WindowInfo (win, 18)
+   end
+end
+
+---------------------------------------------------------------------------------
+-- Called when mouse moved away from hotspot. Doesn't really apply for draggables.
+---------------------------------------------------------------------------------
+function CancelMouseDown(flags, hotspot_id)
+end
+
+---------------------------------------------------------------------------------
+-- Called when mouse button released on hotspot.
+---------------------------------------------------------------------------------
+function MouseUp(flags, hotspot_id, win)
+   if bit.band (flags, miniwin.hotspot_got_rh_mouse) ~= 0 then
+      --right_click_menu()
+   end
+   return true
+end
+
+function LeftClickOnly(flags, hotspot_id, win)
+   if bit.band (flags, miniwin.hotspot_got_rh_mouse) ~= 0 then
+      return true
+   end
+   return false
+end
+
+function OnPluginInstall () 
+  
+    --- Setup the windows
+   SetUpHotspotsAndDraw(true)
+   
+  -- add the fonts                
+  check(WindowFont (win, font, "Arial", 10, true, false, false, false))
+  
+  drawWindows()
+    
+end -- OnPluginInstall
+
+--================================================================================
+-- Called by OnPluginInstall, but also by redraw routine to refresh the screen
+-- and (if the first time) add the resizer tag, otherwise move the resizer relative
+-- to the main window.
+--=================================================================================
+function SetUpHotspotsAndDraw(firstTime)
+	if (firstTime) then
+		WindowCreate (win, 0, 0, width, height, miniwin.pos_center_all, 0, ColourNameToRGB("black")) -- create windows
+		windowinfo = movewindow.install (win, 6) -- default to 6 (on top right)
+		movewindow.add_drag_handler (win, 0, 0, 0, WindowFontInfo (win, font, 1))
+		effectiveWidth = math.min(width, GetInfo(281)-windowinfo.window_left)
+		WindowAddHotspot (win, "resize", effectiveWidth-RESIZE_TAG_SIZE, height-RESIZE_TAG_SIZE, effectiveWidth, height, "MouseOver", "CancelMouseOver", "MouseDown", "CancelMouseDown", "MouseUp", "", 6, 0)
+		WindowDragHandler(win, "resize", "ResizeMoveCallback", "ResizeReleaseCallback", 0)
+		check(WindowFont (win, font, "Arial", 10, true, false, false, false))
+	else -- not our first time drawing
+		-- everything has already been made
+		-- just move them back into place
+		
+		effectiveWidth = math.min(width, GetInfo(281)-windowinfo.window_left)
+		WindowResize(win, effectiveWidth, height, 0x000000)
+		WindowMoveHotspot(win, "resize", effectiveWidth-RESIZE_TAG_SIZE, height-RESIZE_TAG_SIZE, effectiveWidth, height)
+		setupConflicts()
+    drawWindows()
+	end
+end
+
+function drawWindows()
+  if visible then
+    drawWindow()
+  end
+end
+
+function drawResizer(window, winwidth, winheight)
+   -- draw the resize widget bottom right corner.
+   WindowLine(window, winwidth-3, winheight-2, winwidth-2, winheight-3, 0xffffff, 0, 2)
+   WindowLine(window, winwidth-4, winheight-2, winwidth-2, winheight-4, 0x696969, 0, 1)
+   WindowLine(window, winwidth-6, winheight-2, winwidth-2, winheight-6, 0xffffff, 0, 2)
+   WindowLine(window, winwidth-7, winheight-2, winwidth-2, winheight-7, 0x696969, 0, 1)
+   WindowLine(window, winwidth-9, winheight-2, winwidth-2, winheight-9, 0xffffff, 0, 2)
+   WindowLine(window, winwidth-10, winheight-2, winwidth-2, winheight-10, 0x696969, 0, 1)
+   WindowLine(window, winwidth-12, winheight-2, winwidth-2, winheight-12, 0xffffff, 0, 2)
+   WindowLine(window, winwidth-13, winheight-2, winwidth-2, winheight-13, 0x696969, 0, 1)
 end
 
 
@@ -669,10 +861,8 @@ function OnPluginBroadcast (msg, id, name, text)
 		  msdp = {}
 		end
 	end
-	if visible then
-	  drawWindow()  -- redraw windows every time new information is received
+	drawWindows()
 	  --BroadcastPlugin(999, "repaint")
-	end
 end
 
 --============================================================================
@@ -697,22 +887,12 @@ function getmsdp(key)
 	return "" -- should never ever get here
 end
 
-function OnPluginInstall ()
-
-  -- install the window movement handler, get back the window position
-  windowinfo = movewindow.install (win, 6)  -- default to 6 (on top right)
-  
-  -- make window so I can grab the font info
-  WindowCreate (win, 0, 0, 0, 0, 1, 0, 0)
-
-  -- add the font                 
-  WindowFont (win, font, "Courier", 10)  
-    
-end -- OnPluginInstall
-
 function OnPluginSaveState ()
   -- save window current location for next time  
   movewindow.save_state (win)
+  SetVariable("width", width)
+  SetVariable("height", height)
+  SetVariable("systems", serialize.save("systems"))
 end -- function OnPluginSaveState
 
 require "checkplugin"
