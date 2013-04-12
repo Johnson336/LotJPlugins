@@ -28,7 +28,7 @@ Use "shipstackmode" to toggle between displaying ships in RP mode or displaying 
 	<trigger name="shipStackPadlist" script="showPadStack" match="^$" enabled="n" regexp="y" group="jShipstackpad" sequence="100" />
 	
 	<!-- tone triggers -->
-	<trigger name="tonelist" script="toneList" match="^\d+\.\s+(.*)\s+\d+\.\s+(.*)\s+\d+\.\s+(.*)\s+\d+\.\s+(.*)\s+$" enabled="y" regexp="y" group="ToneList" sequence="100" />
+	<!-- trigger name="tonelist" script="toneList" match="^\d+\.\s+(.*)\s+\d+\.\s+(.*)\s+\d+\.\s+(.*)\s+\d+\.\s+(.*)\s+$" enabled="y" regexp="y" group="ToneList" sequence="100" -->
 </triggers>
 <!--   Aliases    --> 
 <aliases>
