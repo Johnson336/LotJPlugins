@@ -156,7 +156,7 @@ end
 
 function calculate(name, list, args)
 	local newX = coordX + 500
-	Send("calculate '" .. systemname .. "' " .. newX .. " " .. coordY .. " " .. coordZ)
+	Send("calculate \"" .. systemname .. "\" " .. newX .. " " .. coordY .. " " .. coordZ)
 	toggleOff()
 	gagOff()
 end
