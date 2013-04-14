@@ -16,7 +16,7 @@ Automatically populate and research items that need to be researched.
 <!--   Triggers    --> 
 <triggers>
   <trigger name="ResearchSecure" script="researchNext" match="^You cannot learn more about that from books\.$" enabled="n" group="AutoResearch" regexp="y" sequence="100" />
-  <trigger name="ResearchComplete" script="researchNext" match="^You can\'t learn any more about that from books\!$" enabled="n" group="AutoResearch" regexp="y" sequence="100" />
+  <trigger name="ResearchComplete" script="researchNext" match="^You can\'t learn any more about that from books(\!|\.)$" enabled="n" group="AutoResearch" regexp="y" sequence="100" />
   <trigger name="ResearchSmuggling" script="researchNext" match="^You can\'t learn smuggling skills from a book\!$" enabled="n" group="AutoResearch" regexp="y" sequence="100" />
   <trigger name="ResearchBH" script="researchNext" match="^You can\'t learn bounty hunting skills from a book\!$" enabled="n" group="AutoResearch" regexp="y" sequence="100" />
   <trigger name="ResearchBowcaster" script="researchNext" match="^You aren't going to learn that from a book\. Go find a Wookiee\!$" enabled="n" group="AutoResearch" regexp="y" sequence="100" />
