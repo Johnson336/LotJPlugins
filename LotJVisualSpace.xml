@@ -854,9 +854,9 @@ end
 function drawSwapper(window, left, top, color, hotSpotName, hotSpotClick, hotSpotText)
 	WindowLine(window, left, top, left+4, top, color, miniwin.pen_solid, 1)
 	WindowLine(window, left, top, left, top+4, color, miniwin.pen_solid, 1)
-	WindowLine(window, left, top, left+10, top+10, color, miniwin.pen_solid, 1)
-	WindowLine(window, left+6, top+10, left+10, top+10, color, miniwin.pen_solid, 1)
-	WindowLine(window, left+10, top+6, left+10, top+10, color, miniwin.pen_solid, 1)
+	WindowLine(window, left, top, left+11, top+11, color, miniwin.pen_solid, 1)
+	WindowLine(window, left+7, top+10, left+10, top+10, color, miniwin.pen_solid, 1)
+	WindowLine(window, left+10, top+7, left+10, top+10, color, miniwin.pen_solid, 1)
 	WindowAddHotspot(window, hotSpotName, left, top, left+10, top+10, "", "", hotSpotClick, "", "", hotSpotText, 1, 0)
 	Redraw()
 end
