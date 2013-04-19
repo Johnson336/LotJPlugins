@@ -15,7 +15,7 @@
    save_state="y"
    date_written="2012-07-04 02:02:58"
    requires="4.43"
-   version="1.34"
+   version="1.40"
    >
 <description trim="y">
 <![CDATA[
@@ -145,7 +145,6 @@ currentShip = 0
 currentPart = 0
 
 require "serialize"
-require "tprint"
 -- upgrade stuff
 upgradeList = {}
 local upgradeitem = ""
@@ -434,7 +433,6 @@ function upgrade(name, line, args)
       disableUpgrade()
     end
   else -- entered one item
-    tprint(args)
     if Trim(args[1]) == "" then -- clean up blank arguments messing up things
       upgrade()
       return
@@ -486,6 +484,9 @@ function getUpgradeShipName()
   return getUpgradeShip().name
 end
 function getUpgradeShipMods()
+  if not getUpgradeShip().mods then
+    return {}
+  end
   return getUpgradeShip().mods
 end
 function getUpgradePart()
