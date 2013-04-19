@@ -124,7 +124,7 @@ function showPlanet(name, list, args)
   if (args[1] ~= nil and args[1] ~= "stop") then -- we entered a standard planetname
 		planetname = Trim(args[1])
 		SetVariable("planetname", planetname)
-		Send("showplanet '" .. planetname .. "'")
+		SendNoEcho("showplanet '" .. planetname .. "'")
 		EnableTriggerGroup("CalcStart", true)
 	else
 		Note("Invalid planet name!")
