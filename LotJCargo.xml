@@ -239,7 +239,11 @@ function tradeCargo()
 	if needtosell then -- we are hauling something that needs to be sold
 		sellCargo(500)
 	end
-	needtobuy = ((getResource() ~= "") and (getResource() ~= "none") and (boughtAmt < boughtGoal) and (cycle and (cVar == #cPlanets)))
+	needtobuy = ((getResource() ~= "") and (getResource() ~= "none") and (boughtAmt < boughtGoal))
+	if ((cVar == #cPlanets) and not cycle) then -- if we're at the end
+	  needtobuy = false
+	end
+	--Note("getresource = "..getResource().." boughtAmt = "..boughtAmt.." boughtGoal = "..boughtGoal.." cVar = "..cVar)
 	if needtobuy then -- we need to buy something
 		buyCargo(500)
 	end
@@ -286,6 +290,7 @@ function flyNext()
 		return
 	else
 		if (getResource() ~= "" and getResource() ~= "none") then -- if we need to buy something
+		  --Note("cvar = "..cVar.." getresource = "..getResource())
 			boughtGoal = cargoCap
 			boughtAmt = 0
 		end
@@ -505,14 +510,14 @@ function showplanetFailure(name, list, args)
 	EnableTriggerGroup("ResourceCap", false)
 	EnableTriggerGroup("GagAll", false)
 	EnableTriggerGroup("ResourceStart", false)
-	Note("Invalid planet, unable to continue.")
+	ColourNote("red","","Invalid planet, unable to continue.")
 end
 
 function resourceEnd(name, list, args)
 	EnableTriggerGroup("ResourceCap", false)
 	DeleteLines(1)
 	percent = percent + 1
-	Note(string.format("%.0f", (percent*100)/(numBodies*2)) .. "% complete.")
+	ColourNote("silver","",string.format("%.0f", (percent*100)/(numBodies*2)) .. "% complete.")
 	if (percent >= (numBodies*2)) then
 		percent = 0
 		EnableTriggerGroup("GagAll", false)
@@ -538,7 +543,7 @@ function scanNext(name, list, args)
 	if (scanned == "none") then
 		SendNoEcho("config -prompt")
 		clearTables()
-		Note("Starting resource scan... this may take a few moments.")
+		ColourNote("silver","","Starting resource scan... this may take a few moments.")
 		scanned = "systems"
 		SendNoEcho("stars")
 		SendNoEcho("show")
@@ -569,7 +574,7 @@ function scanNext(name, list, args)
 		scanned = "none"
 		EnableTriggerGroup("ResourceStart", false)
 		SendNoEcho("config +prompt")
-		Note("Finished scanning galaxy resources. Found " .. #systems .. " systems with " .. numBodies .. " planets.")
+		ColourNote("silver","","Finished scanning galaxy resources. Found " .. #systems .. " systems with " .. numBodies .. " planets.")
 		--listSystems()
 	end
 end
