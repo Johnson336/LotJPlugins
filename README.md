@@ -1,6 +1,8 @@
 LotJPlugins
 ===========
 
+-- Warning!! Do not download these files by right clicking on the links! You must copy/paste the code into a text editor and save it as a .xml file! --
+
 LotJ MUSHclient Plugins
 
 This directory contains LotJ MUSHclient plugins. Updates for individual files as follows:
