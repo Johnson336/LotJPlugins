@@ -25,6 +25,35 @@ Heavily modified by @Johnson.
 Use buildhelp to see building command information.
 Use upgradehelp to see upgrade command information.
 
+-- Upgradeship information: --
+This plugin utilizes a set of "profiles" to easily save and load sets of modifications
+in order to easily upgrade ships. We can achieve this in several ways. The easiest, is
+to define a profile and save it for later use.
+
+Method 1: -- saving and loading a modification profile
+Step 1: "upgradeProfileName GRCargo"  -- here we define the name we want to use to access the stored preset. Make it something easy like "GRCargo"
+Step 2: "upgradeProfilePartAdd laser -2"  -- here we add a part to the preset indicating we want to remove 2 units of lasers
+Step 3: "upgradeProfileSave"  -- when we've added as many modifications to the preset as we want, we then save it to our global profile list for later use
+Step 4: "upgradeLoad GR123 GRCargo"  -- here we load our saved preset GRCargo and indicate that the ship we are going to be modifying is named GR123
+Step 5: "upgradeStart"  -- begins modifications based on our GRCargo preset, this can be done any number of times with any combination of different presets
+
+If we are performing quick modifications and we don't have any desire to save them for 
+later use, we can use the quick add function to define all our instructions with a single command.
+
+Method 2: -- quick profile without any saving or loading
+Step 1: "upgradeAdd GR123 autoblaster -2 laser -2 missiles -4 sensor -5 astro -5 comm -5 speed 10 hyper 10 maneuver 10" 
+-- this command does everything at once, bypassing the need for saving or loading any presets
+Step 2: "upgradeStart"
+
+Method 3: -- create a preset but push it to the upgrade stack without saving
+Step 1: "upgradeProfileName GR123"
+Step 2: "upgradeProfilePartAdd autoblaser -5"
+Step 3: "upgradeProfilePartAdd speed 20"
+Step 4: "upgradePush" -- this command pushes everything we had in our profile into the upgrade stack, bypassing the need to save or load any presets
+Step 5: "upgradeStart"
+
+
+
 Changelog
 1.40-
 Now includes automatic ship upgrading features. Type 'upgradehelp' to see all the associated commands.
@@ -73,6 +102,7 @@ This string adds as many ships as you specify with a single command.
   <trigger name="Upgraded" match="^You (earn|pay) \d+ credits (to complete the modification|after selling the parts)\.$" script="upgradeNextPart" enabled="n" regexp="y" group="Upgrade" sequence="100" />
   <trigger name="CantUpgrade" match="^That change would take that component \d+ units (over max|below minimum)\.$" script="upgradeNextPart" enabled="n" regexp="y" group="Upgrade" sequence="100" />
   <trigger name="FailUpgrade" match="^Hmm\, you didn\'t do much of anything\.$" script="upgrade" enabled="n"  regexp="y" group="Upgrade" sequence="100" />
+  <trigger name="NoRoom" match="^Theres not enough room in the ship\! Check your ships \'quota\' value\.$" script="upgradeNextPart" enabled="n" regexp="y" group="Upgrade" sequence="100" />
   
   
 </triggers>
@@ -476,15 +506,18 @@ end
 
 function getUpgradeShip()
   if #upgradeList == 0 or upgradespos == 0 then
-    return ""
+    return {}
   end
   return upgradeList[upgradespos]
 end
 function getUpgradeShipName()
+  if not getUpgradeShip() then
+    return ""
+  end
   return getUpgradeShip().name
 end
 function getUpgradeShipMods()
-  if not getUpgradeShip().mods then
+  if not getUpgradeShip() then
     return {}
   end
   return getUpgradeShip().mods
@@ -581,7 +614,7 @@ function buildStart(name, line, wildcards)
 end -- function
 
 function buildShip(name, line, wildcards)
-	if (shipQueue[currentShip]) then
+	if (currentShip > 0 and #shipQueue > 0 and currentPart > 0) then
 		Send("buildship " .. shipQueue[currentShip] .. " " .. shipParts[currentPart])
 	else
 		abort()
@@ -926,7 +959,7 @@ local upgradecommands = { { name = "upgradeProfileName", desc = "Changes the nam
                { name = "upgradeProfilePartClear", desc = "Deletes the current profile's part list.",
                         args = { }
                           },
-               { name = "upgradeProfilePartList", desc = "Deletes the current profile's part list.",
+               { name = "upgradeProfilePartList", desc = "Displays the current profile's part list.",
                         args = { }
                           },
                { name = "upgradeProfileSave", desc = "Saves the current profile into memory.",
