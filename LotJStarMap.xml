@@ -82,6 +82,7 @@ local startrealy = 99999
 local routeType = ""
 local shipsize = 8
 local inHyper = false
+local coordchanged = false
 
 
 -- Variables not saved.
@@ -485,6 +486,7 @@ function haveDestination()
     starty = 99999
     startrealx = 99999
     startrealy = 99999
+    coordchanged = false
     --Note("failed havedest 1")
     return false
   end
@@ -526,10 +528,15 @@ function drawRoute()
   
   -- find our starting position to draw a line from
   if ((startx == 99999) or (starty == 99999)) then
+    if coordchanged then
     --startx = realx
     --starty = realy
-    startx = startrealx
-    starty = startrealy
+      startx = startrealx
+      starty = startrealy
+      coordchanged = false
+    else
+      coordchanged = true
+    end
     --Note("changed startx to: "..string.format("%.0f",startx).." changed starty to: "..string.format("%.0f",starty))
   end
   -- check our route status to draw appropriate color
@@ -701,6 +708,7 @@ function clearJump()
 	totalJump = 0
 	partialJump = 0
 	inHyper = false
+	coordchanged = false
 	jumpCompleted()
 	CallPlugin("b2c06b3dcc775c0ede861316", "clearPlanet", "")
 	EnableTimer("hyperJumpTicker", false)
