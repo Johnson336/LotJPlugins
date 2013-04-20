@@ -90,21 +90,23 @@ This string adds as many ships as you specify with a single command.
   <trigger name="OutofMoves" script="waitForMoves" match="^You\'re too exhausted to do that right now\!$" regexp="y" enabled="n" group="Shipbuilding" sequence="100" />
   <trigger name="missingpart" script="buildNextPart" match="^I see no (.*) here\.$" enabled="n" regexp="y" group="Shipbuilding" sequence="100" />
   <trigger name="followleader" script="follow" match="* beckons for you to come over to *." regexp="n" group="Shipbuilding" sequence="100" />
-  <trigger name="SpamRemoval1" match="^(.*) steps away from (.*) looking very pleased with (.*)\.$" enabled="n" regexp="y" group="ShipbuildingSpam" keep_evaluating="y" omit_from_log="y" omit_from_output="y" sequence="100" />
-  <trigger name="SpamRemoval2" match="^(.*) takes (.*) tools and starts to work on (.*)$" enabled="n" regexp="y" group="ShipbuildingSpam" keep_evaluating="y" omit_from_log="y" omit_from_output="y" sequence="100" />
-  <trigger name="SpamRemoval3" match="^(.*)droid assists(.*)$" enabled="n" regexp="y" group="ShipbuildingSpam" keep_evaluating="y" omit_from_log="y" omit_from_output="y" sequence="100" />
-  <trigger name="SpamRemoval4" match="^(.*) (gets|drops) (.*)$" enabled="n" regexp="y" group="ShipbuildingSpam" keep_evaluating="y" omit_from_log="y" omit_from_output="y" sequence="100" />
-  <trigger name="SpamRemoval5" match="^You (.*) engineering experience\.$" enabled="n" regexp="y" group="ShipbuildingSpam" keep_evaluating="y" omit_from_log="y" omit_from_output="y" sequence="100" />
-  <trigger name="SpamRemoval6" match="^Your droid gains (.*) experience points\.$" enabled="n" regexp="y" group="ShipbuildingSpam" keep_evaluating="y" omit_from_log="y" omit_from_output="y" sequence="100" />
-  <trigger name="SpamRemoval7" match="^$" regexp="y" group="ShipbuildingSpam" enabled="n" keep_evaluating="y" omit_from_output="y" omit_from_log="y" sequence="100" />
+  <trigger name="SpamRemoval1" script="enableEndLine" match="^(.*) steps away from (.*) looking very pleased with (.*)\.$" enabled="n" regexp="y" group="ShipbuildingSpam" omit_from_log="y" omit_from_output="y" sequence="100" />
+  <trigger name="SpamRemoval2" script="enableEndLine" match="^(.*) takes (.*) tools and starts to work on (.*)$" enabled="n" regexp="y" group="ShipbuildingSpam" omit_from_log="y" omit_from_output="y" sequence="100" />
+  <trigger name="SpamRemoval3" script="enableEndLine" match="^(.*)droid assists(.*)$" enabled="n" regexp="y" group="ShipbuildingSpam" omit_from_log="y" omit_from_output="y" sequence="100" />
+  <trigger name="SpamRemoval4" script="enableEndLine" match="^(.*) (gets|drops) (.*)$" enabled="n" regexp="y" group="ShipbuildingSpam" omit_from_log="y" omit_from_output="y" sequence="100" />
+  <trigger name="SpamRemoval5" script="enableEndLine" match="^You (.*) engineering experience\.$" enabled="n" regexp="y" group="ShipbuildingSpam" omit_from_log="y" omit_from_output="y" sequence="100" />
+  <trigger name="SpamRemoval6" script="enableEndLine" match="^Your droid gains (.*) experience points\.$" enabled="n" regexp="y" group="ShipbuildingSpam" omit_from_log="y" omit_from_output="y" sequence="100" />
+  <trigger name="endline" match="^$" enabled="n" regexp="y" group="end_line" omit_from_output="y" sequence="100" send_to="12" >
+<send>EnableTrigger("endline", false)</send></trigger>
   
   <!-- upgrade triggers -->
   <trigger name="Upgraded" match="^You (earn|pay) \d+ credits (to complete the modification|after selling the parts)\.$" script="upgradeNextPart" enabled="n" regexp="y" group="Upgrade" sequence="100" />
   <trigger name="CantUpgrade" match="^That change would take that component \d+ units (over max|below minimum)\.$" script="upgradeNextPart" enabled="n" regexp="y" group="Upgrade" sequence="100" />
   <trigger name="FailUpgrade" match="^Hmm\, you didn\'t do much of anything\.$" script="upgrade" enabled="n"  regexp="y" group="Upgrade" sequence="100" />
   <trigger name="NoRoom" match="^Theres not enough room in the ship\! Check your ships \'quota\' value\.$" script="upgradeNextPart" enabled="n" regexp="y" group="Upgrade" sequence="100" />
-  
-  
+  <trigger name="TooPoor" match="^You can\'t afford to make those modifications right now\!$" script="upgradeNextPart" enabled="n" regexp="y" group="Upgrade" sequence="100" />
+  <trigger name="NoShip" match="^You can\'t seem to find that ship here\!$" script="upgradeNext" enabled="n" regexp="y" group="Upgrade" sequence="100" />
+  <trigger name="Nocomponent" match="^Thats not a valid component\! Maybe you should check HELP UPGRADING$" script="upgradeNextPart" enabled="n" regexp="y" group="Upgrade" sequence="100" />
 </triggers>
 
 <!--  Aliases  -->
@@ -185,6 +187,9 @@ local upgradespos = 0
 profiles = {}
 loadstring(GetVariable("profiles") or "") ()
 
+function enableEndLine()
+  EnableTrigger("endline", true)
+end
 function upgradeProfileName(name, line, args)
   if not args or args[1] == "" then
     ColourNote("yellow","","Profile name set to '"..profile.name.."'")
