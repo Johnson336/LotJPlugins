@@ -63,18 +63,18 @@ local storage = { percent = 0, name = "" }
 
 
 function displayResearchCommands(name, line, args)
-   Note("Research <skill>                       - Resume research or start on skill independent of the list")
-   Note("ResearchStart                          - Begin new research session from front of list")
-   Note("ResearchGrab <skill tree> <percentage> - Grab skills from optional skill tree that")
-   Note("                                         are below optional percentage barrier")
-   Note("                                         (If no arguments are given it will add every")
-   Note("                                          item in your skill list that is below 90%)")
-   Note("ResearchAdd <skill>                    - Manually add a skill to the list")
-   Note("ResearchRem <skill/#>                  - Remove skill in list by name or index number")
-   Note("ResearchList                           - Display list contents")
-   Note("ResearchNext                           - Skip current item in list")
-   Note("ResearchClear                          - Clear all research variables")
-   Note("ResearchAuto (on/off)                  - Turns automatic researching on or off")
+   ColourNote("silver","","Research <skill>                       - Resume research or start on skill independent of the list")
+   ColourNote("silver","","ResearchStart                          - Begin new research session from front of list")
+   ColourNote("silver","","ResearchGrab <skill tree> <percentage> - Grab skills from optional skill tree that")
+   ColourNote("silver","","                                         are below optional percentage barrier")
+   ColourNote("silver","","                                         (If no arguments are given it will add every")
+   ColourNote("silver","","                                          item in your skill list that is below 90%)")
+   ColourNote("silver","","ResearchAdd <skill>                    - Manually add a skill to the list")
+   ColourNote("silver","","ResearchRem <skill/#>                  - Remove skill in list by name or index number")
+   ColourNote("silver","","ResearchList                           - Display list contents")
+   ColourNote("silver","","ResearchNext                           - Skip current item in list")
+   ColourNote("silver","","ResearchClear                          - Clear all research variables")
+   ColourNote("silver","","ResearchAuto (on/off)                  - Turns automatic researching on or off")
 end -- function
 
 function research()
@@ -84,7 +84,7 @@ function research()
 		if (researchList[currentPos]) then
 			Send("research ".. researchList[currentPos])
 		else
-			Note("Research list empty, aborting!")
+			ColourNote("yellow","","Research list empty, aborting!")
 			toggleOff()
 		end
 	end
@@ -105,25 +105,24 @@ function researchStart(name, line, args)
 		researchNext()
 		toggleOn()
 	else                     -- nothing to research
-		Note("Nothing to research!")
+		ColourNote("yellow","","Nothing to research!")
 		toggleOff()
 	end
 end
 
 function grabAdd(name, line, args)
 	local grabItem = ""
-	--local storage = { percent = 0, name = "" }
-	for i=1, #args, 1 do
+	for i, v in ipairs(args) do
 		if (math.fmod(i, 2) == 1) then	-- arg number is odd
-			grabItem = Trim(args[i])
+			grabItem = Trim(v)
 			storage.name = grabItem
 		else			-- arg number is even
-			if (tonumber(Trim(args[i])) < grabPercent) then
+			if (tonumber(Trim(v)) < grabPercent) then
 				if (grab == true) then
 					internalAddItem(grabItem)
 				end
 			end
-			storage.percent = tonumber(Trim(args[i]))
+			storage.percent = tonumber(Trim(v))
 			allSkills[#allSkills + 1] = storage
 			printSkill(allSkills[#allSkills].name, allSkills[#allSkills].percent)
 			if (math.fmod(i, 5) == 1) then
@@ -163,14 +162,14 @@ end
 function toggleOn(name, line, args)
 	autoResearch = true
 	EnableTriggerGroup("AutoResearch", true)
-	Note("Autoresearch enabled.")
+	ColourNote("yellow","","Autoresearch enabled.")
 end
 
 function toggleOff(name, line, args)
 	autoResearch = false
 	EnableTriggerGroup("AutoResearch", false)
 	EnableTriggerGroup("ResearchGrabber", false)
-	Note("Autoresearch disabled.")
+	ColourNote("yellow","","Autoresearch disabled.")
 end
 
 function toggleGrabOn(name, line, args)
@@ -185,13 +184,13 @@ function toggleGrabOn(name, line, args)
 		end
 	end
 	EnableTriggerGroup("ResearchGrabber", true)
-	Note("Grab started. Skill: '"..grabSkill.."' Percent: '"..grabPercent .. "'")
+	ColourTell("silver","","Grab started. Skill: '","cyan","",grabSkill,"silver","","' Percent: '","cyan","",grabPercent,"silver","","'\n")
 	Send("practice " .. grabSkill)
 end
 
 
 function toggleGrabOff(name, line, args)
-	Note("Grab completed. Found "..#researchList.." items. Type 'researchlist' to see them.")
+	ColourTell("silver","","Grab completed. Found ","cyan","",#researchList,"silver",""," items. Type '","cyan","","researchlist","silver","","' to see them.\n")
 	EnableTriggerGroup("ResearchGrabber", false)
 	grab = false
 	autoResearch = true
@@ -201,7 +200,7 @@ end
 function researchNext(name, line, args)
 	currentPos = currentPos + 1
 	if (currentPos > #researchList) then  -- reached end of list
-		Note("Researching complete.")      -- finished
+		ColourNote("lime","","Researching complete.")      -- finished
 		toggleOff()
 	else                                    -- middle of list
 		research()  -- finally, research item
@@ -210,7 +209,7 @@ end
 
 function addItem(name, line, args)
 	researchList[#researchList + 1] = args[1]
-	Note("'" .. researchList[#researchList] .. "' added to research list.")
+	ColourTell("silver","","'","cyan","",researchList[#researchList],"silver","","' added to research list.\n")
 end
 
 function internalAddItem(item)
@@ -219,18 +218,17 @@ function internalAddItem(item)
 end
 
 function removeItem(name, line, args)
-   t = #researchList
    for i, v in ipairs(researchList) do
-      if ((v == args[1]) or (i == tonumber(args[1]))) then
-         Note("Removed '" .. researchList[i] .. "' index(" .. i .. ") from research list.")
+      if ((string.lower(v) == string.lower(Trim(args[1]))) or (i == tonumber(args[1]))) then
+         ColourTell("silver","","Removed '","cyan","",v,"silver","","' index(","cyan","",i,"silver","",") from research list.\n")
          table.remove(researchList, i)
          if (currentPos > i) then  -- if our item is higher in the list than what we remove
          	currentPos = currentPos - 1  -- decrement the pointer to follow the current item
          end
          break
       else
-         if (t == i) then
-            Note("Unable to find specified item in research list.")
+         if (i == #researchList) then
+            ColourNote("red","","Unable to find specified item in research list.")
          end
       end
    end
@@ -246,7 +244,7 @@ function clearList()
 	grabPercent = 90
 	allSkills = {}
 	researchList = {}
-	Note("Research list cleared.")
+	ColourNote("yellow","","Research list cleared.")
 	currentPos = 0
 	toggleOff()
 end
@@ -258,13 +256,12 @@ function resumeResearchFromAFK(name, line, args)
 end
 
 function displayList(name, line, args)
-   t = #researchList
-   Note("Research List Contains: ")
-   for i = 1, t, 1 do
+   ColourNote("silver","","Research List Contains: ")
+   for i, v in ipairs(researchList) do
       if (i ~= currentPos) then
-         Note (researchList[i])
+         ColourNote("silver","",i..") "..researchList[i])
       else
-         ColourNote("lime","", "--]>" .. researchList[i] .. "<[--")
+         ColourTell("silver","",i,"lime",""," --]>" .. researchList[i] .. "<[--\n")
       end
    end
 end
@@ -276,7 +273,7 @@ function researchAuto(name, line, args)
 		elseif (Trim(args[1]) == "off") then -- turn off
 			toggleOff()
 		else
-			Note("Unrecognized argument given to researchauto: " .. args[1])
+			ColourNote("red","","Unrecognized argument given to researchauto: " .. args[1])
 		end
 	else -- no arg found
 		if (autoResearch == false) then -- turn on
