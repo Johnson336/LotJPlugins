@@ -52,7 +52,7 @@
 	<alias name="listsystems" script="listSystems" match="listsystems" enabled="y" ignore_case="y" group="LotJCargo" sequence="100" />
 	<alias name="cargoBestRoute" script="cargoBestRoute" match="^cargobest( +(.*))?$" enabled="y" ignore_case="y" regexp="y" group="LotJCargo" sequence="100" />
 	<alias name="Cargosetup" script="cargoSetup" match="^cargosetup$" enabled="y" ignore_case="y" regexp="y" group="LotJCargo" sequence="100" />
-	<alias name="cargoHelp" script="cargoHelp" match="^cargohelp$" enabled="y" regexp="y" ignore_case="y" group="LotJCargo" sequence="100" />
+	<alias name="cargoHelp" script="cargoHelp" match="^cargohelp(\s*(.*))?$" enabled="y" regexp="y" ignore_case="y" group="LotJCargo" sequence="100" />
 	<alias name="cargoStart" script="cargoStart" match="cargostart" enabled="y" ignore_case="y" group="LotJCargo" sequence="100" />
 	<alias name="CargoAuto" match="^cargoauto( +(.*))?$" script="cargoAuto" enabled="y" regexp="y" group="LotJCargo" ignore_case="y" sequence="100" />
 	<alias name="CargoList" script="cargoList" match="cargoList" enabled="y" group="LotJCargo" send_to="1" ignore_case="y" sequence="100" />
@@ -60,7 +60,7 @@
 	<alias name="Cargoefficiency" script="displayEfficiency" match="cargoefficiency" enabled="y" group="LotJCargo" ignore_case="y" sequence="100" />
 	<alias name="CargoTrade" script="tradeCargo" match="cargotrade" enabled="y" group="LotJCargo" ignore_case="y" sequence="100" />
 	<alias name="CargoCycle" script="toggleCycle" match="cargocycle" enabled="y" group="LotJCargo" ignore_case="y" sequence="100" />
-	<alias name="CargoNext" script="cargoResume" match="cargoresume" enabled="y" group="LotJCargo" ignore_case="y" sequence="100" />
+	<!-- alias name="CargoNext" script="cargoResume" match="cargoresume" enabled="y" group="LotJCargo" ignore_case="y" sequence="100" -->
 </aliases>
 <timers>
 	<timer name="EfficiencyTimer" script="displayEfficiency" enabled="n" minute="5" group="AutoCargo" />
@@ -122,8 +122,8 @@ end
 function displayEfficiency()
 	local newTime = os.time()
 	local elapsed = newTime - startTime
-	Note("Credits made: " .. commas(amountEarned) .. " Elapsed: " .. displayTime(elapsed) .. " (" .. elapsed .. ")")
-	Note("Credits per hour: " .. commas(string.format("%.1f", ((amountEarned / (elapsed / 60) * 60)))))
+	ColourTell("silver","","Credits made: ","cyan","",commas(amountEarned),"silver",""," Elapsed: ","cyan","",displayTime(elapsed),"silver",""," (","cyan","",elapsed,"silver","",")\n")
+	ColourTell("silver","","Credits per hour: ","cyan","",commas(string.format("%.1f", ((amountEarned / (elapsed / 60) * 60)))).."\n")
 end
 
 function displayTime(time)
@@ -262,7 +262,7 @@ function cargoResume()
 	end
 	cVar = cVar - 1
 	if (cVar < 1) then
-		cVar = #cPlanets
+		cVar = 0
 	end
 	flyNext()
 end
@@ -361,14 +361,14 @@ function toggleACOn()
 	autoCargo = true
 	EnableTriggerGroup("AutoCargo", true)
 	EnableTimer("EfficiencyTimer", true)
-	Note("AutoCargo activated.")
+	ColourNote("yellow","","AutoCargo activated.")
 end
 function toggleACOff()
 	autoCargo = false
 	EnableTriggerGroup("AutoCargo", false)
 	EnableTimer("EfficiencyTimer", false)
 	EnableTimer("keeptrading", false)
-	Note("AutoCargo deactivated.")
+	ColourNote("yellow","","AutoCargo deactivated.")
 end
 
 function cargoSetup()
@@ -404,7 +404,7 @@ function cargoClear(name, list, args)
 	cargoHauling = ""
 	cycle = true
 	hyperCompleted = false
-	Note("Cargo list cleared.")
+	ColourNote("yellow","","Cargo list cleared.")
 	toggleACOff()
 end
 
@@ -456,7 +456,7 @@ function cargoBestRoute(name, list, args)					-- find the most profitable route 
 															bestPlanet2 = body2value
 															bestGoResource = resourcego1value
 															bestRetResource = resourceret1value
-															Note("New best found! Start: " .. body1value.name .. " (".. resourcego1value.name .. ") Tax: ".. tax1 .. " End: " .. body2value.name .. " (".. resourceret1value.name .. ") Tax: " .. tax2 .. " Value: " .. bestRouteValue)
+															ColourNote("silver","","New best found! Start: ","cyan","",body1value.name,"silver",""," (","cyan","",resourcego1value.name,"silver","",") Tax: ","cyan","",tax1,"silver",""," End: ","cyan","",body2value.name,"silver",""," (","cyan","",resourceret1value.name,"silver","",") Tax: ","cyan","",tax2,"silver",""," Value: ","cyan","",bestRouteValue)
 														end
 													end
 												end
@@ -473,15 +473,15 @@ function cargoBestRoute(name, list, args)					-- find the most profitable route 
 	end
 
 	if (foundPlanet == false) then
-		Note("Planet '" .. Trim(args[1]) .. "' either not found or does not possess cargo resources.")
+		ColourNote("red","","Planet '" .. Trim(args[1]) .. "' either not found or does not possess cargo resources.")
 		return
 	end
 	if (args[2] ~= "") then
-		Note("Best route from " .. bestPlanet1.name .. ":")
+		ColourNote("silver","","Best route from ","cyan","",bestPlanet1.name,"silver","",":")
 	else
-		Note("Best route in the entire galaxy:")
+		ColourNote("silver","","Best route in the entire galaxy:")
 	end
-	Note("Start: " .. bestPlanet1.name .. " ("  .. bestGoResource.name .. ") End: " .. bestPlanet2.name .. " (" .. bestRetResource.name .. ") Value: " .. bestRouteValue)
+	ColourNote("silver","","Start: ","cyan","",bestPlanet1.name,"silver",""," (","cyan","",bestGoResource.name,"silver","",") End: ","cyan","",bestPlanet2.name,"silver",""," (","cyan","",bestRetResource.name,"silver","",") Value: ","cyan","",bestRouteValue)
 end
 
 function calculateRouteValue(sys1, sys2, resourcecost1, resourcecost2, tax1, tax2)
@@ -574,32 +574,24 @@ function scanNext(name, list, args)
 		scanned = "none"
 		EnableTriggerGroup("ResourceStart", false)
 		SendNoEcho("config +prompt")
-		ColourNote("silver","","Finished scanning galaxy resources. Found " .. #systems .. " systems with " .. numBodies .. " planets.")
+		ColourTell("silver","","Finished scanning galaxy resources. Found ","cyan","",#systems,"silver",""," systems with ","cyan","",numBodies,"silver",""," planets.\n")
 		--listSystems()
 	end
 end
 
 function cargoList()
-   Note("Cargo List Contains: ")
+   ColourNote("silver","","Cargo List Contains: ")
    for k, v in ipairs(cPlanets) do
    		if (k == cVar) then
-   			ColourNote("lime","", "--]>"..v.name.." ("..v.resource..") <[--")
+   			ColourNote("lime","","--]>","silver","",v.name.." (","cyan","",v.resource,"silver","",")","lime","","<[--")
    		else
-   			Note(v.name.." ("..v.resource..")")
+   			ColourNote("silver","",v.name.." (","cyan","",v.resource,"silver","",")")
    		end -- if
    	end -- for
 end -- listSystems
 
 function storeBody(name, list, args)
-	local storage = {
-		name = "",
-		type = "",
-		tax = 0,
-		x = 0,
-		y = 0,
-		z = 0,
-		resources = {}
-	}
+	local storage = { name = "", type = "", tax = 0, x = 0, y = 0, z = 0, resources = {} }
 	for k, v in pairs(systems) do
 		local sysName = v.name
 		if (string.find(args[1], sysName)) then -- if the system name was found in the grab text
@@ -634,10 +626,7 @@ function storeTax(name, list, args)
 end
 
 function storeResource(name, list, args)
-	local storage = {
-		name = "",
-		price = 0
-	}
+	local storage = { name = "", price = 0 }
 	for k, v in pairs(systems) do
 		for ka, va in pairs(v.bodies) do
 			local bodyName = va.name
@@ -676,7 +665,7 @@ end
 
 function clearTables()
 	systems = {}
-	Note("Cargo Tables cleared.")
+	ColourNote("yellow","","Cargo Tables cleared.")
 end
 
 function toggleSystemCapOff(name, list, args)
@@ -687,28 +676,76 @@ function toggleBodyCapOff(name, list, args)
 	EnableTriggerGroup("BodyCap", false)
 end
 
-function cargoHelp(name, list, args)
-	Note("    LotJ Cargo Commands:")
-	Note("------------------------------")
-	Note("CargoScan              - Scans every system to find planets/moons with")
-	Note("                         resources for sale")
-	Note("CargoBest              - Checks every resource on every planet/moon")
-	Note("                         and calculates the best route in the entire galaxy")
-	Note("CargoBest <planetname> - Checks every resource on the given planet and")
-	Note("                         Calculates the best possible route")
-	Note("ListSystems            - Displays every system scanned into the cargo tables")
-	Note("CargoSetup             - Setup cargo running parameters (must enter at")
-	Note("                       - least 2 planets to make a round trip cargo route)")
-	Note("CargoList              - Shows current cargo running parameters")
-	Note("CargoStart             - Begins cargo running at the first planet specified, must")
-	Note("                         be used while standing outside your cargo vessel")
-	Note("CargoResume            - Resumes cargo running from where you left off. Must be used while")
-	Note("                         standing outside your cargo vessel")
-	Note("CargoCycle             - Toggle whether to fly endlessly or a single route")
-	Note("CargoAuto (on/off)     - Toggle on or off automatic cargo running")
-	Note("CargoClear             - Clear current cargo running settings")
-	Note("CargoHelp              - display this help menu")
-	Note("\n")
+-- define our upgrade help command structure
+local commands = { { name = "cargoScan", desc = "Scans every system in the galaxy into the cargo database.",
+                         args = {  }
+                          },
+               { name = "cargoBest", desc = "Searches through the cargo database to find the most profitable route.",
+                        args = { { name = "<none>", desc = "Searches through cargo database to find the most profitable route in the entire galaxy."}, 
+                                 { name = "<planet>", desc = "Searches through cargo database to find the most profitable route from the given planet."}, }
+                          },
+               { name = "listSystems", desc = "Displays every system currently saved in the cargo database for debug purposes.",
+                        args = { }
+                          },
+               { name = "cargoSetup", desc = "Initiates automatic prompting for information needed for a new cargo session.",
+                        args = { }
+                          },
+               { name = "cargoList", desc = "Displays the current cargo running specifications.",
+                        args = { }
+                          },
+               { name = "cargoStart", desc = "Begins cargo running from the first planet in the given cargoList.",
+                        args = { }
+                          },
+               { name = "cargoCycle", desc = "Toggles whether to continue running cargo on a loop, or stop once the end of the list has been reached.",
+                        args = { }
+                          },
+               { name = "cargoAuto", desc = "Toggles automatic cargo running on or off.",
+                        args = { { name = "<on/off>", desc = "Sets automatic cargo running status to the given parameter."}, }
+                          },
+               { name = "cargoClear", desc = "Clears all cargo running settings.",
+                        args = { }
+                          },
+               { name = "cargoEfficiency", desc = "Displays session statistical information.",
+                        args = { }
+                          },
+               { name = "cargoHelp", desc = "Displays this help file.",
+                        args = { { name = "<command>", desc = "Displays more detailed information on the specified command."}, }
+                          },
+
+                        }
+
+function cargoHelp(name, line, args)
+  local found = false
+  if args[1] == "" then -- show general help
+    ColourNote("white","black","LotJCargo v 1.4 by Johnson. Enter 'cargohelp <command>' for more detailed information.")
+    for a, b in ipairs(commands) do -- commands
+      local command = b
+      ColourNote("silver","black",string.format("%-20s", command.name).." : "..command.desc)
+    end
+    Note("")
+  else -- entered something
+    ColourNote("white","black","LotJCargo v 1.4 by Johnson. Enter 'cargohelp' for more general information.")
+
+    for a, b in ipairs(commands) do -- scroll through commands
+    
+      if (string.lower(b.name) == string.lower(Trim(args[1]))) then -- found our argument
+        found = true
+        ColourNote("silver","black",b.name .. " : " .. b.desc)
+        ColourNote("silver","black","Available arguments:")
+        if #b.args == 0 then -- no arguments
+          ColourNote("silver","black","   None.")
+        else -- arguments to print
+          for i, k in ipairs(b.args) do
+            ColourNote("silver","black",string.format("%20s", k.name).." : " .. k.desc)
+          end -- end print arguments
+        end -- end no arguments
+        Note("")
+      end -- end found command
+    end -- end scroll commands
+    if not found then
+      ColourNote("silver","black","Command '"..args[1].."' not found.")
+    end
+  end -- end no input
 end
 
 require "checkplugin"
