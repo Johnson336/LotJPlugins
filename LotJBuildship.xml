@@ -100,13 +100,13 @@ This string adds as many ships as you specify with a single command.
 <send>EnableTrigger("endline", false)</send></trigger>
   
   <!-- upgrade triggers -->
-  <trigger name="Upgraded" match="^You (earn|pay) \d+ credits (to complete the modification|after selling the parts)\.$" script="upgradeNextPart" enabled="n" regexp="y" group="Upgrade" sequence="100" />
-  <trigger name="CantUpgrade" match="^That change would take that component \d+ units (over max|below minimum)\.$" script="upgradeNextPart" enabled="n" regexp="y" group="Upgrade" sequence="100" />
-  <trigger name="FailUpgrade" match="^Hmm\, you didn\'t do much of anything\.$" script="upgrade" enabled="n"  regexp="y" group="Upgrade" sequence="100" />
-  <trigger name="NoRoom" match="^Theres not enough room in the ship\! Check your ships \'quota\' value\.$" script="upgradeNextPart" enabled="n" regexp="y" group="Upgrade" sequence="100" />
-  <trigger name="TooPoor" match="^You can\'t afford to make those modifications right now\!$" script="upgradeNextPart" enabled="n" regexp="y" group="Upgrade" sequence="100" />
-  <trigger name="NoShip" match="^You can\'t seem to find that ship here\!$" script="upgradeNext" enabled="n" regexp="y" group="Upgrade" sequence="100" />
-  <trigger name="Nocomponent" match="^Thats not a valid component\! Maybe you should check HELP UPGRADING$" script="upgradeNextPart" enabled="n" regexp="y" group="Upgrade" sequence="100" />
+  <trigger name="Upgraded" match="^You (earn|pay) \d+ credits (to complete the modification|after selling the parts)\.$" script="upgradeNextPart" enabled="n" regexp="y" group="Upgrading" sequence="100" />
+  <trigger name="CantUpgrade" match="^That change would take that component \d+ units (over max|below minimum)\.$" script="upgradeNextPart" enabled="n" regexp="y" group="Upgrading" sequence="100" />
+  <trigger name="FailUpgrade" match="^Hmm\, you didn\'t do much of anything\.$" script="upgrade" enabled="n"  regexp="y" group="Upgrading" sequence="100" />
+  <trigger name="NoRoom" match="^Theres not enough room in the ship\! Check your ships \'quota\' value\.$" script="upgradeNextPart" enabled="n" regexp="y" group="Upgrading" sequence="100" />
+  <trigger name="TooPoor" match="^You can\'t afford to make those modifications right now\!$" script="upgradeNextPart" enabled="n" regexp="y" group="Upgrading" sequence="100" />
+  <trigger name="NoShip" match="^You can\'t seem to find that ship here\!$" script="upgradeNext" enabled="n" regexp="y" group="Upgrading" sequence="100" />
+  <trigger name="Nocomponent" match="^Thats not a valid component\! Maybe you should check HELP UPGRADING$" script="upgradeNextPart" enabled="n" regexp="y" group="Upgrading" sequence="100" />
 </triggers>
 
 <!--  Aliases  -->
@@ -347,7 +347,7 @@ function upgradeLoad(name, line, args)
   elseif string.find(args[1], " ", 0, true) then
     addItems = utils.split(args[1], " ")
   else
-  	ColourNote("red","","Usage: upgradetLoad <ship> <profile/#>")
+  	ColourNote("red","","Usage: upgradeLoad <ship> <profile/#>")
 	  return
 	end
   local ship = { name = "", mods = {} }
@@ -428,30 +428,20 @@ function upgradeRem(name, line, args)
   end
 end
 function upgradePrint(name, line, args)
-  local shipcolor = "red"
-  local partcolor = "cyan"
   ColourNote("silver","","Current upgrade list: ")
   for i, v in ipairs(upgradeList) do
     local modlist = v.mods
-    if upgradespos == i then
-      shipcolor = "lime"
-    else
-      shipcolor = "red"
-    end
-    ColourTell("silver","",i.." | ",shipcolor,"",v.name,"silver",""," | ")
+    ColourTell("silver","",i.." | ",((upgradespos == i and "lime") or "red"),"",v.name,"silver",""," | ")
     for k, j in ipairs(modlist) do
-      if upgradeppos == k and upgradespos == i then
-        partcolor = "lime"
-      else
-        partcolor = "cyan"
-      end
-      ColourTell(partcolor,"",j.name,"silver",""," ",partcolor,"",((j.amount<0 and "") or "+")..j.amount,"silver",""," | ")
+      ColourTell((((upgradeppos == k and upgradespos == i) and "lime") or "cyan"),"",j.name,"silver",""," ",(((upgradeppos == k and upgradespos == i) and "lime") or "cyan"),"",((j.amount<0 and "") or "+")..j.amount,"silver",""," | ")
     end
     Tell("\n")
   end
 end
 function upgradeClear(name, line, args)
   upgradeList = {}
+  upgradeppos = 0
+  upgradespos = 0
   ColourNote("yellow","","Current upgrade list cleared.")
 end
 function upgrade(name, line, args)
@@ -483,6 +473,7 @@ function upgradeStart(name, line, args)
   upgradespos = 0
   upgradeppos = 0
   upgradeitem = ""
+  enableUpgrade()
   upgradeNext()
 end
 function upgradeNext(name, line, args)
@@ -569,7 +560,7 @@ function enableUpgrade()
     return
   end
   autoUpgrade = true
-  EnableTriggerGroup("Upgrade", true)
+  EnableTriggerGroup("Upgrading", true)
   ColourNote("yellow","","Auto upgrade enabled.")
 end
 function disableUpgrade()
@@ -577,7 +568,7 @@ function disableUpgrade()
     return
   end
   autoUpgrade = false
-  EnableTriggerGroup("Upgrade", false)
+  EnableTriggerGroup("Upgrading", false)
   ColourNote("yellow","","Auto upgrade disabled.")
 end
 
@@ -586,7 +577,7 @@ function follow(name, line, args)
     return
   end
   Send("follow "..args[1])
-  buildship()
+  buildShip()
 end
 
 function addShip(name, line, wildcards)
@@ -619,11 +610,11 @@ function buildStart(name, line, wildcards)
 end -- function
 
 function buildShip(name, line, wildcards)
-	if (currentShip > 0 and #shipQueue > 0 and currentPart > 0) then
-		Send("buildship " .. shipQueue[currentShip] .. " " .. shipParts[currentPart])
-	else
-		abort()
-	end
+  if not shipQueue[currentShip] or not shipParts[currentPart] then
+    abort()
+    return
+  end
+  Send("buildship " .. shipQueue[currentShip] .. " " .. shipParts[currentPart])
 end
 
 function buildNext(name, line, wildcards)
@@ -701,23 +692,23 @@ function setPartname(name, line, wildcards)
 end -- function
 
 function showPartnames()
-	Note("Partnames are as follows: ")
+	ColourNote("silver","","Partnames are as follows: ")
 	for i, v in ipairs(shipParts) do
 		if (currentPart == i) then
-			ColourNote("lawngreen","black", "--]>" .. shipParts[i] .. " = " .. partNames[i] .. "<[--")
+			ColourNote("lime","black", "--]>" .. shipParts[i] .. " = " .. partNames[i] .. "<[--")
 		else
-			Note(shipParts[i] .. " = " .. partNames[i])
+			ColourNote("silver","",shipParts[i] .. " = " .. partNames[i])
 		end
 	end -- for
 end -- function
 
 function showList()
-	Note("Ship Queue Contains: ")
+	ColourNote("silver","","Ship Queue Contains: ")
 	for i, v in ipairs(shipQueue) do
 		if (currentShip == i) then
-			ColourNote("lawngreen","black", "--]>"..i..") "..shipQueue[i].."<[--")
+			ColourNote("lime","", "--]>"..i..") "..shipQueue[i].."<[--")
 		else
-			Note(i..") "..shipQueue[i])
+			ColourNote("silver","",i..") "..shipQueue[i])
 		end
 	end -- for
 	showPartnames()
@@ -912,6 +903,9 @@ local buildcommands = { { name = "buildAdd", desc = "Adds a new ship to the ship
                { name = "buildHelp", desc = "Display this help file.",
                         args = { { name = "<command>", desc = "Display more detailed help information on the given command."} }
                           },
+               { name = "upgradeHelp", desc = "Display help file for upgrading commands.",
+                        args = { { name = "<command>", desc = "Display more detailed help information on the given command."} }
+                          },
 
                            }
 
@@ -1022,7 +1016,10 @@ local upgradecommands = { { name = "upgradeProfileName", desc = "Changes the nam
 
                { name = "upgradehelp", desc = "Display this help file.",
                         args = { { name = "<command>", desc = "Display more detailed help information on the given command."} }
-                          },           
+                          },
+               { name = "buildHelp", desc = "Display help file for shipbuilding commands.",
+                        args = { { name = "<command>", desc = "Display more detailed help information on the given command."} }
+                          },
                            }
                            
 --upgradeProfileName <name>                 Changes the name of the profile to be added.
