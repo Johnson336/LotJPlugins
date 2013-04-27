@@ -209,7 +209,7 @@ end
 
 function boughtCargo(name, list, args)
 	addCargo(args[2], tonumber(args[1]))
-	beginTradingStage()
+	leftShip()
 end
 
 function removeCargo(cargotype, cargoamount)
@@ -367,8 +367,6 @@ end
 
 function leftShip()
   if not hyperCompleted then
-    ColourNote("red","","Left ship prematurely, aborting cargo script to prevent credit loss.")
-    toggleACOff()
     return
   end
   beginTradingStage()
@@ -451,23 +449,24 @@ function cargoStart()
 	  return
 	end
 	toggleACOn()
+	hyperCompleted = true
 	beginTradingStage() -- sell off stuff we don't want and refill the ship
 end
 
 function flyNext()
-  buyRemaining() -- fill up the ship
-	cVar = cVar + 1
-	if (cVar > #cPlanets) then  -- if we're at the end of the list
-		if cycle then         -- wrap to the beginning
-			cVar = 1
-		else
-		  cVar = #cPlanets
-			toggleACOff()		-- abort out and quit
-			return
-		end
-	end
-	hyperCompleted = false
-	Execute("flyto " .. getName())
+  buyRemaining() -- fill up the ship (without selling it off since hyperCompleted is now false)
+  cVar = cVar + 1
+  if (cVar > #cPlanets) then  -- if we're at the end of the list
+    if cycle then         -- wrap to the beginning
+      cVar = 1
+    else
+      cVar = #cPlanets
+      toggleACOff()		-- abort out and quit
+      return
+    end
+  end
+  hyperCompleted = false
+  Execute("flyto " .. getName())
 end
 
 function getNextName()
