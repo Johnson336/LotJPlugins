@@ -2,7 +2,7 @@
 <!DOCTYPE muclient> 
 <!--  Saved on Wednesday, July 25, 2012, 7:12 PM   -->  
 <muclient>
-<plugin name="LotJCargo" author="@Johnson" id="b4f195e776cff20d17a1abd2" language="Lua" purpose="Cargo Running Made Easy" save_state="y" requires="4.40" version="1.40">
+<plugin name="LotJCargo" author="@Johnson" id="b4f195e776cff20d17a1abd2" language="Lua" purpose="Cargo Running Made Easy" save_state="y" requires="4.40" version="1.45">
 <description trim="y">
 <![CDATA[ 
 'CargoHelp'      - To see the list of commands associated with this plugin.
@@ -96,7 +96,7 @@ local hyperCompleted = false
 function beginManifest(name, line, args)
   if not args or args[1] == "" then -- entered nothing
     if not ship.name or ship.name == "" then -- don't have a stored ship name, error out
-      ColourNote("red","","Error: must specify ship name using cargoSetupShipName or use syntax beginmanifest <shipname>")
+      ColourNote("red","","Error: must specify ship name using cargoShip")
       return
     else -- we have a stored ship name, use it
       SendNoEcho("listcargo "..ship.name)
@@ -203,13 +203,11 @@ function cargoSetupPlanets(name, line, args)
 	end
 end
 function soldCargo(name, list, args)
-	--soldAmt = soldAmt + tonumber(args[1])
 	removeCargo(args[2], tonumber(args[1]))
 	buyRemaining()
 end
 
 function boughtCargo(name, list, args)
-  --boughtAmt = boughtAmt + tonumber(args[1])
 	addCargo(args[2], tonumber(args[1]))
 	beginTradingStage()
 end
@@ -318,7 +316,7 @@ function displayEfficiency()
 	local elapsed = newTime - startTime
 	ColourNote("silver","","Credits made: ","cyan","",commas(amountEarned),"silver",""," Elapsed: ","cyan","",displayTime(elapsed))
 	--,"silver",""," (","cyan","",elapsed,"silver","",")"
-	ColourNote("silver","","Credits per hour: ","cyan","",commas(string.format("%.1f", ((amountEarned / (elapsed / 60) * 60)))))
+	ColourNote("silver","","Credits per hour: ","cyan","",commas(string.format("%d", ((amountEarned / (elapsed / 60) * 60)))))
 end
 
 function displayTime(time)
@@ -450,10 +448,11 @@ function cargoStart()
 	end
 	toggleACOn()
 	hyperCompleted = true
-	beginTradingStage()
+	beginTradingStage() -- sell off stuff we don't want and refill the ship
 end
 
 function flyNext()
+  buyRemaining() -- fill up the ship
 	cVar = cVar + 1
 	if (cVar > #cPlanets) then  -- if we're at the end of the list
 		if cycle then         -- wrap to the beginning
@@ -821,7 +820,7 @@ function toggleBodyCapOff(name, list, args)
 	EnableTriggerGroup("BodyCap", false)
 end
 
--- define our upgrade help command structure
+-- define our help command structure
 local commands = { { name = "cargoScan", desc = "Scans every system in the galaxy into the cargo database.",
                          args = {  }
                           },
@@ -871,14 +870,14 @@ local commands = { { name = "cargoScan", desc = "Scans every system in the galax
 function cargoHelp(name, line, args)
   local found = false
   if args[1] == "" then -- show general help
-    ColourNote("white","black","LotJCargo v 1.4 by Johnson. Enter 'cargohelp <command>' for more detailed information.")
+    ColourNote("white","black","LotJCargo v 1.45 by Johnson. Enter 'cargohelp <command>' for more detailed information.")
     for a, b in ipairs(commands) do -- commands
       local command = b
       ColourNote("silver","black",string.format("%-20s", command.name).." : "..command.desc)
     end
     Note("")
   else -- entered something
-    ColourNote("white","black","LotJCargo v 1.4 by Johnson. Enter 'cargohelp' for more general information.")
+    ColourNote("white","black","LotJCargo v 1.45 by Johnson. Enter 'cargohelp' for more general information.")
     for a, b in ipairs(commands) do -- scroll through commands
       if (string.lower(b.name) == string.lower(Trim(args[1]))) then -- found our argument
         found = true
