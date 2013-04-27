@@ -35,7 +35,7 @@
 	<trigger enabled="n" group="ResourceCap" match="^Show what to whom\?$" regexp="y" name="resourceCapEnd" script="resourceEnd" omit_from_log="y" omit_from_output="y" sequence="100" />
 
 	<!-- Automatic cargo triggers -->
-	<trigger name="tradeCargo" script="beginTradingStage" match="^You exit the ship\.$" enabled="n" regexp="y" group="AutoCargo" sequence="100" />
+	<trigger name="tradeCargo" script="leftShip" match="^You exit the ship\.$" enabled="n" regexp="y" group="AutoCargo" sequence="100" />
 	<trigger name="soldcargo" script="soldCargo" match="^You sell (.*) units of (.*)\.$" enabled="n" regexp="y" group="AutoCargo" sequence="100" />
 	<trigger name="earnedmoney" script="gainMoney" match="^You earned (.*) credits from the sale and pay (.*) in taxes\.$" enabled="n" regexp="y" group="AutoCargo" sequence="100" />
 	<trigger name="waitSell" script="waitSell" match="^The planets funds can\'t support such a sale\!$" enabled="n" regexp="y" group="AutoCargo" sequence="100" />
@@ -365,12 +365,16 @@ function displayTime(time)
 	return table.concat(retval, ", ")
 end
 
-function beginTradingStage()
+function leftShip()
   if not hyperCompleted then
     ColourNote("red","","Left ship prematurely, aborting cargo script to prevent credit loss.")
     toggleACOff()
     return
   end
+  beginTradingStage()
+end
+
+function beginTradingStage()
   -- first we try to sell what we're carrying
   if not sellOnePod() then -- if we are unable to sell anything, that means we need to move on
     flyNext()
@@ -447,7 +451,6 @@ function cargoStart()
 	  return
 	end
 	toggleACOn()
-	hyperCompleted = true
 	beginTradingStage() -- sell off stuff we don't want and refill the ship
 end
 
