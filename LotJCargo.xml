@@ -50,6 +50,7 @@
   <trigger name="shipnotfound" script="errorShipManifest" match="^You can\'t find that ship here\!$" group="ManifestStart" enabled="n" regexp="y" sequence="100" />
   <trigger name="storeCargoPodTrig" script="storeCargoPod" match="^\[(\d+\s+)\] \[(.*)\] \[(\d+)\/(\d+\s+)\]$" group="Manifest" enabled="n" regexp="y" sequence="100" />
   <trigger name="endShipManifest" script="disableShipManifest" match="^$" group="Manifest" enabled="n" regexp="y" sequence="100" />
+  <trigger name="nopodsfound" script="disableShipManifest" match="^This ship has absolutely no cargo containers\!$" group="ManifestStart" enabled="n" regexp="y" sequence="100" />
 </triggers>
 
 <aliases>
@@ -92,6 +93,7 @@ local startTime = 0
 local amountEarned = 0
 local cycle = true
 local hyperCompleted = false
+local scannedCargo = false
 
 function beginManifest(name, line, args)
   if not args or args[1] == "" then -- entered nothing
@@ -130,7 +132,8 @@ function disableShipManifest()
   EnableTriggerGroup("Manifest", false)
   EnableTriggerGroup("ManifestStart", false)
   ColourNote("yellow","","Disabled ship manifest capture. Found "..#ship.cargo.." pods carrying "..getCargoCarrying().."/"..getCargoCapacity().." units.")
-  cargoStart()
+  scannedCargo = true
+  DoAfterSpecial(2, 'cargoStart()', sendto.script)
 end
 -- gets amount of cargo we're currently carrying
 function getCargoCarrying()
@@ -314,6 +317,9 @@ end
 function displayEfficiency()
 	local newTime = os.time()
 	local elapsed = newTime - startTime
+	if amountEarned == 0  or not elapsed then
+	  return
+	end
 	ColourNote("silver","","Credits made: ","cyan","",commas(amountEarned),"silver",""," Elapsed: ","cyan","",displayTime(elapsed))
 	--,"silver",""," (","cyan","",elapsed,"silver","",")"
 	ColourNote("silver","","Credits per hour: ","cyan","",commas(string.format("%d", ((amountEarned / (elapsed / 60) * 60)))))
@@ -443,7 +449,7 @@ function cargoStart()
 	  ColourNote("red","","You must assign your cargo route using cargoplanets <planet1>,<resource1>,<planet2>,<resource2>...")
 	  return
 	end
-	if not ship.cargo or #ship.cargo == 0 then
+	if not ship.cargo or not scannedCargo then
 	  ColourNote("yellow","","Retrieving ship's cargo manifest for you...")
 	  beginManifest()
 	  return
@@ -550,6 +556,7 @@ function cargoClear(name, list, args)
 	cVar = 0
 	cycle = true
 	hyperCompleted = false
+	scannedCargo = false
 	ColourNote("yellow","","Cargo list cleared.")
 	toggleACOff()
 end
