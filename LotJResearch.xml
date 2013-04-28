@@ -25,12 +25,12 @@ Automatically populate and research items that need to be researched.
   <trigger name="ResearchScience" script="researchNext" match="^You can\'t learn about that in books\. Go find a teacher\.$" enabled="n" group="AutoResearch" regexp="y" sequence="100" />
   <trigger name="ResearchSuccess" script="research" match="^You finish your studies and feel much more skilled\.$" enabled="n" group="AutoResearch" regexp="y" sequence="100" />
   <trigger name="ResearchFailure" script="research" match="^You study for hours on end, but fail to gather any knowledge\.$" enabled="n" group="AutoResearch" regexp="y" sequence="100" />
-  <trigger name="ResearchResumeAFK" script="resumeResearchFromAFK" match="^You may now bot again\.$" enabled="n" group="AutoResearch" regexp="y" sequence="100" />
-  <trigger name="ResearchGrabThree" script="grabAdd" match="^(.*)(\s+\d+)\%(.*)(\s+\d+)\%(.*)(\s+\d+)\%(\s+)$" keep_evaluating="n" regexp="y" enabled="y" omit_from_output="y" omit_from_log="y" group="ResearchColour" sequence="100" />
-  <trigger name="ResearchGrabTwo" script="grabAdd" match="^(.*)(\s+\d+)\%(.*)(\s+\d+)\%(\s+)$" keep_evaluating="n" regexp="y" enabled="y" omit_from_output="y" omit_from_log="y" group="ResearchColour" sequence="100" />
-  <trigger name="ResearchGrabOne" script="grabAdd" match="^(.*)(\s+\d+)\%(\s+)?$" keep_evaluating="n" regexp="y" enabled="y" omit_from_output="y" omit_from_log="y" group="ResearchColour" sequence="100" />
+  <!-- trigger name="ResearchResumeAFK" script="resumeResearchFromAFK" match="^You may now bot again\.$" enabled="n" group="AutoResearch" regexp="y" sequence="100" -->
+  <trigger name="ResearchGrabThree" script="grabAdd" match="^([\s\w,-]+)(\s+\d+)\%([\s\w,-]+)(\s+\d+)\%([\s\w,-]+)(\s+\d+)\%(\s*)$" regexp="y" enabled="n" omit_from_output="y" omit_from_log="y" group="ResearchColour" sequence="100" />
+  <trigger name="ResearchGrabTwo" script="grabAdd" match="^([\s\w,-]+)(\s+\d+)\%([\s\w,-]+)(\s+\d+)\%(\s*)$" regexp="y" enabled="n" omit_from_output="y" omit_from_log="y" group="ResearchColour" sequence="100" />
+  <trigger name="ResearchGrabOne" script="grabAdd" match="^([\s\w,-]+)(\s+\d+)\%(\s*)?$" regexp="y" enabled="n" omit_from_output="y" omit_from_log="y" group="ResearchColour" sequence="100" />
   <trigger name="ResearchGrabDone" script="toggleGrabOff" match="^To see a shorter practice list\, type PRACTICE \<class name\>\.$" regexp="y" group="ResearchGrabber" enabled="n" sequence="100" />
-  <trigger name="Allskillsclear" script="clearGrabList" match="---------------------------------Skills-----------------------------------" enabled="y" group="ResearchColour" sequence="100" />
+  <trigger name="Allskillsclear" script="clearGrabList" match="---------------------------------Skills-----------------------------------" enabled="y" group="ResearchStarter" sequence="100" />
 </triggers>
 <!--   Aliases    --> 
 <aliases>
@@ -190,11 +190,13 @@ end
 
 
 function toggleGrabOff(name, line, args)
-	ColourTell("silver","","Grab completed. Found ","cyan","",#researchList,"silver",""," items. Type '","cyan","","researchlist","silver","","' to see them.\n")
+  if grab then
+	  ColourTell("silver","","Grab completed. Found ","cyan","",#researchList,"silver",""," items. Type '","cyan","","researchlist","silver","","' to see them.\n")
+	  grab = false
+	  researchStart()
+	end
 	EnableTriggerGroup("ResearchGrabber", false)
-	grab = false
-	autoResearch = true
-	researchStart()
+	EnableTriggerGroup("ResearchColour", false)
 end
 
 function researchNext(name, line, args)
@@ -236,6 +238,7 @@ end
 
 function clearGrabList()
 	allSkills = {}
+	EnableTriggerGroup("ResearchColour", true)
 end
 
 function clearList()
@@ -249,11 +252,13 @@ function clearList()
 	toggleOff()
 end
 
-function resumeResearchFromAFK(name, line, args)
-	Send("afk")
-	Send("bot start")
-	research()
-end
+-- it's not even legal to bot research, why did I add this in the first place??
+-- taking it out until it becomes legal.
+--function resumeResearchFromAFK(name, line, args)
+--	Send("afk")
+--	Send("bot start")
+--	research()
+--end
 
 function displayList(name, line, args)
    ColourNote("silver","","Research List Contains: ")
