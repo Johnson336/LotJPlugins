@@ -109,6 +109,7 @@ function beginManifest(name, line, args)
     SendNoEcho("listcargo "..ship.name)
     EnableTriggerGroup("ManifestStart", true)
   end
+  ship.cargo = {}
 end
 function errorShipManifest()
   EnableTriggerGroup("Manifest", false)
@@ -118,7 +119,6 @@ end
 function enableShipManifest()
   EnableTriggerGroup("Manifest", true)
   ColourNote("yellow","","Enabled ship manifest capture.")
-  ship.cargo = {}
 end
 -- stores a pod into the ship manifest
 function storeCargoPod(name, line, args)
@@ -317,7 +317,7 @@ end
 function displayEfficiency()
 	local newTime = os.time()
 	local elapsed = newTime - startTime
-	if amountEarned == 0  or not elapsed then
+	if amountEarned == 0 or not elapsed then
 	  return
 	end
 	ColourNote("silver","","Credits made: ","cyan","",commas(amountEarned),"silver",""," Elapsed: ","cyan","",displayTime(elapsed))
