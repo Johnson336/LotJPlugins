@@ -274,10 +274,10 @@ end
 
 function toCockpit(name, list, args)
 	if (shipEnterDirs == "") then
-		shipEnterDirs = utils.inputbox("Dirs to cockpit?\nFormat options:\nSpaces: E U N\nCommas: E,U,N\nSemi-colons: E;U;N", "Cockpit", "", "Courier", 9)
+		shipEnterDirs = utils.inputbox("Dirs to cockpit?\nFormat options:\nSpaces: E U N\nCommas: E,U,N\nSemi-colons: E;U;N\n1-Room Ship: none", "Cockpit", "", "Courier", 9)
 	end
 	if (shipLeaveDirs == "") then
-		shipLeaveDirs = utils.inputbox("Dirs to leave ship?\nFormat options:\nSpaces: S D W\nCommas: S,D,W\nSemi-colons: S;D;W", "Exit", "", "Courier", 9)
+		shipLeaveDirs = utils.inputbox("Dirs to leave ship?\nFormat options:\nSpaces: S D W\nCommas: S,D,W\nSemi-colons: S;D;W\n1-Room Ship: none", "Exit", "", "Courier", 9)
 	end
 	
 	if not shipEnterDirs or not shipLeaveDirs then
