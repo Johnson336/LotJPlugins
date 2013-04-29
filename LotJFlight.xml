@@ -2,7 +2,7 @@
 <!DOCTYPE muclient> 
 <!--  Saved on Wednesday, July 25, 2012, 7:14 PM   -->  
 <muclient>
-<plugin name="LotJFlight" author="@Johnson" id="680bf1a4e5e600854747c379" language="Lua" purpose="Flight Made Easy" save_state="y" requires="4.40" version="1.47">
+<plugin name="LotJFlight" author="@Johnson" id="680bf1a4e5e600854747c379" language="Lua" purpose="Flight Made Easy" save_state="y" requires="4.40" version="1.48">
 <description trim="y">
 <![CDATA[ 
 'FlyHelp'      - To see the list of commands associated with this plugin.
@@ -83,10 +83,7 @@ function fighterShow(name, line, args, styles)
         for a, b in pairs(styles) do
           ColourTell (RGBColourToName(b.textcolour), RGBColourToName(b.backcolour), b.text) 
         end 
-        ColourTell("yellow","","->",
-                   "gray","","[",
-                   "red","",k,
-                   "gray","","]\n")
+        ColourNote("yellow","","->","gray","","[","red","",k,"gray","","]")
       end
     end
   end
@@ -116,18 +113,34 @@ function flyClear()
 end
 
 function endFlight()
-	Execute(shipLeaveDirs)
-	Send("openhatch")
-	Send("leaveship")
-	Send("refuel " .. shipName .. " full")
-	Send("ships sale")
-	landingSites = {}
-	lastPlanet = planetName
-	toggleFlyOff()
+  local dirs = {}
+  if string.find(shipLeaveDirs, " ") then -- entered n n n format
+    dirs = utils.split(shipLeaveDirs, " ")
+  elseif string.find(shipLeaveDirs, ",") then -- entered n,n,n format
+    dirs = utils.split(shipLeaveDirs, ",")
+  elseif string.find(shipLeaveDirs, ";") then -- entered n;n;n format
+    dirs = utils.split(shipLeaveDirs, ";")
+  -- room for expansion here to handle speedwalking syntax 2n3eu etc
+  elseif string.lower(shipLeaveDirs) ~= "none" then
+    ColourNote("red","","Unrecognized directions given to leave ship, aborting script.")
+    toggleFlyOff()
+    return
+  end
+  for i, v in ipairs(dirs) do
+    Execute(v)
+  end
+  Send("openhatch")
+  Send("leaveship")
+  Send("closehatch "..shipName)
+  Send("refuel " .. shipName .. " full")
+  Send("ships sale")
+  landingSites = {}
+  lastPlanet = planetName
+  toggleFlyOff()
 end
 
 function waitHyper()
-	DoAfter(10, "hyper")
+  DoAfter(10, "hyper")
 end
 
 function landing()
@@ -261,12 +274,33 @@ end
 
 function toCockpit(name, list, args)
 	if (shipEnterDirs == "") then
-		shipEnterDirs = utils.inputbox("Dirs to cockpit?", "Cockpit", "", "Courier", 9)
+		shipEnterDirs = utils.inputbox("Dirs to cockpit?\nFormat options:\nSpaces: E U N\nCommas: E,U,N\nSemi-colons: E;U;N", "Cockpit", "", "Courier", 9)
 	end
-	Execute(shipEnterDirs)
 	if (shipLeaveDirs == "") then
-		shipLeaveDirs = utils.inputbox("Dirs to leave ship?", "Exit", "", "Courier", 9)
+		shipLeaveDirs = utils.inputbox("Dirs to leave ship?\nFormat options:\nSpaces: S D W\nCommas: S,D,W\nSemi-colons: S;D;W", "Exit", "", "Courier", 9)
 	end
+	
+	if not shipEnterDirs or not shipLeaveDirs then
+	  ColourNote("red","","Cancelled dialog box, aborting script.")
+	  toggleFlyOff()
+	  return
+	end
+  local dirs = {}
+  if string.find(shipEnterDirs, " ") then -- entered n n n format
+    dirs = utils.split(shipEnterDirs, " ")
+  elseif string.find(shipEnterDirs, ",") then -- entered n,n,n format
+    dirs = utils.split(shipEnterDirs, ",")
+  elseif string.find(shipEnterDirs, ";") then -- entered n;n;n format
+    dirs = utils.split(shipEnterDirs, ";")
+  -- room for expansion here to handle speedwalking syntax 2n3eu etc
+  elseif string.lower(shipEnterDirs) ~= "none" then
+    ColourNote("red","","Unrecognized directions given to enter ship, aborting script.")
+    toggleFlyOff()
+    return
+  end
+  for i, v in ipairs(dirs) do
+    Execute(v)
+  end
 end
 
 function toggleFlyOn()
