@@ -37,7 +37,7 @@ USAGE:
 
   <trigger enabled="n" name="say1" match="*say*'*'" regexp="n" omit_from_output="n" script="untagged_info" sequence="100" />
   <trigger enabled="n" name="say2" match="'*'*say*" regexp="n" omit_from_output="n" script="untagged_info" sequence="100" />
-  <trigger enabled="n" name="translation" match="* buzzes *" regexp="n" omit_from_output="n" script="untagged_info" sequence="100" />
+  <trigger enabled="n" name="buzz" match="* buzzes *" regexp="n" omit_from_output="n" script="untagged_info" sequence="100" />
   <trigger enabled="n" name="ask1" match="*ask*'*'" regexp="n" omit_from_output="n" script="untagged_info" sequence="100" />
   <trigger enabled="n" name="ask2" match="'*'*ask*" regexp="n" omit_from_output="n" script="untagged_info" sequence="100" />
   <trigger enabled="n" name="exclaim1" match="*exclaim*'*'" regexp="n" omit_from_output="n" script="untagged_info" sequence="100" />
@@ -123,7 +123,6 @@ lineEnd = ""
 WINDOW_LINES = ""
 
 -- functions for handling Aardwolf color codes
---dofile(GetPluginInfo(GetPluginID(), 20) .. "aardwolf_colors.lua")
 dofile(GetPluginInfo(GetPluginID(), 20) .. "lotj_colors.lua")
 
 font_height = ""
@@ -136,7 +135,7 @@ show_say = tonumber(GetVariable("show_say")) or 1
 show_clan = tonumber(GetVariable("show_clan")) or 1
 show_comms = tonumber(GetVariable("show_comms")) or 1
 show_broadcast = tonumber(GetVariable("show_broadcast")) or 1
-show_translation = tonumber(GetVariable("show_translation")) or 1
+show_buzz = tonumber(GetVariable("show_buzz")) or 1
 show_ooc = tonumber(GetVariable("show_ooc")) or 1
 show_newbie = tonumber(GetVariable("show_newbie")) or 1
 show_immchat = tonumber(GetVariable("show_immchat")) or 1
@@ -165,7 +164,7 @@ SetTriggerOption("exclaim2", "enabled", show_say)
 SetTriggerOption("clan", "enabled", show_clan)
 SetTriggerOption("comms", "enabled", show_comms)
 SetTriggerOption("broadcast", "enabled", show_broadcast)
-SetTriggerOption("translation", "enabled", show_translation)
+SetTriggerOption("buzz", "enabled", show_buzz)
 SetTriggerOption("immchat", "enabled", show_immchat)
 SetTriggerOption("rpcchat", "enabled", show_rpcchat)
 SetTriggerOption("ooc", "enabled", show_ooc)
@@ -399,7 +398,7 @@ function OnPluginSaveState()
 	SetVariable("show_say", show_say)
 	SetVariable("show_clan", show_clan)
 	SetVariable("show_broadcast", show_broadcast)
-	SetVariable("show_translation", show_translation)
+	SetVariable("show_buzz", show_buzz)
 	SetVariable("show_comms", show_comms)
 	SetVariable("show_ooc", show_ooc)
 	SetVariable("show_newbie", show_newbie)
@@ -815,31 +814,31 @@ end
 
 function untagged_info (name, line, wildcards, styles)
   stampAndStore(styles)
-  if say_echo == 1 then
+  if say_echo == 1 and (name == "say1" or name == "say2" or name=="ask1" or name=="ask2" or name=="exclaim1" or name=="exclaim2") then
   EnableTrigger("end_gag", true)
   end
-  if clan_echo == 1 then
+  if clan_echo == 1 and name=="clan" then
   EnableTrigger("end_gag", true)
   end
-  if comms_echo == 1 then
+  if comms_echo == 1 and name=="comms" then
   EnableTrigger("end_gag", true)
   end
-  if immchat_echo == 1 then
+  if immchat_echo == 1 and name=="immchat" then
   EnableTrigger("end_gag", true)
   end
-  if rpcchat_echo == 1 then
+  if rpcchat_echo == 1 and name=="rpcchat" then
   EnableTrigger("end_gag", true)  
   end
-  if ooc_echo == 1 then
+  if ooc_echo == 1 and (name=="ooc" or name=="immooc" or name=="rpcooc") then
   EnableTrigger("end_gag", true)
   end
-  if newbie_echo == 1 then
+  if newbie_echo == 1 and name=="newbie" then
   EnableTrigger("end_gag", true)
   end
-  if immnet_echo == 1 then
+  if immnet_echo == 1 and name=="immnet" then
   EnableTrigger("end_gag", true)
   end
-  if councilnet_echo == 1 then
+  if councilnet_echo == 1 and name=="councilnet" then
   EnableTrigger("end_gag", true)
   end
 end -- untagged info
@@ -1128,10 +1127,10 @@ function right_click_menu (hotspot_id)
       url = hyperlinks[hotspot_id]
    end
    menustring = menustring.."Copy Selected Without Colors|Copy Selected|Copy All|-|Change Font"
-   menustring = menustring .. "|>Timestamp|"..((date_format=="" and "+") or "").."No Timestamps|"..((date_format=="[%d %b %H:%M:%S] " and "+") or "").."30 Aug 13:29:49|"..((date_format=="[%d %b %I:%M:%S%p] " and "+") or "").."30 Aug 01:20:12PM|"..((date_format=="[%H:%M:%S] " and "+") or "").."13:29:08|"..((date_format=="[%I:%M:%S%p] " and "+") or "").."1:22:06 PM|<"
+   menustring = menustring .. "|>Timestamp|"..((date_format=="" and "+") or "").."No Timestamps|"..((date_format=="[%d %b %H:%M:%S] " and "+") or "").."30 Aug 13:29:49|"..((date_format=="[%d %b %I:%M:%S%p] " and "+") or "").."30 Aug 01:20:12PM|"..((date_format=="[%H:%M:%S] " and "+") or "").."13:29:08|"..((date_format=="[%I:%M:%S%p] " and "+") or "").."1:22:06 PM|<|-"
    
    
-   menustring = menustring .. "|>Customize Channels|"..
+   menustring = menustring .. "|>Capture Channels|"..
       ((show_say==1 and "+") or "")..
       "Say|"..
       ((show_clan==1 and "+") or "")..
@@ -1150,15 +1149,15 @@ function right_click_menu (hotspot_id)
       "ImmNet|"..
       ((show_councilnet==1 and "+") or "")..
       "CouncilNet|"..
-      "<|-"
+      "<"
       
    
   menustring = menustring .. "|>Capture Other Info|"..
   		((show_broadcast==1 and "+") or "")..
   		"Broadcast|"..
-  		((show_translation==1 and "+") or "")..
-  		"Translation Buzz|"..
-  	"<|-"  
+  		((show_buzz==1 and "+") or "")..
+  		"Microphone Buzz|"..
+  	  "<"
   	
   menustring = menustring .. "|>Echo Channels in Main Window|"..
                               ((say_echo==0 and "+") or "").. "Say|"..
@@ -1358,13 +1357,13 @@ function right_click_menu (hotspot_id)
         EnableTrigger("broadcast", 0 == show_broadcast)
         show_broadcast = GetTriggerOption("broadcast","enabled")
       elseif numResult == 20+hyperlink_skip then
-      	if show_translation == 0 then
-      		ColourNote ("yellow", "", "Translation Buzz capturing is now ENABLED.")
+      	if show_buzz == 0 then
+      		ColourNote ("yellow", "", "Microphone Buzz capturing is now ENABLED.")
       	else
-      		ColourNote ("yellow", "", "Translation Buzz capturing is now DISABLED.")
+      		ColourNote ("yellow", "", "Microphone Buzz capturing is now DISABLED.")
       	end
-      	EnableTrigger("translation", 0 == show_translation)
-      	show_translation = GetTriggerOption("translation","enabled") 
+      	EnableTrigger("buzz", 0 == show_buzz)
+      	show_buzz = GetTriggerOption("buzz","enabled") 
       end
       
       if numResult == 21+hyperlink_skip then
