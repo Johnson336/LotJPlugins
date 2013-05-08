@@ -79,7 +79,7 @@ function Display_Line (line, text)
    if styles then
       for _, v in ipairs(styles) do
          local t = v.text
-         local top = (line) * font_height
+         local top = line * font_height
 
          -- now clean up dangling newlines that cause block characters to show
          if string.sub(v.text,-1) == "\n" then
@@ -135,29 +135,29 @@ function storeLine(name, line, args, styles)
   -- blank existing window contents
   WindowRectOp (win, 2, 0, 0, 0, 0, WINDOW_BACKGROUND_COLOUR)
   
+  -- draw drag bar rectangle
+  --WindowRectOp (win, 5, 0, 0, window_width, font_height+TEXT_INSET, 5)
+  WindowRectOp (win, 5, 0, 0, 20, 20, 15+0x1000)
+  
   -- draw border
   WindowRectOp (win, 5, 0, 0, 0, 0, 5, 15 + 0x1000)
   
-  -- draw drag bar rectangle
-  WindowRectOp (win, 5, 0, 0, 0, font_height, 15+0x1000)
-
-  
   -- wrap long lines, at a space if possible
-  while #line > wrap_column do
+  --while #line > wrap_column do
   
     -- find a space not followed by a space, closest to the end of the line
-    local col = string.find (line:sub (1, wrap_column), "%s%S*$")
+  --  local col = string.find (line:sub (1, wrap_column), "%s%S*$")
     
-    if col and col > 2 then
-      col = col - 1  -- use the space to indent
-    else
-      col = wrap_column  -- just cut off at wrap_column
-    end -- if
+  --  if col and col > 2 then
+  --    col = col - 1  -- use the space to indent
+  --  else
+  --    col = wrap_column  -- just cut off at wrap_column
+  --  end -- if
 
-    add_line (line:sub (1, col))
-    line = line:sub (col + 1) 
+  --  add_line (line:sub (1, col))
+  --  line = line:sub (col + 1) 
     
-  end -- while line > max
+  --end -- while line > max
   
   -- add remainder of line
   add_line (line, styles)
@@ -217,8 +217,9 @@ font_height = WindowFontInfo (win, "f", 1)   -- height of the font
 wrap_column = GetOption ("wrap_column")
 
 window_width = (wrap_column * WindowFontInfo (win, "f", 6)) + (TEXT_INSET * 2)
-window_height = (MAX_LINES + 1) * font_height + (TEXT_INSET * 2)  -- one more line for title 
-                         
+--window_height = (MAX_LINES+1) * font_height + (TEXT_INSET * 2)  -- max window height 
+window_height = (MAX_LINES+1) * font_height + TEXT_INSET  -- max window height 
+                       
 require "movewindow"  -- load the movewindow.lua module
 
 -- install the window movement handler, get back the window position
