@@ -121,6 +121,7 @@ rawlines = {}
 lineStart = ""
 lineEnd = ""
 WINDOW_LINES = ""
+WINDOW_NAME = GetVariable("WINDOW_NAME") or "Communication Log"
 
 -- functions for handling Aardwolf color codes
 dofile(GetPluginInfo(GetPluginID(), 20) .. "lotj_colors.lua")
@@ -209,8 +210,10 @@ function ResizeMoveCallback ()
    posx, posy = WindowInfo(win, 17), WindowInfo(win, 18)
    width = width+posx-startx
    startx = posx
-   if (WindowTextWidth(win, win_font, "WWWCOMMUNICATION")+2*SCROLL_BAR_WIDTH > width) then
-      width = WindowTextWidth(win, win_font, "WWWCOMMUNICATION")+2*SCROLL_BAR_WIDTH
+--   if (WindowTextWidth(win, win_font, "WWWCOMMUNICATION")+2*SCROLL_BAR_WIDTH > width) then
+   if (WindowTextWidth(win, win_font, WINDOW_NAME)+2*SCROLL_BAR_WIDTH > width) then
+--      width = WindowTextWidth(win, win_font, "WWWCOMMUNICATION")+2*SCROLL_BAR_WIDTH
+      width = WindowTextWidth(win, win_font, WINDOW_NAME)+2*SCROLL_BAR_WIDTH
       startx = windowinfo.window_left+width
    elseif (windowinfo.window_left+width > GetInfo(281)) then
       width = GetInfo(281)-windowinfo.window_left
@@ -341,9 +344,11 @@ function init (firstTime)
    lineEnd = math.max(1, #lines)
     
    -- title rectangle
-   header_width = WindowTextWidth(win, win_head_font, "Communication Log")
+--   header_width = WindowTextWidth(win, win_head_font, "Communication Log")
+   header_width = WindowTextWidth(win, win_head_font, WINDOW_NAME)
    WindowGradient(win, 1, 0, width, TITLE_HEIGHT, WINDOW_BACKGROUND_COLOUR, 0x444444, 2)
-   WindowText(win, win_head_font, "Communication Log", (width-header_width)/2, ((TITLE_HEIGHT-header_font_height)/2)-1, width, TITLE_HEIGHT, 0xEEEEEE, false)     
+--   WindowText(win, win_head_font, "Communication Log", (width-header_width)/2, ((TITLE_HEIGHT-header_font_height)/2)-1, width, TITLE_HEIGHT, 0xEEEEEE, false)     
+   WindowText(win, win_head_font, WINDOW_NAME, (width-header_width)/2, ((TITLE_HEIGHT-header_font_height)/2)-1, width, TITLE_HEIGHT, 0xEEEEEE, false)     
    WindowLine(win, 0, TITLE_HEIGHT-1, width, TITLE_HEIGHT-1, WINDOW_BORDER_COLOUR, 0 + 0x0200, 1)
    
    -- resize tag    
@@ -395,6 +400,7 @@ function OnPluginSaveState()
   SetVariable("date_format", date_format)
   SetVariable("WINDOW_WIDTH", width)
   SetVariable("WINDOW_HEIGHT", height)
+  SetVariable("WINDOW_NAME", WINDOW_NAME)
 	SetVariable("show_say", show_say)
 	SetVariable("show_clan", show_clan)
 	SetVariable("show_broadcast", show_broadcast)
@@ -1126,7 +1132,7 @@ function right_click_menu (hotspot_id)
       menustring = menustring.."Go to URL: "..hyperlinks[hotspot_id].."|Copy URL to Clipboard|-|"
       url = hyperlinks[hotspot_id]
    end
-   menustring = menustring.."Copy Selected Without Colors|Copy Selected|Copy All|-|Change Font"
+   menustring = menustring.."Copy Selected Without Colors|Copy Selected|Copy All|-|Rename Window|Change Font"
    menustring = menustring .. "|>Timestamp|"..((date_format=="" and "+") or "").."No Timestamps|"..((date_format=="[%d %b %H:%M:%S] " and "+") or "").."30 Aug 13:29:49|"..((date_format=="[%d %b %I:%M:%S%p] " and "+") or "").."30 Aug 01:20:12PM|"..((date_format=="[%H:%M:%S] " and "+") or "").."13:29:08|"..((date_format=="[%I:%M:%S%p] " and "+") or "").."1:22:06 PM|<|-"
    
    
@@ -1230,6 +1236,13 @@ function right_click_menu (hotspot_id)
          GetAllBufferedMessages()
          ColourNote ("yellow", "", "All chat messages copied to clipboard.")
       elseif numResult == 4+hyperlink_skip then
+        wanted_name = utils.inputbox("Choose a new name for this window:", "Window name", WINDOW_NAME, GetVariable("font_name"), GetVariable("font_size"))
+        if wanted_name then
+          WINDOW_NAME = wanted_name
+          SetVariable("WINDOW_NAME", WINDOW_NAME)
+          OnPluginInstall()
+        end
+      elseif numResult == 5+hyperlink_skip then
          wanted_font = utils.fontpicker (font_name, font_size) --font dialog
          if wanted_font then
             font_name = wanted_font.name
@@ -1238,22 +1251,22 @@ function right_click_menu (hotspot_id)
             SetVariable ("font_size", font_size)
             OnPluginInstall()
          end
-      elseif numResult == 5+hyperlink_skip then
+      elseif numResult == 6+hyperlink_skip then
          date_format = ""
          ColourNote ("yellow", "", "Timestamps in communication window DISABLED.")
-      elseif numResult == 6+hyperlink_skip then
+      elseif numResult == 7+hyperlink_skip then
          date_format = "[%d %b %H:%M:%S] "
          ColourNote ("yellow", "", "Timestamps in communication window ENABLED using format like '30 Aug 13:29:49'.")
-      elseif numResult == 7+hyperlink_skip then
+      elseif numResult == 8+hyperlink_skip then
          date_format = "[%d %b %I:%M:%S%p] "
          ColourNote ("yellow", "", "Timestamps in communication window ENABLED using format like '30 Aug 01:20:12PM'.")
-      elseif numResult == 8+hyperlink_skip then
+      elseif numResult == 9+hyperlink_skip then
          date_format = "[%H:%M:%S] "
          ColourNote ("yellow", "", "Timestamps in communication window ENABLED using format like '13:29:08'.")
-      elseif numResult == 9+hyperlink_skip then
+      elseif numResult == 10+hyperlink_skip then
          date_format = "[%I:%M:%S%p] "
          ColourNote ("yellow", "", "Timestamps in communication window ENABLED using format like '1:22:06 PM'.")
-      elseif numResult == 10+hyperlink_skip then
+      elseif numResult == 11+hyperlink_skip then
          --local tbl = {}
          --local defaults = {}
          --local i = 1
@@ -1281,7 +1294,7 @@ function right_click_menu (hotspot_id)
 	        EnableTrigger("exclaim1", 0 == show_say)
 	        EnableTrigger("exclaim2", 0 == show_say)
 	        show_say = GetTriggerOption("say1", "enabled")       
-      elseif numResult == 11+hyperlink_skip then
+      elseif numResult == 12+hyperlink_skip then
       	if show_clan == 0 then
       		ColourNote ("yellow", "", "Clan capturing is now ENABLED.")
       	else
@@ -1290,7 +1303,7 @@ function right_click_menu (hotspot_id)
       	EnableTrigger("clan", 0 == show_clan)
       	EnableTrigger("clan2", 0 == show_clan)
       	show_clan = GetTriggerOption("clan","enabled")
-      elseif numResult == 12+hyperlink_skip then
+      elseif numResult == 13+hyperlink_skip then
       	if show_comms == 0 then
       		ColourNote ("yellow", "", "Comms capturing is now ENABLED.")
       	else
@@ -1298,7 +1311,7 @@ function right_click_menu (hotspot_id)
       	end
       	EnableTrigger("comms", 0 == show_comms)
       	show_comms = GetTriggerOption("comms","enabled")
-      elseif numResult == 13+hyperlink_skip then
+      elseif numResult == 14+hyperlink_skip then
       	if show_immchat == 0 then
       		ColourNote ("yellow", "", "ImmChat capturing is now ENABLED.")
       	else
@@ -1306,7 +1319,7 @@ function right_click_menu (hotspot_id)
       	end
       	EnableTrigger("immchat", 0 == show_immchat)
       	show_immchat = GetTriggerOption("immchat","enabled")
-      elseif numResult == 14+hyperlink_skip then
+      elseif numResult == 15+hyperlink_skip then
       	if show_rpcchat == 0 then
       		ColourNote ("yellow", "", "RPC Chat capturing is now ENABLED.")
       	else
@@ -1314,7 +1327,7 @@ function right_click_menu (hotspot_id)
       	end
       	EnableTrigger("rpcchat", 0 == show_rpcchat)
       	show_rpcchat = GetTriggerOption("rpcchat","enabled")
-      elseif numResult == 15+hyperlink_skip then
+      elseif numResult == 16+hyperlink_skip then
       	if show_ooc == 0 then
       		ColourNote ("yellow", "", "OOC capturing is now ENABLED.")
       	else
@@ -1324,7 +1337,7 @@ function right_click_menu (hotspot_id)
       	EnableTrigger("rpcooc", 0 == show_ooc)
       	EnableTrigger("ooc", 0 == show_ooc)
       	show_ooc = GetTriggerOption("ooc","enabled")
-      elseif numResult == 16+hyperlink_skip then
+      elseif numResult == 17+hyperlink_skip then
       	if show_newbie == 0 then
       		ColourNote ("yellow", "", "Newbie capturing is now ENABLED.")
       	else
@@ -1332,7 +1345,7 @@ function right_click_menu (hotspot_id)
       	end
       	EnableTrigger("newbie", 0 == show_newbie)
       	show_newbie = GetTriggerOption("newbie","enabled")
-      elseif numResult == 17+hyperlink_skip then
+      elseif numResult == 18+hyperlink_skip then
       	if show_immnet == 0 then
       		ColourNote ("yellow", "", "ImmNet capturing is now ENABLED.")
       	else
@@ -1340,7 +1353,7 @@ function right_click_menu (hotspot_id)
       	end
       	EnableTrigger("immnet", 0 == show_immnet)
       	show_immnet = GetTriggerOption("immnet","enabled")
-      elseif numResult == 18+hyperlink_skip then
+      elseif numResult == 19+hyperlink_skip then
       	if show_councilnet == 0 then
       		ColourNote ("yellow", "", "CouncilNet capturing is now ENABLED.")
       	else
@@ -1348,7 +1361,7 @@ function right_click_menu (hotspot_id)
       	end
       	EnableTrigger("councilnet", 0 == show_councilnet)
       	show_councilnet = GetTriggerOption("councilnet","enabled")
-      elseif numResult == 19+hyperlink_skip then
+      elseif numResult == 20+hyperlink_skip then
       	if show_broadcast == 0 then
          	ColourNote ("yellow", "", "Broadcast capturing is now ENABLED.")
         else
@@ -1356,7 +1369,7 @@ function right_click_menu (hotspot_id)
         end
         EnableTrigger("broadcast", 0 == show_broadcast)
         show_broadcast = GetTriggerOption("broadcast","enabled")
-      elseif numResult == 20+hyperlink_skip then
+      elseif numResult == 21+hyperlink_skip then
       	if show_buzz == 0 then
       		ColourNote ("yellow", "", "Microphone Buzz capturing is now ENABLED.")
       	else
@@ -1366,7 +1379,7 @@ function right_click_menu (hotspot_id)
       	show_buzz = GetTriggerOption("buzz","enabled") 
       end
       
-      if numResult == 21+hyperlink_skip then
+      if numResult == 22+hyperlink_skip then
         if say_echo == 0 then
           ColourNote("yellow", "", "Say will NOT be shown in the main window.")
         else
@@ -1379,7 +1392,7 @@ function right_click_menu (hotspot_id)
         SetTriggerOption("exclaim1", "omit_from_output", 0 == say_echo)
         SetTriggerOption("exclaim2", "omit_from_output", 0 == say_echo)
         say_echo = GetTriggerOption("say1", "omit_from_output")
-      elseif numResult == 22+hyperlink_skip then
+      elseif numResult == 23+hyperlink_skip then
         if clan_echo == 0 then
           ColourNote("yellow", "", "Clan will NOT be shown in the main window.")
         else
@@ -1388,7 +1401,7 @@ function right_click_menu (hotspot_id)
         SetTriggerOption("clan", "omit_from_output", 0 == clan_echo)
         SetTriggerOption("clan2", "omit_from_output", 0 == clan_echo)
         clan_echo = GetTriggerOption("clan", "omit_from_output")
-       elseif numResult == 23+hyperlink_skip then
+       elseif numResult == 24+hyperlink_skip then
         if comms_echo == 0 then
           ColourNote("yellow", "", "Comms will NOT be shown in the main window.")
         else
@@ -1396,7 +1409,7 @@ function right_click_menu (hotspot_id)
         end
         SetTriggerOption("comms", "omit_from_output", 0 == comms_echo)
         comms_echo = GetTriggerOption("comms", "omit_from_output")
-      elseif numResult == 24+hyperlink_skip then
+      elseif numResult == 25+hyperlink_skip then
         if immchat_echo == 0 then
           ColourNote("yellow", "", "ImmChat will NOT be shown in the main window.")
         else
@@ -1404,7 +1417,7 @@ function right_click_menu (hotspot_id)
         end
         SetTriggerOption("immchat", "omit_from_output", 0 == immchat_echo)
         immchat_echo = GetTriggerOption("immchat", "omit_from_output")
-      elseif numResult == 25+hyperlink_skip then
+      elseif numResult == 26+hyperlink_skip then
         if rpcchat_echo == 0 then
           ColourNote("yellow", "", "RpcChat will NOT be shown in the main window.")
         else
@@ -1412,7 +1425,7 @@ function right_click_menu (hotspot_id)
         end
         SetTriggerOption("rpcchat", "omit_from_output", 0 == rpcchat_echo)
         rpcchat_echo = GetTriggerOption("rpcchat", "omit_from_output")
-      elseif numResult == 26+hyperlink_skip then
+      elseif numResult == 27+hyperlink_skip then
         if ooc_echo == 0 then
           ColourNote("yellow", "", "OOC will NOT be shown in the main window.")
         else
@@ -1422,7 +1435,7 @@ function right_click_menu (hotspot_id)
         SetTriggerOption("immooc", "omit_from_output", 0 == ooc_echo)
         SetTriggerOption("rpcooc", "omit_from_output", 0 == ooc_echo)
         ooc_echo = GetTriggerOption("ooc", "omit_from_output")
-      elseif numResult == 27+hyperlink_skip then
+      elseif numResult == 28+hyperlink_skip then
         if newbie_echo == 0 then
           ColourNote("yellow", "", "Newbie will NOT be shown in the main window.")
         else
@@ -1430,7 +1443,7 @@ function right_click_menu (hotspot_id)
         end
         SetTriggerOption("newbie", "omit_from_output", 0 == newbie_echo)
         newbie_echo = GetTriggerOption("newbie", "omit_from_output")
-      elseif numResult == 28+hyperlink_skip then
+      elseif numResult == 29+hyperlink_skip then
         if immnet_echo == 0 then
           ColourNote("yellow", "", "ImmNet will NOT be shown in the main window.")
         else
@@ -1438,7 +1451,7 @@ function right_click_menu (hotspot_id)
         end
         SetTriggerOption("immnet", "omit_from_output", 0 == immnet_echo)
         immnet_echo = GetTriggerOption("immnet", "omit_from_output")
-      elseif numResult == 29+hyperlink_skip then
+      elseif numResult == 30+hyperlink_skip then
         if councilnet_echo == 0 then
           ColourNote("yellow", "", "CouncilNet will NOT be shown in the main window.")
         else
@@ -1470,7 +1483,7 @@ function right_click_menu (hotspot_id)
       --   end
       --end
       
-      if numResult == 30+hyperlink_skip+echo_skip then
+      if numResult == 31+hyperlink_skip+echo_skip then
          log_to_file = (((0 == log_to_file) and 1) or 0)
          SetVariable("log_to_file", log_to_file)
          if log_to_file == 0 then
@@ -1478,13 +1491,13 @@ function right_click_menu (hotspot_id)
          else
             ColourNote ("yellow", "", "Logging to file is now ENABLED.")
          end
-      elseif numResult == 31+hyperlink_skip+echo_skip then
+      elseif numResult == 32+hyperlink_skip+echo_skip then
       		local newfile = utils.filepicker ("Choose log file...", "ChatLog.txt", "txt", { txt = "Text log file" }, true )
 				if newfile then
 					log_filename = newfile
 					ColourNote ("yellow", "", "Logging chat to "..log_filename..".")
 				end
-      elseif numResult == 32+hyperlink_skip+echo_skip then
+      elseif numResult == 33+hyperlink_skip+echo_skip then
          log_colour_codes = (((0 == log_colour_codes) and 1) or 0)
          SetVariable("log_colour_codes", log_colour_codes)
          if log_colour_codes == 0 then
@@ -1492,7 +1505,7 @@ function right_click_menu (hotspot_id)
          else
             ColourNote ("yellow", "", "Color codes will be included in the log file.")
          end
-      elseif numResult == 33+hyperlink_skip+echo_skip then
+      elseif numResult == 34+hyperlink_skip+echo_skip then
          log_timestamps = (((0 == log_timestamps) and 1) or 0)
          SetVariable("log_timestamps", log_timestamps)
          if log_timestamps == 0 then
