@@ -30,7 +30,7 @@ Automatically populate and research items that need to be researched.
   <trigger name="ResearchGrabTwo" script="grabAdd" match="^([\s\w,-]+)(\s+\d+)\%([\s\w,-]+)(\s+\d+)\%(\s+)$" regexp="y" enabled="n" omit_from_output="y" omit_from_log="y" group="ResearchColour" sequence="100" />
   <trigger name="ResearchGrabOne" script="grabAdd" match="^([\s\w,-]+)(\s+\d+)\%(\s+)?$" regexp="y" enabled="n" omit_from_output="y" omit_from_log="y" group="ResearchColour" sequence="100" />
   <trigger name="ResearchGrabDone" script="toggleGrabOff" match="^To see a shorter practice list\, type PRACTICE \<class name\>\.$" regexp="y" group="ResearchGrabber" enabled="n" sequence="100" />
-  <trigger name="Allskillsclear" script="clearGrabList" match="-----------------------------------Skills-------------------------------------" enabled="y" group="ResearchStarter" sequence="100" />
+  <trigger name="Allskillsclear" script="clearGrabList" match="^(\-)+Skills(\-)+$" regexp="y" enabled="y" group="ResearchStarter" sequence="100" />
 </triggers>
 <!--   Aliases    --> 
 <aliases>
