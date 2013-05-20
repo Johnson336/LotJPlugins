@@ -46,6 +46,7 @@ Automatically populate and research items that need to be researched.
   <alias name="ResearchNext" script="researchNext" match="researchNext" enabled="y" group="AutoResearchCmd" ignore_case="y" sequence="100" />
   <alias name="ResearchGrab" script="toggleGrabOn" match="^researchgrab(.*)?" enabled="y" group="AutoResearchCmd" regexp="y" ignore_case="y" sequence="100" />
   <alias name="printskills" script="printSkills" match="^printskills$" enabled="y" group="AutoResearchCmd" regexp="y" ignore_case="y" sequence="100" />
+  <alias name="Researchcolormodecmd" script="swapColorMode" match="researchColorMode" enabled="y" group="AutoResearchCmd" ignore_case="y" sequence="100" />
 </aliases>
 <!--   Script    --> 
 <script>
@@ -59,8 +60,8 @@ grabSkill = ""
 grabPercent = 90
 allSkills = {}
 grab = false
+colorMode = tonumber(GetVariable("colorMode")) or 1
 local storage = { percent = 0, name = "" }
-
 
 function displayResearchCommands(name, line, args)
    ColourNote("silver","","Research <skill>                       - Resume research or start on skill independent of the list")
@@ -74,8 +75,32 @@ function displayResearchCommands(name, line, args)
    ColourNote("silver","","ResearchList                           - Display list contents")
    ColourNote("silver","","ResearchNext                           - Skip current item in list")
    ColourNote("silver","","ResearchClear                          - Clear all research variables")
+   ColourNote("silver","","ResearchColorMode                      - Switch skill highlighting modes")
    ColourNote("silver","","ResearchAuto (on/off)                  - Turns automatic researching on or off")
 end -- function
+
+function swapColorMode(name, line, args)
+  if colorMode == 1 then
+    colorMode = 2
+	  ColourNote("yellow","","Practice list color mode: ","lime", "", string.format("%20s", "alternate"),"silver","",string.format(" %3d", 90),"gray","","%")
+    --ColourNote("yellow","","Practice list color mode: ","lime","","alternate","silver","","  90","gray","","%")
+  elseif colorMode == 2 then
+    colorMode = 3
+    ColourTell("yellow","","Practice list color mode: ")
+	  Hyperlink("#Note('Clicking this link would normally add a skill to your research list!')", string.format("%20s %3d%%","hyperlinks", 90), "Sample hyperlink.", "lime", "", false, true)
+    --Hyperlink("#Note('Sample Hyperlink')","hyperlinks  90%","Sample hyperlink","silver","",false,true)
+    Tell("\n")
+  elseif colorMode == 3 then
+    colorMode = 1
+	  ColourNote("yellow","","Practice list color mode: ","lime", "", string.format("%20s %3d%%", "basic", 90))
+    --ColourNote("yellow","","Practice list color mode: ","lime","","basic  90%")
+  end
+--  ColourNote("yellow","","Practice list color mode: "..colorMode)
+end
+
+function OnPluginSaveState()
+  SetVariable("colorMode", colorMode)
+end
 
 function research()
 	if (currentItem ~= "") then
@@ -144,7 +169,14 @@ function printSkill(name, percent)
 	else
 		colour = "red"
 	end
-	ColourTell(colour, "", string.format("%20s %3d%%", name, percent))
+	if colorMode == 1 then
+	  ColourTell(colour, "", string.format("%20s %3d%%", name,percent))
+  elseif colorMode == 2 then
+	  ColourTell(colour, "", string.format("%20s", name),"silver","",string.format(" %3d", percent),"gray","","%")
+	elseif colorMode == 3 then -- room for expansion for more coloring options here (hyperlinks, plaintext, etc)
+	  Hyperlink("radd "..name, string.format("%20s",name), "Add "..name.." to research list.", colour, "", false, true)
+	  ColourTell(colour,"",string.format(" %3d%%",percent))
+	end
 end
 	
 
