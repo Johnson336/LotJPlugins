@@ -31,6 +31,10 @@ Type 'vsconfig' to display Visual Space Config window where you can check and un
 	<trigger name="partialJump" match="^Remaining jump distance\: (.*)$" script="storePartialJump" group="LotJVisualSpace" enabled="y" regexp="y" sequence="100" />
 	<trigger name="jumpComplete" match="^Hyperjump complete\.$" script="clearJump" group="LotJVisualSpace" enabled="y" regexp="y" sequence="100" />
 	
+	<!-- triggers relating to space capturing -->
+	<trigger name="StoreSpaceCoordinate" match="^(.*) (\-?\d+) (\-?\d+) (\-?\d+)(.*)?$" script="spaceCapStore" omit_from_output="n" keep_evaluating="y" group="SpaceCap" enabled="n" regexp="y" sequence="100" />
+	<trigger name="CapStop" match="^Your Coordinates\: (.*)$" script="spaceCapStop" group="SpaceCap" enabled="n" omit_from_output="n" regexp="y" sequence="100" />
+	
 	<!-- Level capture triggers -->
 	<trigger name="LevelScoreGrab" match="^(.*) Level\: (\S+)\s*?\/(\S+)\s+(.*) Level\: (\S+)\s*?\/(.*)$" script="storeLevel" regexp="y" enabled="y" group="VariableStorage" sequence="100" />
 	<trigger name="LevelGrab" match="^(.*) Level\: (\d+)\s+Max\: (.*)\s+Exp\:(.*)$" script="storeLevel2" regexp="y" enabled="y" group="VariableStorage" sequence="100" />
@@ -42,11 +46,13 @@ Type 'vsconfig' to display Visual Space Config window where you can check and un
   <alias name="toggleConfigCommand" script="toggleVisualSpaceConfig" match="^vsconfig$" enabled="y" ignore_case="y" regexp="y" group="LotJVisualSpace" sequence="100" />
   <alias name="toggleSpeedCommand" script="toggleVisualSpaceSpeed" match="^vsspeed$" enabled="y" ignore_case="y" regexp="y" group="LotJVisualSpace" sequence="100" />
   <alias name="manualReset" script="reset" match="vsreset" enabled="y" ignore_case="y" group="LotJVisualSpace" sequence="100" />
-  <alias name="manualwindowskew" script="setval" match="vsset * * * *" enabled="y" regexp="n" ignore_case="y" group="LotJVisualSpace" sequence="100" />
+	<alias name="CoordCapStart" match="radar" script="spaceCapStart" enabled="y" group="LotJVisualSpace" ignore_case="y" sequence="100" />
+  <!--alias name="manualwindowskew" script="setval" match="vsset * * * *" enabled="y" regexp="n" ignore_case="y" group="LotJVisualSpace" sequence="100" -->
 
   </aliases>
 <timers>
 	<timer name="hyperJumpTicker" script="hyperJumpTick" enabled="n" second="2" group="LotJVisualSpace" />
+	<timer name="radarPulse" script="spaceCapStart" enabled="n" second="5" group="LotJVisualSpace" />
 </timers>
 <!--   Script    --> 
 <script>
@@ -114,10 +120,12 @@ page_built = false
 line_height= 0
 
 -- space position variables
-local zoom = 1
+local zoom = .75
 local xcenter = 0
 local ycenter = 0
 local zcenter = 0
+
+systemobjs = {}
 
 function drawWindows()
 	for k, v in pairs(windows) do
@@ -452,9 +460,9 @@ function drawStatWindow()
 		"Armor",			getmsdp("AC") or 0,
 		"Hitroll",			getmsdp("HITROLL") or 0,
 		"Damroll",			getmsdp("DAMROLL") or 0,
-		"Moneytotal",		getmsdp("MONEYTOTAL") or 0,
-		"Moneybank",		getmsdp("MONEYBANK") or 0,
-		"Moneyinv",			getmsdp("MONEYINV" or 0)
+		"MoneyTotal",		getmsdp("MONEYTOTAL") or 0,
+		"Money Bank",		getmsdp("MONEYBANK") or 0,
+		"Money Held",			getmsdp("MONEYINV" or 0)
 		}
 			
 	local oY = 10
@@ -883,6 +891,40 @@ function round (x)
   --return math.ceil (x)
 end -- function round
 
+function spaceCapStart()
+	if (visualSpaceVisible ~= 1) then
+		return
+	end
+	EnableTriggerGroup("SpaceCap", true)
+	systemobjs = {}
+	SendNoEcho("radar")
+end
+function spaceCapStop()
+	EnableTriggerGroup("SpaceCap", false)
+end
+
+function spaceCapStore(name, line, args, styles)
+	local body = {
+		name=Trim(args[1]),
+		x=tonumber(args[2]),
+		y=tonumber(args[3]),
+		z=tonumber(args[4])
+	}
+	if (body.name ~= "Your Coordinates:" and body.name ~= "New course set, approaching" and not string.find(body.name, "Speed:", 0, true)) then
+		systemobjs[#systemobjs + 1] = body
+		--ColourTell("silver", "black", #spaceCoords..") ")
+		--for k, v in pairs(styles) do
+      --Hyperlink("lcalc "..#spaceCoords, v.text, "Jump to "..spaceCoords[#spaceCoords].name, RGBColourToName(v.textcolour), RGBColourToName(v.backcolour), false)
+    --end
+  --else
+    --for k, v in pairs(styles) do
+      --ColourTell (RGBColourToName(v.textcolour), RGBColourToName(v.backcolour), v.text) 
+    --end   
+  end
+  --Note("")
+  drawWindows()
+end
+
 ----- 3D transform variables
 --a{x,y,z} - the 3D position of a point A that is to be projected
 --c{x,y,z} - the 3D position of a point C representing the camera
@@ -903,31 +945,31 @@ end -- function round
 -- b{x} = (d{x} - e{x})*(e{z}/d{z})
 -- b{y} = (d{y} - e{y})*(e{z}/d{z})
 
-local a = {x=0,y=0,z=0} -- position of point A to be projected
-local c = {x=2000,y=2000,z=2000} -- position of point C representing the camera
-local t = {x=30,y=30,z=30} -- orientation of the camera
-local e = {x=2000,y=2000,z=2000} -- viewer's position relative to the display surface
-local d = {x=0,y=0,z=0} -- position of point A with respect to coordinate system defined by the camera, with origin C and rotated by T
-local b = {x=0,y=0}     -- our final point to be mapped in an 2D XY surface
+--local a = {x=0,y=0,z=0} -- position of point A to be projected
+--local c = {x=2000,y=2000,z=2000} -- position of point C representing the camera
+--local t = {x=30,y=30,z=30} -- orientation of the camera
+--local e = {x=2000,y=2000,z=2000} -- viewer's position relative to the display surface
+--local d = {x=0,y=0,z=0} -- position of point A with respect to coordinate system defined by the camera, with origin C and rotated by T
+--local b = {x=0,y=0}     -- our final point to be mapped in an 2D XY surface
 
-function setval(name, line, args)
+--function setval(name, line, args)
 
-	if (args[1]~="" and args[2]~="" and args[3]~="" and args[4]~="") then
-		if (args[1] == "t") then
-			t = {x=tonumber(args[2]),y=tonumber(args[3]),z=tonumber(args[4])}
-			Note("t".."("..t.x..","..t.y..","..t.z..")")
-		elseif (args[1] == "c") then
-			c = {x=tonumber(args[2]),y=tonumber(args[3]),z=tonumber(args[4])}
-			Note("c".."("..c.x..","..c.y..","..c.z..")")
-		elseif (args[1] == "e") then
-			e = {x=tonumber(args[2]),y=tonumber(args[3]),z=tonumber(args[4])}
-			Note("e".."("..e.x..","..e.y..","..e.z..")")
-		end
+--	if (args[1]~="" and args[2]~="" and args[3]~="" and args[4]~="") then
+--		if (args[1] == "t") then
+--			t = {x=tonumber(args[2]),y=tonumber(args[3]),z=tonumber(args[4])}
+--			Note("t".."("..t.x..","..t.y..","..t.z..")")
+--		elseif (args[1] == "c") then
+--			c = {x=tonumber(args[2]),y=tonumber(args[3]),z=tonumber(args[4])}
+--			Note("c".."("..c.x..","..c.y..","..c.z..")")
+--		elseif (args[1] == "e") then
+--			e = {x=tonumber(args[2]),y=tonumber(args[3]),z=tonumber(args[4])}
+--			Note("e".."("..e.x..","..e.y..","..e.z..")")
+--		end
 		--args[1] = {x=tonumber(args[2]),y=tonumber(args[3]),z=tonumber(args[4])}
 		--Note(args[1].."("..args[1].x..","..args[1].y..","..args[1].z..")")
-		drawWindow()
-	end
-end
+--		drawWindow()
+--	end
+--end
 
 function drawWindow()  -- BIG GODDAMN TODO
 	-- clear window
@@ -963,141 +1005,155 @@ function drawWindow()  -- BIG GODDAMN TODO
    	-- heading line
   	WindowText (win, font, heading, 5, 5, 0, 0, ColourNameToRGB("white"))
   	
-  	--shipx = tonumber(msdp["SHIPSYSX"]) or 0
-  	--shipy = tonumber(msdp["SHIPSYSY"]) or 0
-  	--shipz = tonumber(msdp["SHIPSYSZ"]) or 0
+  	-- draw intersecting lines for ease of clarity
+  	-- top square
+  	linea = getxy({x=50000,y=-50000,z=50000})
+  	lineb = getxy({x=-50000,y=-50000,z=50000})
+  	WindowLine(win, scaleXcoord(linea.x), scaleYcoord(linea.y), scaleXcoord(lineb.x), scaleYcoord(lineb.y), ColourNameToRGB("green"), 1, 1)
   	
-  	a.name = "ship"
-  	a.x = tonumber(getmsdp("SHIPSYSX")) or 0
-  	a.y = tonumber(getmsdp("SHIPSYSY")) or 0
-  	a.z = tonumber(getmsdp("SHIPSYSZ")) or 0
+  	linea = getxy({x=50000,y=-50000,z=50000})
+  	lineb = getxy({x=50000,y=50000,z=50000})
+  	WindowLine(win, scaleXcoord(linea.x), scaleYcoord(linea.y), scaleXcoord(lineb.x), scaleYcoord(lineb.y), ColourNameToRGB("green"), 1, 1)
   	
+  	linea = getxy({x=-50000,y=-50000,z=50000})
+  	lineb = getxy({x=-50000,y=50000,z=50000})
+  	WindowLine(win, scaleXcoord(linea.x), scaleYcoord(linea.y), scaleXcoord(lineb.x), scaleYcoord(lineb.y), ColourNameToRGB("green"), 1, 1)
   	
-  	-- begin the transform madness
-  	--d.x = math.cos(t.y) * (math.sin(t.z) * (a.y - c.y) + math.cos(t.z) * (a.x - c.x)) - math.sin(t.y) * (a.z - c.z)
-  	--d.y = math.sin(t.x) * (math.cos(t.y) * (a.z - c.z) + math.sin(t.y) * (math.sin(t.z) * (a.y - c.y) + math.cos(t.z) * (a.x - c.x))) + math.cos(t.x) * (math.cos(t.z) * (a.y - c.y) - math.sin(t.z) * (a.x - c.x))
-  	--d.z = math.cos(t.x) * (math.cos(t.y) * (a.z - c.z) + math.sin(t.y) * (math.sin(t.z) * (a.y - c.y) + math.cos(t.z) * (a.x - c.x))) - math.sin(t.x) * (math.cos(t.z) * (a.y - c.y) - math.sin(t.z) * (a.x - c.x))
+  	linea = getxy({x=-50000,y=50000,z=50000})
+  	lineb = getxy({x=50000,y=50000,z=50000})
+  	WindowLine(win, scaleXcoord(linea.x), scaleYcoord(linea.y), scaleXcoord(lineb.x), scaleYcoord(lineb.y), ColourNameToRGB("green"), 1, 1)
+  	
+  	-- bottom square
+  	linea = getxy({x=50000,y=-50000,z=-50000})
+  	lineb = getxy({x=-50000,y=-50000,z=-50000})
+  	WindowLine(win, scaleXcoord(linea.x), scaleYcoord(linea.y), scaleXcoord(lineb.x), scaleYcoord(lineb.y), ColourNameToRGB("green"), 1, 1)
+  	
+  	linea = getxy({x=50000,y=-50000,z=-50000})
+  	lineb = getxy({x=50000,y=50000,z=-50000})
+  	WindowLine(win, scaleXcoord(linea.x), scaleYcoord(linea.y), scaleXcoord(lineb.x), scaleYcoord(lineb.y), ColourNameToRGB("green"), 1, 1)
+  	
+  	linea = getxy({x=-50000,y=-50000,z=-50000})
+  	lineb = getxy({x=-50000,y=50000,z=-50000})
+  	WindowLine(win, scaleXcoord(linea.x), scaleYcoord(linea.y), scaleXcoord(lineb.x), scaleYcoord(lineb.y), ColourNameToRGB("green"), 1, 1)
+  	
+  	linea = getxy({x=-50000,y=50000,z=-50000})
+  	lineb = getxy({x=50000,y=50000,z=-50000})
+  	WindowLine(win, scaleXcoord(linea.x), scaleYcoord(linea.y), scaleXcoord(lineb.x), scaleYcoord(lineb.y), ColourNameToRGB("green"), 1, 1)
+  	
+  	-- outer frame
+  	linea = getxy({x=50000,y=50000,z=-50000})
+  	lineb = getxy({x=50000,y=50000,z=50000})
+  	WindowLine(win, scaleXcoord(linea.x), scaleYcoord(linea.y), scaleXcoord(lineb.x), scaleYcoord(lineb.y), ColourNameToRGB("green"), 1, 1)
+  	
+  	linea = getxy({x=50000,y=-50000,z=-50000})
+  	lineb = getxy({x=50000,y=-50000,z=50000})
+  	WindowLine(win, scaleXcoord(linea.x), scaleYcoord(linea.y), scaleXcoord(lineb.x), scaleYcoord(lineb.y), ColourNameToRGB("green"), 1, 1)
+  	
+  	linea = getxy({x=-50000,y=50000,z=-50000})
+  	lineb = getxy({x=-50000,y=50000,z=50000})
+  	WindowLine(win, scaleXcoord(linea.x), scaleYcoord(linea.y), scaleXcoord(lineb.x), scaleYcoord(lineb.y), ColourNameToRGB("green"), 1, 1)
+  	
+  	linea = getxy({x=-50000,y=-50000,z=-50000})
+  	lineb = getxy({x=-50000,y=-50000,z=50000})
+  	WindowLine(win, scaleXcoord(linea.x), scaleYcoord(linea.y), scaleXcoord(lineb.x), scaleYcoord(lineb.y), ColourNameToRGB("green"), 1, 1)
 
-  	--b.x = (d.x - e.x)*(e.z/d.z)
-  	--b.y = (d.y - e.y)*(e.z/d.z)
-  	local shipcoords = getxy(a)
-  	local alderaana = {x=1500,y=1500,z=3000}
-  	local alderaancoords = getxy(alderaana)
-  	local markotha = {x=-4500,y=-10500,z=-3000}
-  	local markothcoords = getxy(markotha)
+  	-- middle square
+  	linea = getxy({x=50000,y=-50000,z=0})
+  	lineb = getxy({x=-50000,y=-50000,z=0})
+  	WindowLine(win, scaleXcoord(linea.x), scaleYcoord(linea.y), scaleXcoord(lineb.x), scaleYcoord(lineb.y), ColourNameToRGB("lime"), 0, 1)
   	
+  	linea = getxy({x=50000,y=-50000,z=0})
+  	lineb = getxy({x=50000,y=50000,z=0})
+  	WindowLine(win, scaleXcoord(linea.x), scaleYcoord(linea.y), scaleXcoord(lineb.x), scaleYcoord(lineb.y), ColourNameToRGB("lime"), 0, 1)
   	
+  	linea = getxy({x=-50000,y=-50000,z=0})
+  	lineb = getxy({x=-50000,y=50000,z=0})
+  	WindowLine(win, scaleXcoord(linea.x), scaleYcoord(linea.y), scaleXcoord(lineb.x), scaleYcoord(lineb.y), ColourNameToRGB("lime"), 0, 1)
+  	
+  	linea = getxy({x=-50000,y=50000,z=0})
+  	lineb = getxy({x=50000,y=50000,z=0})
+  	WindowLine(win, scaleXcoord(linea.x), scaleYcoord(linea.y), scaleXcoord(lineb.x), scaleYcoord(lineb.y), ColourNameToRGB("lime"), 0, 1)
   	
   	--draw axes
   	local axes = {
-  	{
-  		name="maxX",
-  		x=50000,
-  		y=0,
-  		z=0
-  	},
-  	{
-  		name="minX",
-  		x=-50000,
-  		y=0,
-  		z=0
-  	},
-  	{
-  		name="maxY",
-  		x=0,
-  		y=50000,
-  		z=0
-  	},
-  	{
-  		name="minY",
-  		x=0,
-  		y=-50000,
-  		z=0
-  	},
-  	{
-  		name="maxZ",
-  		x=0,
-  		y=0,
-  		z=50000
-  	},
-  	{
-  		name="minZ",
-  		x=0,
-  		y=0,
-  		z=-50000
-  	}}
+  	  { name="maxX",x=50000,y=0,z=0},
+  	  { name="minX",x=-50000,y=0,z=0},
+  	  {	name="maxY",x=0,y=50000,z=0},
+  	  {	name="minY",x=0,y=-50000,z=0},
+  	  { name="maxZ",x=0,y=0,z=50000},
+  	  {	name="minZ",x=0,y=0,z=-50000},
+  	}
+  	-- draw lines for our axes
+  	maxXa = getxy(axes[1])
+  	minXa = getxy(axes[2])
+  	WindowLine(win, scaleXcoord(maxXa.x), scaleYcoord(maxXa.y), scaleXcoord(minXa.x), scaleYcoord(minXa.y), ColourNameToRGB("blue"), 1, 1)
+  	maxYa = getxy(axes[3])
+  	minYa = getxy(axes[4])
+  	WindowLine(win, scaleXcoord(maxYa.x), scaleYcoord(maxYa.y), scaleXcoord(minYa.x), scaleYcoord(minYa.y), ColourNameToRGB("blue"), 1, 1)
+  	maxZa = getxy(axes[5])
+  	minZa = getxy(axes[6])
+  	WindowLine(win, scaleXcoord(maxZa.x), scaleYcoord(maxZa.y), scaleXcoord(minZa.x), scaleYcoord(minZa.y), ColourNameToRGB("blue"), 1, 1)
+  	
   	for k,v in pairs(axes) do
   		local aa = getxy(v)
  		local realaax = scaleXcoord(aa.x)
 		local realaay = scaleYcoord(aa.y)
 		WindowText(win, font, v.name, realaax+3, realaay+3, 0, 0, ColourNameToRGB("white"))
-  		WindowCircleOp(win, 1, realaax-2, realaay-2, realaax+2, realaay+2, ColourNameToRGB("red"), 0, 2, ColourNameToRGB("red"), 0)
+  		WindowCircleOp(win, 1, realaax-1, realaay-1, realaax+1, realaay+1, ColourNameToRGB("red"), 0, 2, ColourNameToRGB("red"), 0)
   	end
   	
-  	--Note("d("..d.x..","..d.y..","..d.z..") b("..b.x..","..b.y..")")
+  	local ship = { name = "playership", 
+  	              x = (tonumber(getmsdp("SHIPSYSX")) or 0), 
+  	              y = (tonumber(getmsdp("SHIPSYSY")) or 0), 
+  	              z = (tonumber(getmsdp("SHIPSYSZ")) or 0), }
+  	systemobjs["playership"] = ship
   	
+  	--local alderaan = { name = "Alderaan", x = 1500, y = 1500, z = 3000 }
+  	--systemobjs[#systemobjs+1] = alderaan
+  	--local markoth = { name = "Markoth", x = -4500, y = -10500, z = -3000 }
+  	--systemobjs[#systemobjs+1] = markoth
   	
+  	--tprint(systemobjs)
+  	local displayColor = "silver"
   	
-  	
-  	-- draw ship and axes  TODO
-  	--WindowLine(win, 100, 300, 700, 300, ColourNameToRGB ("yellow"), miniwin.pen_solid, 1)
-  	--WindowLine(win, 400, 50, 400, 550, ColourNameToRGB ("yellow"), miniwin.pen_solid, 1)
-  	--local maxXtext = tostring(round((50000/zoom)+xcenter))
-  	--local maxYtext = tostring(round((50000/zoom)+ycenter))
-  	
-  	--WindowText(win, font, maxYtext, 402, 550, 0, 0, ColourNameToRGB("white"))
-  	--WindowText(win, font, "-"..maxYtext, 402, 50, 0, 0, ColourNameToRGB("white"))
-  	--WindowText(win, font, maxXtext, 700, 302, 0, 0, ColourNameToRGB("white"))
-  	--WindowText(win, font, "-"..maxXtext, 100, 302, 0, 0, ColourNameToRGB("white"))
-  	
-  	
-  	--draw alderaan
- 	realaldx = scaleXcoord(alderaancoords.x)
-	realaldy = scaleYcoord(alderaancoords.y)
-  	WindowCircleOp(win, 1, realaldx-5, realaldy-5, realaldx+5, realaldy+5, ColourNameToRGB("seagreen"), 0, 2, ColourNameToRGB("seagreen"), 0)
-  	 	
-  	--draw markoth
- 	realmarx = scaleXcoord(markothcoords.x)
-	realmary = scaleYcoord(markothcoords.y)
-  	WindowCircleOp(win, 1, realmarx-5, realmary-5, realmarx+5, realmary+5, ColourNameToRGB("yellow"), 0, 2, ColourNameToRGB("yellow"), 0)
- 
-  	
-  	
-  	
-	--realshipx = ((( shipx / 50000) * 300) + 400)
-	realshipx = scaleXcoord(shipcoords.x)
-
-	--realshipy = ((( shipy / 50000) * 250) + 300)
-	realshipy = scaleYcoord(shipcoords.y)
-	--Note("a("..a.x..","..a.y..","..a.z..") = ("..realshipx..","..realshipy..")")
-  	
-
-  	WindowCircleOp(win, 1, realshipx-5, realshipy-5, realshipx+5, realshipy+5, ColourNameToRGB("dodgerblue"), 0, 2, ColourNameToRGB("dodgerblue"), 0)
-  	WindowAddHotspot(win, "shipPositionHover",
-  		realshipx-5, realshipy-5, realshipx+5, realshipy+5,
-  		"",			--mousehover
-  		"",			--mouseoffhover
-  		"",      	--mousedown
-  		"",			--mouseoffdown
-  		"",			--mouseup
-  		"("..a.x..","..a.y..","..a.z..") = ("..realshipx..","..realshipy..")",
-  		1, 0)
-  	
-  	
+  	for k, v in pairs(systemobjs) do
+  	  local coords = getxy(v)
+  	  local scaledX = scaleXcoord(coords.x)
+  	  local scaledY = scaleYcoord(coords.y)
+  	  if v.name == "playership" then
+  	    displayColor = "red"
+  	  else
+  	    displayColor = "silver"
+  	  end
+  	  WindowCircleOp(win, 1, scaledX-2, scaledY-2, scaledX+3, scaledY+3, ColourNameToRGB(displayColor), 0, 2, ColourNameToRGB(displayColor), 0)
+  	  WindowAddHotspot(win, "systemobjhover"..v.name, scaledX-2, scaledY-2, scaledX+3, scaledY+3, "", "", "", "", "", v.name..": ("..v.x..","..v.y..","..v.z..")",1,0)
+  	end
   
   	WindowShow (win,  true)  -- show it
 end
 
 function getxy(a)
   	-- begin the transform madness
-  	local d = {x=0,y=0,z=0}
+  	--local d = {x=0,y=0,z=0}
+  	if type(a)~="table" or not a.x or not a.y or not a.z then
+  	  ColourNote("red","","Invalid coordinates passed to getxy")
+  	  return
+  	end
   	local b = {x=0,y=0}
-  	d.x = math.cos(t.y) * (math.sin(t.z) * (a.y - c.y) + math.cos(t.z) * (a.x - c.x)) - math.sin(t.y) * (a.z - c.z)
-  	d.y = math.sin(t.x) * (math.cos(t.y) * (a.z - c.z) + math.sin(t.y) * (math.sin(t.z) * (a.y - c.y) + math.cos(t.z) * (a.x - c.x))) + math.cos(t.x) * (math.cos(t.z) * (a.y - c.y) - math.sin(t.z) * (a.x - c.x))
-  	d.z = math.cos(t.x) * (math.cos(t.y) * (a.z - c.z) + math.sin(t.y) * (math.sin(t.z) * (a.y - c.y) + math.cos(t.z) * (a.x - c.x))) - math.sin(t.x) * (math.cos(t.z) * (a.y - c.y) - math.sin(t.z) * (a.x - c.x))
-
-  	b.x = (d.x - e.x)*(e.z/d.z)
-  	b.y = (d.y - e.y)*(e.z/d.z)
+  	
+  	-- perspective transforms
+  	--d.x = math.cos(t.y) * (math.sin(t.z) * (a.y - c.y) + math.cos(t.z) * (a.x - c.x)) - math.sin(t.y) * (a.z - c.z)
+  	--d.y = math.sin(t.x) * (math.cos(t.y) * (a.z - c.z) + math.sin(t.y) * (math.sin(t.z) * (a.y - c.y) + math.cos(t.z) * (a.x - c.x))) + math.cos(t.x) * (math.cos(t.z) * (a.y - c.y) - math.sin(t.z) * (a.x - c.x))
+  	--d.z = math.cos(t.x) * (math.cos(t.y) * (a.z - c.z) + math.sin(t.y) * (math.sin(t.z) * (a.y - c.y) + math.cos(t.z) * (a.x - c.x))) - math.sin(t.x) * (math.cos(t.z) * (a.y - c.y) - math.sin(t.z) * (a.x - c.x))
+  	--b.x = (d.x - e.x)*(e.z/d.z)
+  	--b.y = (d.y - e.y)*(e.z/d.z)
+  	
+  	--orthographic transforms
+  	s = { x = 1, y = zoom, z = 1 } -- arbitrary scale
+  	c = { x = xcenter, y = ycenter, z = zcenter } -- arbitrary constant (shift)
+  	b.x = (s.x * (a.x+(.5*a.y))) + c.x
+  	b.y = -(s.z * (a.z+(.5*a.y))) + c.z
+  	
   	return b
 end
 
@@ -1151,7 +1207,7 @@ function displayTime(time)
 		retval[#retval + 1] = tostring(string.format("%.1f", mins) .. " mins")
 	end
 	if (secs >= 1) then
-		retval[#retval + 1] = tostring(string.format("%.1f", secs) .. " secs")
+		retval[#retval + 1] = tostring(string.format("%.0f", secs) .. " secs")
 	end
 	--1,60,3600,86400,604800,2630880,31570560,315705600
 	return table.concat(retval, ", ")
