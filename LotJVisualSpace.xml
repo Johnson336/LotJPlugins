@@ -3,7 +3,7 @@
 <!--  Saved on Thursday, February 21, 2013, 8:52 PM   --> 
 <!-- MuClient version 4.73 --> 
 <muclient>
-<plugin name="LotJVisualSpace" author="@Johnson" id="a920ac5df84885eac6be8d61" language="Lua" purpose="Visual Space" save_state="y" requires="4.73" version="0.82">
+<plugin name="LotJVisualSpace" author="@Johnson" id="a920ac5df84885eac6be8d61" language="Lua" purpose="Visual Space" save_state="y" requires="4.73" version="0.92">
 <description trim="y">
 
 Type 'vsconfig' to display Visual Space Config window where you can check and uncheck which windows you want to display.
@@ -101,8 +101,8 @@ default_height		  = 40
 default_x             = 0
 default_y             = 552
 
-charwidth = default_width
-charheight = default_height
+width = tonumber(GetVariable("width")) or 800
+height = tonumber(GetVariable("height")) or 600
 
 local RESIZE_TAG_SIZE = 10
 local MIN_WIDTH        = 50
@@ -111,19 +111,22 @@ local LEFT_MARGIN     = 10
 local TOP_MARGIN      = 5
 
 -- Variables not saved.
-startx     = ""  
-starty     = ""
-posx       = "" 
-posy       = ""
+startx     = 0
+starty     = 0
+posx       = 0
+posy       = 0
 hotspot_id = ""
 page_built = false
 line_height= 0
 
 -- space position variables
-local zoom = .75
+local zoom = tonumber(GetVariable("zoom")) or .75
 local xcenter = 0
 local ycenter = 0
 local zcenter = 0
+local xrotation = -30
+local yrotation = -120
+local zrotation = -30
 
 systemobjs = {}
 
@@ -431,17 +434,17 @@ end
 require "commas"
 
 function drawStatWindow()
-	width = 400
-	height = 300
+	statwidth = 400
+	statheight = 300
 	
 	-- clear window
-	WindowRectOp (statwin, miniwin.rect_fill, 0, 0, width, height, ColourNameToRGB("black"))
+	WindowRectOp (statwin, miniwin.rect_fill, 0, 0, statwidth, statheight, ColourNameToRGB("black"))
 	--border
 	WindowRectOp (statwin, 5, 0, 0, 0, 0, 5, 15 + 0x1000)
 	--drag handler
 	movewindow.add_drag_handler (statwin, 0, 0, 0, WindowFontInfo(statwin, font, 1))
 	--draw X to close
-	drawX(statwin, width-15, 5, ColourNameToRGB("white"), "statWindowX", "destroyStatWindow", "Close stat window")
+	drawX(statwin, statwidth-15, 5, ColourNameToRGB("white"), "statWindowX", "destroyStatWindow", "Close stat window")
 	
 	local charname = getmsdp("CHARACTERNAME") or ""
 	local toplevel = getmsdp("TOPLEVEL") or ""
@@ -475,10 +478,10 @@ function drawStatWindow()
 	else
 		aligncolor = "white"
 	end
-	WindowText(statwin, font, charname, width/2-(textWidth/2), oY, 0, 0, ColourNameToRGB("silver"))
+	WindowText(statwin, font, charname, statwidth/2-(textWidth/2), oY, 0, 0, ColourNameToRGB("silver"))
 	oY = oY + (line_height*1.5)
 	textWidth = WindowTextWidth(statwin, font, "Level "..toplevel.." "..race.." "..class.." main")
-	WindowText(statwin, font, "Level "..toplevel.." "..race.." "..class.." main", width/2-(textWidth/2), oY, 0, 0, ColourNameToRGB("silver"))
+	WindowText(statwin, font, "Level "..toplevel.." "..race.." "..class.." main", statwidth/2-(textWidth/2), oY, 0, 0, ColourNameToRGB("silver"))
 	oY = oY + line_height
 	for i=0, 15, 3 do
 		oY = oY + line_height
@@ -510,7 +513,7 @@ function drawStatWindow()
 	
 	oY = oY + 20
 	
-	oX = width / 2
+	oX = statwidth / 2
   local skip = false
   for k, v in pairsByKeys(levels) do
   
@@ -901,6 +904,7 @@ function spaceCapStart()
 end
 function spaceCapStop()
 	EnableTriggerGroup("SpaceCap", false)
+  drawWindows()
 end
 
 function spaceCapStore(name, line, args, styles)
@@ -922,7 +926,6 @@ function spaceCapStore(name, line, args, styles)
     --end   
   end
   --Note("")
-  drawWindows()
 end
 
 ----- 3D transform variables
@@ -971,9 +974,11 @@ end
 --	end
 --end
 
-function drawWindow()  -- BIG GODDAMN TODO
+--local matrix = require 'matrix'
+
+function drawWindow()  -- getting closer
 	-- clear window
-	WindowRectOp (win, miniwin.rect_fill, 0, 0, 800, 600, ColourNameToRGB("black"))  -- draw blank rectangle to "erase" window
+	WindowRectOp (win, miniwin.rect_fill, 0, 0, width, height, ColourNameToRGB("black"))  -- draw blank rectangle to "erase" window
 	 -- draw border
   	WindowRectOp (win, 5, 0, 0, 0, 0, 5, 15 + 0x1000)
   
@@ -982,10 +987,10 @@ function drawWindow()  -- BIG GODDAMN TODO
   	movewindow.add_drag_handler (win, 0, 0, 0, font_height)
   	
   	-- draw X in the corner to close the window
-  	WindowLine (win, 785, 5, 795, 15, ColourNameToRGB ("white"), miniwin.pen_solid, 1)
-  	WindowLine (win, 785, 15, 795, 5, ColourNameToRGB ("white"), miniwin.pen_solid, 1)
+  	WindowLine (win, width-15, 5, width-5, 15, ColourNameToRGB ("white"), miniwin.pen_solid, 1)
+  	WindowLine (win, width-15, 15, width-5, 5, ColourNameToRGB ("white"), miniwin.pen_solid, 1)
   	WindowAddHotspot(win, "windowX",
-  			785, 5, 795, 15,
+  			width-15, 5, width-5, 15,
   			"",                   --mousehover
   			"",                   --mouseoffhover
   			"destroyWindow",      --mousedown
@@ -1098,20 +1103,17 @@ function drawWindow()  -- BIG GODDAMN TODO
   		local aa = getxy(v)
  		local realaax = scaleXcoord(aa.x)
 		local realaay = scaleYcoord(aa.y)
-		WindowText(win, font, v.name, realaax+3, realaay+3, 0, 0, ColourNameToRGB("white"))
-  		WindowCircleOp(win, 1, realaax-1, realaay-1, realaax+1, realaay+1, ColourNameToRGB("red"), 0, 2, ColourNameToRGB("red"), 0)
+		if realaax > 0 and realaay > 0 then
+		    WindowText(win, font, v.name, realaax+3, realaay+3, 0, 0, ColourNameToRGB("white"))
+  		  WindowCircleOp(win, 1, realaax-1, realaay-1, realaax+1, realaay+1, ColourNameToRGB("red"), 0, 2, ColourNameToRGB("red"), 0)
+  		end
   	end
   	
-  	local ship = { name = "playership", 
+  	local ship = { name = "Player Ship", 
   	              x = (tonumber(getmsdp("SHIPSYSX")) or 0), 
   	              y = (tonumber(getmsdp("SHIPSYSY")) or 0), 
   	              z = (tonumber(getmsdp("SHIPSYSZ")) or 0), }
-  	systemobjs["playership"] = ship
-  	
-  	--local alderaan = { name = "Alderaan", x = 1500, y = 1500, z = 3000 }
-  	--systemobjs[#systemobjs+1] = alderaan
-  	--local markoth = { name = "Markoth", x = -4500, y = -10500, z = -3000 }
-  	--systemobjs[#systemobjs+1] = markoth
+  	systemobjs["Player Ship"] = ship
   	
   	--tprint(systemobjs)
   	local displayColor = "silver"
@@ -1120,14 +1122,18 @@ function drawWindow()  -- BIG GODDAMN TODO
   	  local coords = getxy(v)
   	  local scaledX = scaleXcoord(coords.x)
   	  local scaledY = scaleYcoord(coords.y)
-  	  if v.name == "playership" then
-  	    displayColor = "red"
-  	  else
-  	    displayColor = "silver"
+  	  if scaledX > 0 and scaledY > 0 then
+  	    if v.name == "Player Ship" then
+  	      displayColor = "red"
+  	    else
+  	      displayColor = "silver"
+  	    end
+  	    WindowCircleOp(win, 1, scaledX-2, scaledY-2, scaledX+3, scaledY+3, ColourNameToRGB(displayColor), 0, 2, ColourNameToRGB(displayColor), 0)
+  	    WindowAddHotspot(win, "systemobjhover"..v.name, scaledX-2, scaledY-2, scaledX+3, scaledY+3, "", "", "", "", "", v.name..": ("..v.x..","..v.y..","..v.z..")",1,0)
   	  end
-  	  WindowCircleOp(win, 1, scaledX-2, scaledY-2, scaledX+3, scaledY+3, ColourNameToRGB(displayColor), 0, 2, ColourNameToRGB(displayColor), 0)
-  	  WindowAddHotspot(win, "systemobjhover"..v.name, scaledX-2, scaledY-2, scaledX+3, scaledY+3, "", "", "", "", "", v.name..": ("..v.x..","..v.y..","..v.z..")",1,0)
   	end
+  	
+  	drawResizer(win, width, height)
   
   	WindowShow (win,  true)  -- show it
 end
@@ -1141,7 +1147,7 @@ function getxy(a)
   	end
   	local b = {x=0,y=0}
   	
-  	-- perspective transforms
+  	-- perspective transforms -- this was a bad idea
   	--d.x = math.cos(t.y) * (math.sin(t.z) * (a.y - c.y) + math.cos(t.z) * (a.x - c.x)) - math.sin(t.y) * (a.z - c.z)
   	--d.y = math.sin(t.x) * (math.cos(t.y) * (a.z - c.z) + math.sin(t.y) * (math.sin(t.z) * (a.y - c.y) + math.cos(t.z) * (a.x - c.x))) + math.cos(t.x) * (math.cos(t.z) * (a.y - c.y) - math.sin(t.z) * (a.x - c.x))
   	--d.z = math.cos(t.x) * (math.cos(t.y) * (a.z - c.z) + math.sin(t.y) * (math.sin(t.z) * (a.y - c.y) + math.cos(t.z) * (a.x - c.x))) - math.sin(t.x) * (math.cos(t.z) * (a.y - c.y) - math.sin(t.z) * (a.x - c.x))
@@ -1149,23 +1155,126 @@ function getxy(a)
   	--b.y = (d.y - e.y)*(e.z/d.z)
   	
   	--orthographic transforms
-  	s = { x = 1, y = zoom, z = 1 } -- arbitrary scale
-  	c = { x = xcenter, y = ycenter, z = zcenter } -- arbitrary constant (shift)
-  	b.x = (s.x * (a.x+(.5*a.y))) + c.x
-  	b.y = -(s.z * (a.z+(.5*a.y))) + c.z
+  	
+  	-- attempt 5 -- seems to work properly, however needs a way to control Z rotation
+  	-- z rotation
+  	--local newX = (a.x*(math.cos(math.rad(zrotation)))) + (a.y*(math.sin(math.rad(zrotation))))
+  	--local newY = (a.x*(-math.sin(math.rad(zrotation)))) + (a.y*(math.cos(math.rad(zrotation))))
+  	-- y rotation
+  	--newX = (newX*(math.cos(math.rad(yrotation)))) + (a.z*(math.sin(math.rad(yrotation))))
+  	--local newZ = (newX*(-math.sin(math.rad(yrotation)))) + (a.z*(math.cos(math.rad(yrotation))))
+  	
+  	-- x rotation
+  	--newX = (newY*(math.cos(math.rad(xrotation)))) + (newZ*(math.sin(math.rad(xrotation))))
+  	--newZ = (newY*(-math.sin(math.rad(xrotation)))) + (newZ*(math.cos(math.rad(xrotation))))
+  	--b.x = newX
+  	--b.y = newY
+  	
+  	-- attempt 4 -- doesn't work at all, need to translate matrix into X,Y
+  	--local translationmatrix = makeTranslation(xcenter, ycenter, zcenter)
+  	--local rotationXmatrix = makeXRotation(xrotation)
+  	--local rotationYmatrix = makeYRotation(yrotation)
+  	--local rotationZmatrix = makeZRotation(zrotation)
+  	--local scaleMatrix = makeScale(a.x, a.y, a.z)
+  	
+  	--local mtx = matrix.mul(scaleMatrix, rotationZmatrix)
+  	--mtx = matrix.mul(mtx, rotationYmatrix)
+  	--mtx = matrix.mul(mtx, rotationXmatrix)
+  	--mtx = matrix.mul(mtx, translationmatrix)
+  	
+  	-- attempt 3 -- works the best out of all of them
+  	-- sacrifices Y rotation for ease of use
+  	s = { x = zoom, y = zoom, z = zoom } -- scale
+  	c = { x = xcenter, y = ycenter, z = zcenter } -- shift
+  	b.x = (a.x * math.cos(math.rad(xrotation))) + (a.y * -math.sin(math.rad(xrotation)))
+  	b.y = (a.z * math.sin(math.rad(yrotation))) + (a.y * math.cos(math.rad(yrotation)))
+  	
+  	-- attempt 2 -- closer
+  	--s = { x = zoom, y = zoom, z = zoom } -- arbitrary scale
+  	--c = { x = xcenter, y = ycenter, z = zcenter } -- arbitrary constant (shift)
+  	--xrads = math.rad(xrotation)
+  	--yrads = math.rad(yrotation)
+  	--b.x = (s.x * (a.x+(math.sin(xrads)*a.y))) + c.x
+  	--b.y = (s.z * (a.z+(math.cos(yrads)*a.y))) + c.z
+  	
+  	-- attempt 1 -- actually does more of a shearing effect
+  	--b.x = (s.x * (a.x+(xrotation*a.y))) + c.x
+  	--b.y = -(s.z * (a.z+(yrotation*a.y))) + c.z
   	
   	return b
 end
 
 
 function scaleXcoord(coord)
-	return ((( coord / (50000 / zoom)) * 300) + (400+xcenter))
+	return ((( coord / (50000 / zoom)) * ((width/2)*.75)) + ((width/2)+xcenter))
 end
 function scaleYcoord(coord)
-	return ((( coord / (50000 / zoom)) * 250) + (300+ycenter))
+	return ((( coord / (50000 / zoom)) * ((height/2)*.75)) + ((height/2)+ycenter))
 end
 function scaleZcoord(coord)
 end
+
+-- helper functions of 4th attempt
+--function makeXRotation(angleInRadians)
+--  local c = math.cos(angleInRadians)
+--  local s = math.sin(angleInRadians)
+
+--  return matrix{
+--    {1, 0, 0, 0},
+--    {0, c, s, 0},
+--    {0, -s, c, 0},
+--    {0, 0, 0, 1},
+--  }
+--end
+--function makeYRotation(angleInRadians)
+--  local c = math.cos(angleInRadians)
+--  local s = math.sin(angleInRadians)
+
+--  return matrix{
+--    {c, 0, -s, 0},
+--    {0, 1, 0, 0},
+--    {s, 0, c, 0},
+--    {0, 0, 0, 1},
+--  }
+--end
+--function makeZRotation(angleInRadians)
+--  local c = math.cos(angleInRadians)
+--  local s = math.sin(angleInRadians)
+--  return matrix{
+--     {c, s, 0, 0},
+--    {-s, c, 0, 0},
+--     {0, 0, 1, 0},
+--     {0, 0, 0, 1},
+--  }
+--end
+
+--function makeTranslation(tx, ty, tz)
+--  return matrix{
+--     {1,  0,  0,  0},
+--     {0,  1,  0,  0},
+--     {0,  0,  1,  0},
+--     {tx, ty, tz, 1},
+--  }
+--end
+
+--function makeScale(sx, sy, sz)
+--  return matrix{
+--    {sx, 0,  0,  0},
+--    {0, sy,  0,  0},
+--    {0,  0, sz,  0},
+--    {0,  0,  0,  1},
+--  }
+--end
+
+--function make3DProjection(width, height, depth)
+  -- Note: This matrix flips the Y axis so 0 is at the top.
+--  return matrix{
+--     {2 / width, 0, 0, 0},
+--     {0, -2 / height, 0, 0},
+--     {0, 0, 2 / depth, 0},
+--    {-1, 1, 0, 1},
+--  }
+--end
 
 function displayTime(time)
 	local retval = {}
@@ -1604,7 +1713,7 @@ function SetUpHotspotsAndDraw(firstTime)
 	
 		
 		-- make windows so I can grab the font info
-		WindowCreate (win, 0, 0, 800, 600, miniwin.pos_center_all, 0, ColourNameToRGB("black"))  -- create window
+		WindowCreate (win, 0, 0, width, height, miniwin.pos_center_all, 0, ColourNameToRGB("black"))  -- create window
 		WindowCreate (configwin, 0, 0, 220, 340, miniwin.pos_center_all, 0, ColourNameToRGB("black")) -- create config window
 		WindowCreate (speedwin, 0, 0, 300, 200, miniwin.pos_center_all, 0, ColourNameToRGB("black")) -- create speed window
 		WindowCreate (jumpwin, 0, 0, 400, 60, miniwin.pos_center_all, 0, ColourNameToRGB("black")) -- create jump window
@@ -1616,13 +1725,6 @@ function SetUpHotspotsAndDraw(firstTime)
   		speedwindowinfo =  movewindow.install (speedwin, 6) -- default to 6 (on top right)
   		jumpwindowinfo =   movewindow.install (jumpwin, 6) -- default to 6 (on top right)
   		statwindowinfo =   movewindow.install (statwin, 6) -- default to 6 (on top right)
-  		
-  		-- catch for scroll wheel movement
-		--WindowAddHotspot(win, "gridarea", 100, 50, 700, 550, "", "", "MouseDownMain", "CancelMouseDownMain", "MouseUpMain", "", 1, 0)
-
-		-- mouse wheel handler for scrolling up/down
-		--WindowScrollwheelHandler(win, "gridarea", "wheel_move")
-		--WindowDragHandler(win, "gridarea", "MainDragCallback", "MainReleaseCallback", 0)
 		
 		movewindow.add_drag_handler (win, 0, 0, 0, WindowFontInfo (win, font, 1))
 		movewindow.add_drag_handler (configwin, 0, 0, 0, WindowFontInfo (configwin, font, 1))
@@ -1630,9 +1732,16 @@ function SetUpHotspotsAndDraw(firstTime)
 		movewindow.add_drag_handler (jumpwin, 0, 0, 0, WindowFontInfo (jumpwin, font, 1))
 		movewindow.add_drag_handler (statwin, 0, 0, 0, WindowFontInfo (statwin, font, 1))
 		
-		--effectiveWidth = math.min(charwidth, GetInfo(281)-charwindowinfo.window_left)
-		--WindowAddHotspot(charwin, "resize", effectiveWidth-RESIZE_TAG_SIZE, charheight-RESIZE_TAG_SIZE, effectiveWidth, charheight, "MouseOver", "CancelMouseOver", "MouseDown", "CancelMouseDown", "MouseUp", "", 6, 0)
-		--WindowDragHandler(charwin, "resize", "ResizeMoveCallback", "ResizeReleaseCallback", 0)
+		effectiveWidth = math.min(width, GetInfo(281)-windowinfo.window_left)
+		WindowAddHotspot(win, win.."resize", effectiveWidth-RESIZE_TAG_SIZE, height-RESIZE_TAG_SIZE, effectiveWidth, height, "MouseOver", "CancelMouseOver", "MouseDownMain", "CancelMouseDownMain", "MouseUpMain", "", 6, 0)
+		WindowDragHandler(win, win.."resize", "ResizeMoveCallbackMain", "ResizeReleaseCallbackMain", 0)
+		
+  		-- catch for scroll wheel movement
+		WindowAddHotspot(win, "gridarea", RESIZE_TAG_SIZE, RESIZE_TAG_SIZE, effectiveWidth-RESIZE_TAG_SIZE, height-RESIZE_TAG_SIZE, "", "", "MouseDownMain", "CancelMouseDownMain", "MouseUpMain", "", 0, 0)
+
+		-- mouse wheel handler for scrolling up/down
+		WindowScrollwheelHandler(win, "gridarea", "wheel_move")
+		WindowDragHandler(win, "gridarea", "MainDragCallback", "MainReleaseCallback", 0)
 		
 		
 		-- setup every window in our table
@@ -1657,9 +1766,11 @@ function SetUpHotspotsAndDraw(firstTime)
 			WindowMoveHotspot(v.id, v.id.."resize", v.effectiveWidth-RESIZE_TAG_SIZE, v.height-RESIZE_TAG_SIZE, v.effectiveWidth, v.height)
 		end
 		
-		--effectiveWidth = math.min(charwidth, GetInfo(281)-charwindowinfo.window_left)
-		--WindowResize(charwin, effectiveWidth, charheight, background_colour)
-		--WindowMoveHotspot(charwin, "resize", effectiveWidth-RESIZE_TAG_SIZE, charheight-RESIZE_TAG_SIZE, effectiveWidth, charheight)
+		effectiveWidth = math.min(width, GetInfo(281)-windowinfo.window_left)
+		WindowResize(win, effectiveWidth, height, background_colour)
+		WindowMoveHotspot(win, win.."resize", effectiveWidth-RESIZE_TAG_SIZE, height-RESIZE_TAG_SIZE, effectiveWidth, height)
+		WindowMoveHotspot(win, "gridarea", RESIZE_TAG_SIZE, RESIZE_TAG_SIZE, effectiveWidth-RESIZE_TAG_SIZE, height-RESIZE_TAG_SIZE)
+		
 		drawWindows()
 	end
 end
@@ -1686,6 +1797,9 @@ function OnPluginSaveState ()
   SetVariable("show_jump", tostring(visualSpaceJumpVisible))
   SetVariable("show_stat", tostring(visualSpaceStatVisible))
   SetVariable("windows", serialize.save("windows"))
+  SetVariable("width", width)
+  SetVariable("height", height)
+  SetVariable("zoom", zoom)
 
 end -- function OnPluginSaveState
 
@@ -1704,9 +1818,6 @@ function OnPluginBroadcast (msg, id, name, text)
 			key = string.sub(text, 0, string.find(text,",",0,true)-1)  -- parse the variable key
 			val = utils.base64decode(string.sub(text, string.find(text,",",0,true)+1, string.len(text))) -- parse the variable value
 			msdp[key] = val -- store it
-			--Note("key: " .. key .. " val: " .. msdp[key])
-			key = ""
-			val = ""
 		end
 		if (text == 'reload') then
 			-- invalidate current data
@@ -1848,26 +1959,57 @@ end
 
 
 ------main window stuff
+----------------------------------------------------------------------
+-- Called as main window is dragged around.
+----------------------------------------------------------------------
+function ResizeMoveCallbackMain(flags, hotspot_id)
+   posx, posy = WindowInfo (win, 17), WindowInfo (win, 18)
+   width = width + posx - startx
+   startx = posx
+   if (width < MIN_WIDTH) then
+      width = MIN_WIDTH
+      startx = windowinfo.window_left+width
+   elseif (windowinfo.window_left+width > GetInfo(281)) then
+      width = GetInfo(281)-windowinfo.window_left
+      startx = GetInfo(281)
+   end
+   
+   height = height + posy - starty
+   starty = posy
+   if (height < MIN_HEIGHT) then
+   	height = MIN_HEIGHT
+   	starty = windowinfo.window_top+height
+   elseif (windowinfo.window_top+height > GetInfo(280)) then
+   	height = GetInfo(280)-windowinfo.window_top
+   	starty = GetInfo(280)
+   end
+   
+	if (utils.timer() - lastRefresh > 0.0333) then
+		SetUpHotspotsAndDraw(false)
+		lastRefresh = utils.timer()
+	end
+end
+
 ----------------------------------------------------------------------------------
 -- Called when scroll wheel is moved
 ----------------------------------------------------------------------------------
 function wheel_move (flags, hotspot_id)
 	if bit.band(flags, 0x100) ~= 0 then
 	-- wheel scrolled down (towards you)
-		zoom = zoom - 1
-		if (zoom < 1) then
-			zoom = 1
+		zoom = zoom - .05
+		if (zoom < .25) then
+			zoom = .25
 		end
 		
 	else
 	-- wheel scrolled up (away from you)
-		zoom = zoom + 1
+		zoom = zoom + .05
 		if (zoom > 50) then
 			zoom = 50
 		end
 		
 	end -- if
-	drawWindow()
+	SetUpHotspotsAndDraw(false)
 end -- wheel_move
 
 ---------------------------------------------------------------------------------
@@ -1893,31 +2035,38 @@ function MainDragCallback(flags, hotspot_id)
 		-- move the center of our window
 		xcenter = xcenter + posx - startx
 		startx = posx
-		if (xcenter < -50000) then
-			xcenter = -50000
-			startx = -50000
-		elseif (xcenter > 50000) then
-			xcenter = 50000
-			startx = 50000
-		end
+		--if (xcenter < -50000) then
+		--	xcenter = -50000
+		--	startx = -50000
+		--elseif (xcenter > 50000) then
+		--	xcenter = 50000
+		--	startx = 50000
+		--end
 		ycenter = ycenter + posy - starty
 		starty = posy
-		if (ycenter < -50000) then
-			ycenter = -50000
-			starty = -50000
-		elseif (ycenter > 50000) then
-			ycenter = 50000
-			starty = 50000
-		end
+		--if (ycenter < -50000) then
+		--	ycenter = -50000
+		--	starty = -50000
+		--elseif (ycenter > 50000) then
+		--	ycenter = 50000
+		--	starty = 50000
+		--end
 		--Note("shift pressed")
-		Note("xcenter: "..xcenter.." ycenter: "..ycenter)
+		--Note("xcenter: "..xcenter.." ycenter: "..ycenter)
 		
 	elseif bit.band (flags, miniwin.drag_got_control) ~= 0 then -- pressed control while click and drag
 		-- twist display around our mouse TODO
 		--Note("control pressed")
 	else
-		-- twist display around the center of our view TODO
-		--Note("click by itself")
+		-- twist display around the center of our view
+		xrotation = xrotation + (posx - startx)*.25
+		startx = posx
+
+		yrotation = yrotation - (posy - starty)*.25
+		starty = posy
+
+		--Note("xrotation: "..xrotation.." yrotation: "..yrotation)
+		--Note("startx: "..startx.." starty: "..starty)
 		
 	end
 	-- if we hold mouse down too long, refresh window at appropriate invervals
