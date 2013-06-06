@@ -2,7 +2,7 @@
 <!DOCTYPE muclient> 
 <!--  Saved on Sunday, July 04, 2012, 5:39 AM   -->  
 <muclient>
-<plugin name="LotJResearch" author="@Johnson" id="0b90ce53347f37f34ff36fcf" language="Lua" purpose="Automatic Researching" save_state="y" requires="4.40" version="1.73">
+<plugin name="LotJResearch" author="@Johnson" id="0b90ce53347f37f34ff36fcf" language="Lua" purpose="Automatic Researching" save_state="y" requires="4.40" version="1.75">
 <description trim="y">
 <![CDATA[ 'ResearchHelp' - To see the commands available in the game.
 
@@ -26,11 +26,11 @@ Automatically populate and research items that need to be researched.
   <trigger name="ResearchSuccess" script="research" match="^You finish your studies and feel much more skilled\.$" enabled="n" group="AutoResearch" regexp="y" sequence="100" />
   <trigger name="ResearchFailure" script="research" match="^You study for hours on end, but fail to gather any knowledge\.$" enabled="n" group="AutoResearch" regexp="y" sequence="100" />
   <!-- trigger name="ResearchResumeAFK" script="resumeResearchFromAFK" match="^You may now bot again\.$" enabled="n" group="AutoResearch" regexp="y" sequence="100" -->
-  <trigger name="ResearchGrabThree" script="grabAdd" match="^([\s\w,-]+)(\s+\d+)\%([\s\w,-]+)(\s+\d+)\%([\s\w,-]+)(\s+\d+)\%(\s+)$" regexp="y" enabled="n" omit_from_output="y" omit_from_log="y" group="ResearchColour" sequence="100" />
-  <trigger name="ResearchGrabTwo" script="grabAdd" match="^([\s\w,-]+)(\s+\d+)\%([\s\w,-]+)(\s+\d+)\%(\s+)$" regexp="y" enabled="n" omit_from_output="y" omit_from_log="y" group="ResearchColour" sequence="100" />
-  <trigger name="ResearchGrabOne" script="grabAdd" match="^([\s\w,-]+)(\s+\d+)\%(\s+)?$" regexp="y" enabled="n" omit_from_output="y" omit_from_log="y" group="ResearchColour" sequence="100" />
+  <trigger name="ResearchGrabThree" script="grabAdd" match="^([\s\w,-]+)(\s+\d+)\%([\s\w,-]+)(\s+\d+)\%([\s\w,-]+)(\s+\d+)\%(\s?)*$" regexp="y" enabled="n" omit_from_output="y" omit_from_log="y" group="ResearchColour" sequence="100" />
+  <trigger name="ResearchGrabTwo" script="grabAdd" match="^([\s\w,-]+)(\s+\d+)\%([\s\w,-]+)(\s+\d+)\%(\s?)*$" regexp="y" enabled="n" omit_from_output="y" omit_from_log="y" group="ResearchColour" sequence="100" />
+  <trigger name="ResearchGrabOne" script="grabAdd" match="^([\s\w,-]+)(\s+\d+)\%(\s?)*$" regexp="y" enabled="n" omit_from_output="y" omit_from_log="y" group="ResearchColour" sequence="100" />
   <trigger name="ResearchGrabDone" script="toggleGrabOff" match="^To see a shorter practice list\, type PRACTICE \<class name\>\.$" regexp="y" group="ResearchGrabber" enabled="n" sequence="100" />
-  <trigger name="Allskillsclear" script="clearGrabList" match="^(\-)+Skills(\-)+$" regexp="y" enabled="y" group="ResearchStarter" sequence="100" />
+  <trigger name="Allskillsclear" script="clearGrabList" match="^([\s,-]+)Skills([\s,-]+)$" regexp="y" enabled="y" group="ResearchStarter" sequence="100" />
 </triggers>
 <!--   Aliases    --> 
 <aliases>
@@ -83,19 +83,15 @@ function swapColorMode(name, line, args)
   if colorMode == 1 then
     colorMode = 2
 	  ColourNote("yellow","","Practice list color mode: ","lime", "", string.format("%20s", "alternate"),"silver","",string.format(" %3d", 90),"gray","","%")
-    --ColourNote("yellow","","Practice list color mode: ","lime","","alternate","silver","","  90","gray","","%")
   elseif colorMode == 2 then
     colorMode = 3
     ColourTell("yellow","","Practice list color mode: ")
 	  Hyperlink("#Note('Clicking this link would normally add a skill to your research list!')", string.format("%20s %3d%%","hyperlinks", 90), "Sample hyperlink.", "lime", "", false, true)
-    --Hyperlink("#Note('Sample Hyperlink')","hyperlinks  90%","Sample hyperlink","silver","",false,true)
     Tell("\n")
   elseif colorMode == 3 then
     colorMode = 1
 	  ColourNote("yellow","","Practice list color mode: ","lime", "", string.format("%20s %3d%%", "basic", 90))
-    --ColourNote("yellow","","Practice list color mode: ","lime","","basic  90%")
   end
---  ColourNote("yellow","","Practice list color mode: "..colorMode)
 end
 
 function OnPluginSaveState()
@@ -216,14 +212,14 @@ function toggleGrabOn(name, line, args)
 		end
 	end
 	EnableTriggerGroup("ResearchGrabber", true)
-	ColourTell("silver","","Grab started. Skill: '","cyan","",grabSkill,"silver","","' Percent: '","cyan","",grabPercent,"silver","","'\n")
+	ColourNote("silver","","Grab started. Skill: '","cyan","",grabSkill,"silver","","' Percent: ","cyan","",grabPercent)
 	Send("practice " .. grabSkill)
 end
 
 
 function toggleGrabOff(name, line, args)
   if grab then
-	  ColourTell("silver","","Grab completed. Found ","cyan","",#researchList,"silver",""," items. Type '","cyan","","researchlist","silver","","' to see them.\n")
+	  ColourNote("silver","","Grab completed. Found ","cyan","",#researchList,"silver",""," items. Type '","cyan","","researchlist","silver","","' to see them.")
 	  grab = false
 	  researchStart()
 	end
@@ -243,7 +239,7 @@ end
 
 function addItem(name, line, args)
 	researchList[#researchList + 1] = args[1]
-	ColourTell("silver","","'","cyan","",researchList[#researchList],"silver","","' added to research list.\n")
+	ColourNote("silver","","'","cyan","",researchList[#researchList],"silver","","' added to research list.")
 end
 
 function internalAddItem(item)
@@ -254,7 +250,7 @@ end
 function removeItem(name, line, args)
    for i, v in ipairs(researchList) do
       if ((string.lower(v) == string.lower(Trim(args[1]))) or (i == tonumber(args[1]))) then
-         ColourTell("silver","","Removed '","cyan","",v,"silver","","' index(","cyan","",i,"silver","",") from research list.\n")
+         ColourNote("silver","","Removed '","cyan","",v,"silver","","' index(","cyan","",i,"silver","",") from research list.")
          table.remove(researchList, i)
          if (currentPos > i) then  -- if our item is higher in the list than what we remove
          	currentPos = currentPos - 1  -- decrement the pointer to follow the current item
@@ -298,7 +294,7 @@ function displayList(name, line, args)
       if (i ~= currentPos) then
          ColourNote("silver","",i..") "..researchList[i])
       else
-         ColourTell("silver","",i,"lime",""," --]>" .. researchList[i] .. "<[--\n")
+         ColourNote("silver","",i,"lime",""," --]> " .. researchList[i] .. " <[--")
       end
    end
 end
