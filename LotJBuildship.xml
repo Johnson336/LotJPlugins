@@ -90,6 +90,7 @@ This string adds as many ships as you specify with a single command.
   <trigger name="OutofMoves" script="waitForMoves" match="^You\'re too exhausted to do that right now\!$" regexp="y" enabled="n" group="Shipbuilding" sequence="100" />
   <trigger name="missingpart" script="buildNextPart" match="^I see no (.*) here\.$" enabled="n" regexp="y" group="Shipbuilding" sequence="100" />
   <trigger name="followleader" script="follow" match="* beckons for you to come over to *." regexp="n" group="Shipbuilding" sequence="100" />
+  <trigger name="resting" script="stand" match="Nah... You feel too relaxed..." regexp="n" group="Shipbuilding" sequence="100" />
   <trigger name="SpamRemoval1" script="enableEndLine" match="^(.*) steps away from (.*) looking very pleased with (.*)\.$" enabled="n" regexp="y" group="ShipbuildingSpam" omit_from_log="y" omit_from_output="y" sequence="100" />
   <trigger name="SpamRemoval2" script="enableEndLine" match="^(.*) takes (.*) tools and starts to work on (.*)$" enabled="n" regexp="y" group="ShipbuildingSpam" omit_from_log="y" omit_from_output="y" sequence="100" />
   <trigger name="SpamRemoval3" script="enableEndLine" match="^(.*)droid assists(.*)$" enabled="n" regexp="y" group="ShipbuildingSpam" omit_from_log="y" omit_from_output="y" sequence="100" />
@@ -107,6 +108,8 @@ This string adds as many ships as you specify with a single command.
   <trigger name="TooPoor" match="^You can\'t afford to make those modifications right now\!$" script="upgradeNextPart" enabled="n" regexp="y" group="Upgrading" sequence="100" />
   <trigger name="NoShip" match="^You can\'t seem to find that ship here\!$" script="upgradeNext" enabled="n" regexp="y" group="Upgrading" sequence="100" />
   <trigger name="Nocomponent" match="^Thats not a valid component\! Maybe you should check HELP UPGRADING$" script="upgradeNextPart" enabled="n" regexp="y" group="Upgrading" sequence="100" />
+  <trigger name="FinishTune" match="^You finish tuning (.*)\.$" script="upgradeNextPart" enabled="n" regexp="y" group="Upgrading" sequence="100" />
+  <trigger name="AlreadyTuned" match="This vessel has already been tuned." script="upgradeNextPart" enabled="n" regexp="n" group="Upgrading" sequence="100" />
 </triggers>
 
 <!--  Aliases  -->
@@ -420,6 +423,7 @@ function upgradeRem(name, line, args)
     if (tonumber(args[1]) == i) or (string.lower(Trim(args[1])) == string.lower(v.name)) then
       ColourNote("yellow","","Removed '" .. v.name .. "' from upgrade list.")
       table.remove(upgradeList, i)
+      return
     else
       if (#upgradeList == i) then
         ColourNote("red","","Ship '" .. args[1] .. "' not found in upgrade list.")
@@ -451,6 +455,8 @@ function upgrade(name, line, args)
         Send("upgradeship "..getUpgradeShipName().." "..getUpgradePartName().." "..getUpgradePartAmount())
       elseif (getUpgradePartAmount() < 0) then -- part amount is under 0
         Send("dismantle "..getUpgradeShipName().." "..getUpgradePartName().." "..math.abs(getUpgradePartAmount()))
+      elseif string.lower(getUpgradePartName()) == "tune" or string.lower(getUpgradePartName()) == "tuneship" then -- tune the ship
+        Send("tuneship "..getUpgradeShipName())
       else -- should never get here, but just in case someone entered 0 as an amount, skip to the next part
         upgradeNextPart()
       end
@@ -576,7 +582,18 @@ function follow(name, line, args)
   if not args or args[1] == "" then
     return
   end
-  Send("follow "..args[1])
+  if afk then
+    Send("afk")
+    Send("follow "..args[1])
+    Send("afk")
+  else
+    Send("follow "..args[1])
+    buildShip()
+  end
+end
+
+function stand(name, line, args)
+  Send("stand")
   buildShip()
 end
 
@@ -650,8 +667,9 @@ function buildNextPart(name, line, wildcards)
 	if (currentPart > #partNames) then
 		currentPart = 1
 		buildNext()
+	else
+	  getParts()
 	end -- if
-	getParts()
 end -- function
 
 function ReturnFromAFK(name, line, wildcards)
@@ -829,7 +847,7 @@ function enduranceToggle(name, line, args)
 		elseif (Trim(args[1]) == "off") then -- turn off
 			disableEndurance()
 		else
-			ColourNote("red", "black", "Unrecognized argument given to researchauto: " .. args[1])
+			ColourNote("red", "black", "Unrecognized argument given to buildendurance: " .. args[1])
 		end
 	else -- no arg found
 		if (endurance == false) then -- turn on
