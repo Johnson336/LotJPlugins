@@ -31,11 +31,12 @@ in order to easily upgrade ships. We can achieve this in several ways. The easie
 to define a profile and save it for later use.
 
 Method 1: -- saving and loading a modification profile
-Step 1: "upgradeProfileName GRCargo"  -- here we define the name we want to use to access the stored preset. Make it something easy like "GRCargo"
+Step 1: "upgradeProfileName GRCargo"  -- here we define the name we want to use to access the stored preset. Make it something easy like "GRCargo". Notice: profile names must be a single word!
 Step 2: "upgradeProfilePartAdd laser -2"  -- here we add a part to the preset indicating we want to remove 2 units of lasers
-Step 3: "upgradeProfileSave"  -- when we've added as many modifications to the preset as we want, we then save it to our global profile list for later use
-Step 4: "upgradeLoad GR123 GRCargo"  -- here we load our saved preset GRCargo and indicate that the ship we are going to be modifying is named GR123
-Step 5: "upgradeStart"  -- begins modifications based on our GRCargo preset, this can be done any number of times with any combination of different presets
+Step 3: "upgradeProfilePartAdd speed 20 hyper 10 maneuver 30" -- here we add 3 different parts to our preset with a single command, we can do this as many times as we want
+Step 4: "upgradeProfileSave"  -- when we've added as many modifications to the preset as we want, we then save it to our global profile list for later use
+Step 5: "upgradeLoad GR123 GRCargo"  -- here we load our saved preset GRCargo and indicate that the ship we are going to be modifying is named GR123
+Step 6: "upgradeStart"  -- begins modifications based on our GRCargo preset, this can be done any number of times with any combination of different presets
 
 If we are performing quick modifications and we don't have any desire to save them for 
 later use, we can use the quick add function to define all our instructions with a single command.
@@ -47,11 +48,12 @@ Step 2: "upgradeStart"
 
 Method 3: -- create a preset but push it to the upgrade stack without saving
 Step 1: "upgradeProfileName GR123"
-Step 2: "upgradeProfilePartAdd autoblaser -5"
+Step 2: "upgradeProfilePartAdd autoblatser -5"
 Step 3: "upgradeProfilePartAdd speed 20"
 Step 4: "upgradePush" -- this command pushes everything we had in our profile into the upgrade stack, bypassing the need to save or load any presets
 Step 5: "upgradeStart"
 
+Note: Now supports automatic tuning of ships. Insert "tune 0" as a part type into your profile to tune the ship instead of upgrading.
 
 
 Changelog
