@@ -24,7 +24,7 @@ v1.42 -
 	<trigger name="LaunchComp" match="^Launch complete\.$" script="calcPlanet" group="Flight" enabled="n" regexp="y" sequence="100" />
 	<trigger name="CalcDone" match="^\[Status\]\: Hyperspace Calculations have been completed\.$" script="calcDone" group="Flight" enabled="n" regexp="y" sequence="100" />
 	<trigger name="HyperComp" match="^Hyperjump complete\.$" script="coursePlanet" group="Flight" enabled="n" regexp="y" sequence="100" />
-	<trigger name="OrbitObtained" match="^You begin orbitting (.*)\.$" script="doLand" group="Flight" enabled="n" regexp="y" sequence="100" />
+	<trigger name="OrbitObtained" match="^You begin orbiting (.*)\.$" script="doLand" group="Flight" enabled="n" regexp="y" sequence="100" />
 	<trigger name="LandGrabStart" match="^Possible choices for (.*)\:$" script="startLandGrab" group="Flight" enabled="n" regexp="y" sequence="100" />
 	<trigger name="MatchLine" match="^(.*)$" script="landGrab" group="landGrab" enabled="n" regexp="y" keep_evaluating="y" omit_from_log="n" omit_from_output="n" sequence="100" />
 	<trigger name="LandGrabEnd" match="^$" script="endLandGrab" group="landGrab" enabled="n" regexp="y" sequence="100" />
@@ -32,6 +32,7 @@ v1.42 -
 	<trigger name="LandComp" match="^Landing sequence complete\.$" script="endFlight" group="Flight" enabled="n" regexp="y" sequence="100" />
 	<trigger name="Proximity" match="^You are too close to (.*) to make the jump to lightspeed\!$" script="waitHyper" group="Flight" enabled="n" regexp="y" sequence="100" />
 	<trigger name="landsitelocked" match="^Restricted Landing pad\. Limited to clans members and ships only\.$" script="landNext" group="Flight" enabled="n" regexp="y" sequence="100" />
+	<trigger name="LeftShip" match="^You exit the ship\.$" script="reenterCheck" group="Flight" enabled="n" regexp="y" sequence="100" />
   <trigger name="squadronlaunched" match="^(?P<fightertype>.+?) '(?P<fightername>.+?)' launches from a hangar on (?P<hangartype>.+?) '(?P<hangarname>.+?)'\,(.*)$" script="fighterGrab" group="Squadron" enabled="y" regexp="y" sequence="100" />
   <trigger name="squadronview" match="^(L\[(.*)\]\:P\[(.*)\] )?(?P<fightertype>.+?) '(?P<fightername>.+?)'((\s+[\d-]+\s[\d-]+\s[\d-]+|\s+Prox\: \d+))?$" script="fighterShow" group="Squadron" enabled="y" regexp="y" sequence="100" />
 
@@ -44,6 +45,7 @@ v1.42 -
 	<alias name="Flyauto" match="^flyauto( +(.*))?$" script="flyAuto" enabled="y" regexp="y" group="FlightCmd" ignore_case="y" sequence="100" />
 	<alias name="Flyclear" match="flyclear" script="flyClear" enabled="y" regexp="n" group="FlightCmd" ignore_case="y" sequence="100" />
 	<alias name="FlyHelp" match="^flyhelp$" script="flightHelp" enabled="y" regexp="y" group="FlightCmd" ignore_case="y" sequence="100" />
+	<alias name="FlyReenterToggle" match="^flyreenter(\s*(.*))?$" script="toggleReenter" enabled="y" regexp="y" group="FlightCmd" ignore_case="y" sequence="100" />
 	<alias name="fighterclear" match="fighterclear" script="fighterClear" enabled="y" regexp="n" group="FlightCmd" ignore_case="y" sequence="100" />
 </aliases>
 <!--   Script    --> 
@@ -61,6 +63,8 @@ landingSiteNum = 0
 landgrabbing = false
 landPreference = -1
 local hangars = {}
+reentership = false
+hypertries = 0
 
 require "tprint"
 
@@ -94,7 +98,29 @@ function fighterClear()
   Note("Squadron information cleared.")
 end
   
-    
+function reenterCheck()
+  if reentership then
+    enterShip()
+  end
+end
+
+function toggleReenter(name, line, args)
+  if not args or args[1] == "" then -- entered nothing
+    if reentership then
+      reentership = false
+      ColourNote("yellow","","Will not re-enter ship upon arrival.")
+    else
+      reentership = true
+      ColourNote("yellow","","Will re-enter ship upon arrival.")
+    end
+  elseif string.lower(args[1]) == "on" then
+    reentership = true
+    ColourNote("yellow","","Will re-enter ship upon arrival.")
+  elseif string.lower(args[1]) == "off" then
+    reentership = false
+    ColourNote("yellow","","Will not re-enter ship upon arrival.")
+  end
+end
 
 function flyClear()
 	shipName = ""
@@ -108,6 +134,8 @@ function flyClear()
 	landingSiteNum = 0
 	landgrabbing = false
 	landPreference = -1
+	reentership = false
+	hypertries = 0
 	Note("Fly variables cleared.")
 	toggleFlyOff()
 end
@@ -139,7 +167,14 @@ function endFlight()
   toggleFlyOff()
 end
 
+coords = {-50000, 0, 50000}
+
 function waitHyper()
+  hypertries = hypertries + 1
+  if hypertries >= 10 then
+    hypertries = 0
+    Send("course "..coords[math.random(3)].." "..coords[math.random(3)].." "..coords[math.random(3)])
+  end
   DoAfter(10, "hyper")
 end
 
@@ -199,6 +234,7 @@ function coursePlanet()
 end
 
 function calcDone()
+  hypertries = 1
 	Send("hyper")
 end
 
@@ -210,13 +246,16 @@ function calcPlanet(name, list, args)
 end		
 
 function flightStatus(name, list, args)
-	Note("Flight status: " .. tostring(autoFly))
+	Note("Flight status: " .. ((autoFly==true and "Enabled") or "Disabled"))
 	Note("  Flying '" .. shipName .. "' (" .. hatchCode .. ")")
 	if (autoFly == true) then
 		if (lastPlanet ~= "") then
 			Note("  Flying from: " .. lastPlanet)
 		end
 		Note("  Destination planet: " .. planetName)
+	end
+	if reentership then
+	  Note("  Will re-enter ship when flight is completed.")
 	end
 end
 
@@ -340,6 +379,7 @@ function flightHelp()
 	Note("Flystatus           - Display current status of flight")
 	Note("Flyauto on/off      - Enable or disable automatic flight")
 	Note("Flyclear            - Clears all current fly variables")
+	Note("Flyreenter          - Re-enter your ship at the end of a flight")
 	Note("FlyHelp             - Display this help menu")
 	Note("\n")
 end
