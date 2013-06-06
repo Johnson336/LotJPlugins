@@ -79,10 +79,7 @@ local visualSpaceSpeedVisible =  tonumber(GetVariable("show_speed") or 0)
 local visualSpaceJumpVisible =   tonumber(GetVariable("show_jump") or 0)
 local visualSpaceStatVisible =   tonumber(GetVariable("show_stat") or 0)
 
-
-local msdp = {}
 local levels = {}
-
 
 windows = {}
 window_info = {}
@@ -92,7 +89,6 @@ local autopilot = false
 local recharge = false
 local totalJump = 0
 local partialJump = 0
-
 
 background_colour     = 0x000000
 border_color          = 0xcccccc
@@ -1813,19 +1809,22 @@ function OnPluginBroadcast (msg, id, name, text)
 	-- Look for MSDP Handler.
 	if (id == 'b3aae34498d5bf19b5b2e2af') then
 		-- HUGE FIXME.. not an idea solution
-		if (msg == 91) then -- we got table information from MSDP handler
+		--if (msg == 91) then -- we got table information from MSDP handler
 			-- store information in our own msdp table
-			key = string.sub(text, 0, string.find(text,",",0,true)-1)  -- parse the variable key
-			val = utils.base64decode(string.sub(text, string.find(text,",",0,true)+1, string.len(text))) -- parse the variable value
-			msdp[key] = val -- store it
-		end
+			--key = string.sub(text, 0, string.find(text,",",0,true)-1)  -- parse the variable key
+			--val = utils.base64decode(string.sub(text, string.find(text,",",0,true)+1, string.len(text))) -- parse the variable value
+			--msdp[key] = val -- store it
+		--end
 		if (text == 'reload') then
 			-- invalidate current data
 			page_built = false
 			return
 		end
-	end
-  drawWindows()  -- redraw windows every time new information is received
+		if (utils.timer() - lastRefresh > 0.0333) then
+      drawWindows()  -- delay time between window refreshes to avoid flicker
+		  lastRefresh = utils.timer()
+  	end
+  end
 end
 
 --============================================================================
@@ -1834,21 +1833,23 @@ end
 -- from msdp_helper, if it doesn't exist locally
 --============================================================================
 
-function getmsdp(key)
-	if not IsConnected() then  -- don't try to get stuff if we aren't connected to the mud
-		return ""
-	end
-	if (msdp[key] ~= nil) then  -- if the key has been updated by msdp handler already, retrieve it
-		return msdp[key]
-	elseif (GetPluginVariable("b3aae34498d5bf19b5b2e2af", key) ~= nil) then  -- if the key hasn't been updated, but msdp handler has it cached, retrieve it and store in local table for next time
-		msdp[key] = utils.base64decode(GetPluginVariable("b3aae34498d5bf19b5b2e2af", key))
-		return msdp[key]
-	else
-		ColourNote("red","black", "Warning: Unable to find key " .. key)
-		return ""   -- should never get here  -- can't find the requested key
-	end
-	return "" -- should never ever get here
-end
+-- took this out to reduce PluginBroadcast overhead, calls are now made directly to
+-- MSDPHandler instead of caching a local version of all variables
+--function getmsdp(key)
+--	if not IsConnected() then  -- don't try to get stuff if we aren't connected to the mud
+--		return ""
+--	end
+--	if (msdp[key] ~= nil) then  -- if the key has been updated by msdp handler already, retrieve it
+--		return msdp[key]
+--	elseif (GetPluginVariable("b3aae34498d5bf19b5b2e2af", key) ~= nil) then  -- if the key hasn't been updated, but msdp handler has it cached, retrieve it and store in local table for next time
+--		msdp[key] = utils.base64decode(GetPluginVariable("b3aae34498d5bf19b5b2e2af", key))
+--		return msdp[key]
+--	else
+--		ColourNote("red","black", "Warning: Unable to find key " .. key)
+--		return ""   -- should never get here  -- can't find the requested key
+--	end
+--	return "" -- should never ever get here
+--end
 
 function findwinbyid(id)
 	for k, v in pairs(windows) do
@@ -1863,12 +1864,23 @@ end
 -- function used to retrieve information from LotJMSDPHandler.xml
 --==============================================================================
 
-function msdpval(fieldname) 
+function getmsdp(fieldname)
+  if not IsConnected() then
+    return ""
+  end
 
 	assert (fieldname, "nil fieldname passed to msdpval")
-
-	return CallPlugin("b3aae34498d5bf19b5b2e2af","msdpval",fieldname) 
 	
+	rc, result = CallPlugin("b3aae34498d5bf19b5b2e2af","msdpval",fieldname)
+	result2 = utils.base64decode(GetPluginVariable("b3aae34498d5bf19b5b2e2af", fieldname))
+	
+	if result ~= nil then
+	  return result
+	elseif result2 ~= nil then
+	  return result2
+	else
+	  return ""
+	end
 end -- function msdpval
 
 

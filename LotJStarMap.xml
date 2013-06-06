@@ -67,18 +67,18 @@ local visible = false
 -- hyperjump stuff
 local totalJump = 0
 local partialJump = 0
-local startx = 99999
-local starty = 99999
-local realx = 99999
-local realy = 99999
-local currentX = 99999
-local currentY = 99999
+local startx = nil
+local starty = nil
+local realx = nil
+local realy = nil
+local currentX = nil
+local currentY = nil
 local currentPlanet = ""
 local currentSystem = ""
-local endX = 99999
-local endY = 99999
-local startrealx = 99999
-local startrealy = 99999
+local endX = nil
+local endY = nil
+local startrealx = nil
+local startrealy = nil
 local routeType = ""
 local shipsize = 8
 local inHyper = false
@@ -96,8 +96,6 @@ local MIN_HEIGHT  = 50
 
 local width       = tonumber(GetVariable("width")) or 800
 local height      = tonumber(GetVariable("height")) or 600
-
-local msdp = {}
 
 function storePlanet(name, list, args)
 	--Note("1: '" .. args[1] .. "'")
@@ -417,16 +415,19 @@ function drawHyperpath()
 end
 
 function haveCoords()
-  currentX = tonumber(getmsdp("SHIPGALX")) or 0
-  currentY = tonumber(getmsdp("SHIPGALY")) or 0
+  currentX = tonumber(getmsdp("SHIPGALX"))
+  currentY = tonumber(getmsdp("SHIPGALY"))
   currentSystem = getmsdp("SHIPSYSNAME")
-  currentPlanet = getmsdp("PLANET")
+  --currentPlanet = getmsdp("PLANET") -- disabled until planet is fixed
   
-  if ((startx ~= 99999 or starty ~= 99999) and inHyper) then -- if we have a starting spot on the map (we should be in hyper)
+  if ((startx ~= nil and starty ~= nil) and inHyper) then -- if we have a starting spot on the map (we should be in hyper)
     --Note("passed havecoords 1")
     return true
   end
-  if (currentX ~= 0 or currentY ~= 0 or currentSystem ~= "" or currentPlanet ~= "") then -- if we are in regular space
+  --if (currentX ~= 0 or currentY ~= 0 or currentSystem ~= "" or currentPlanet ~= "") then -- if we are in regular space
+  -- planet doesn't work so we'll ignore it for now
+  if (currentX ~= 0 or currentY ~= 0 or currentSystem ~= "") then -- if we are in regular space
+
     --Note("passed havecoords 2")
     return true
   end -- we arent anywhere! abort!!
@@ -476,17 +477,17 @@ end
 
 function haveDestination()
   local storedsystem = GetPluginVariable("b2c06b3dcc775c0ede861316", "planetname") or ""
-  local storedX = 99999
-  local storedY = 99999
+  local storedX = nil
+  local storedY = nil
   
   --Note("storedsystem: "..storedsystem)
   
   if storedsystem == "" then -- we didn't get anything from lotjcalc
-    startx = 99999
-    starty = 99999
-    startrealx = 99999
-    startrealy = 99999
-    coordchanged = false
+    startx = nil
+    starty = nil
+    startrealx = nil
+    startrealy = nil
+    --coordchanged = false
     --Note("failed havedest 1")
     return false
   end
@@ -527,16 +528,11 @@ function drawRoute()
 	end
   
   -- find our starting position to draw a line from
-  if ((startx == 99999) or (starty == 99999)) then
-    if coordchanged then
+  if ((startx == nil) and (starty == nil)) then
     --startx = realx
     --starty = realy
-      startx = startrealx
-      starty = startrealy
-      coordchanged = false
-    else
-      coordchanged = true
-    end
+    startx = startrealx
+    starty = startrealy
     --Note("changed startx to: "..string.format("%.0f",startx).." changed starty to: "..string.format("%.0f",starty))
   end
   -- check our route status to draw appropriate color
@@ -694,17 +690,17 @@ function storePartialJump(name, list, args)
 end
 
 function clearJump()
-  startx = 99999
-  starty = 99999
-  startrealx = 99999
-  startrealy = 99999
-  realx = 99999
-  realy = 99999
+  startx = nil
+  starty = nil
+  startrealx = nil
+  startrealy = nil
+  realx = nil
+  realy = nil
   storedsystem = ""
-  storedX = 99999
-  storedY = 99999
-  endX = 99999
-  endY = 99999
+  storedX = nil
+  storedY = nil
+  endX = nil
+  endY = nil
 	totalJump = 0
 	partialJump = 0
 	inHyper = false
@@ -856,21 +852,22 @@ function OnPluginBroadcast (msg, id, name, text)
 	-- Look for MSDP Handler.
 	if (id == 'b3aae34498d5bf19b5b2e2af') then
 		-- HUGE FIXME.. not an idea solution
-		if (msg == 91) then -- we got table information from MSDP handler
+		--if (msg == 91) then -- we got table information from MSDP handler
 			-- store information in our own msdp table
-			key = string.sub(text, 0, string.find(text,",",0,true)-1)  -- parse the variable key
-			val = utils.base64decode(string.sub(text, string.find(text,",",0,true)+1, string.len(text))) -- parse the variable value
-			msdp[key] = val -- store it
-			--Note("key: " .. key .. " val: " .. msdp[key])
-			key = ""
-			val = ""
-		elseif (msg == 1) and (text == "reload") then
-		  Note("LotJStarMap resetting data.")
-		  msdp = {}
+			--key = string.sub(text, 0, string.find(text,",",0,true)-1)  -- parse the variable key
+			--val = utils.base64decode(string.sub(text, string.find(text,",",0,true)+1, string.len(text))) -- parse the variable value
+			--msdp[key] = val -- store it
+		--end
+		if (text == 'reload') then
+			-- invalidate current data
+			page_built = false
+			return
 		end
-	end
-	drawWindows()
-	  --BroadcastPlugin(999, "repaint")
+		if (utils.timer() - lastRefresh > 0.0333) then
+      drawWindows()  -- delay time between window refreshes to avoid flicker
+		  lastRefresh = utils.timer()
+  	end
+  end
 end
 
 --============================================================================
@@ -879,21 +876,44 @@ end
 -- from msdp_helper, if it doesn't exist locally
 --============================================================================
 
-function getmsdp(key)
-	if not IsConnected() then  -- don't try to get stuff if we aren't connected to the mud
-		return ""
-	end
-	if (msdp[key] ~= nil) then  -- if the key has been updated by msdp handler already, retrieve it
-		return msdp[key]
-	elseif (GetPluginVariable("b3aae34498d5bf19b5b2e2af", key) ~= nil) then  -- if the key hasn't been updated, but msdp handler has it cached, retrieve it and store in local table for next time
-		msdp[key] = utils.base64decode(GetPluginVariable("b3aae34498d5bf19b5b2e2af", key))
-		return msdp[key]
+--function getmsdp(key)
+--	if not IsConnected() then  -- don't try to get stuff if we aren't connected to the mud
+--		return ""
+--	end
+--	if (msdp[key] ~= nil) then  -- if the key has been updated by msdp handler already, retrieve it
+--		return msdp[key]
+--	elseif (GetPluginVariable("b3aae34498d5bf19b5b2e2af", key) ~= nil) then  -- if the key hasn't been updated, but msdp handler has it cached, retrieve it and store in local table for next time
+--		msdp[key] = utils.base64decode(GetPluginVariable("b3aae34498d5bf19b5b2e2af", key))
+--		return msdp[key]
+--	else
+--		ColourNote("red","black", "Warning: Unable to find key " .. key)
+--		return ""   -- should never get here  -- can't find the requested key
+--	end
+--	return "" -- should never ever get here
+--end
+
+--==============================================================================
+-- function used to retrieve information from LotJMSDPHandler.xml
+--==============================================================================
+
+function getmsdp(fieldname)
+  if not IsConnected() then
+    return ""
+  end
+
+	assert (fieldname, "nil fieldname passed to msdpval")
+	
+	rc, result = CallPlugin("b3aae34498d5bf19b5b2e2af","msdpval",fieldname)
+	result2 = utils.base64decode(GetPluginVariable("b3aae34498d5bf19b5b2e2af", fieldname))
+	
+	if result ~= nil then
+	  return result
+	elseif result2 ~= nil then
+	  return result2
 	else
-		ColourNote("red","black", "Warning: Unable to find key " .. key)
-		return ""   -- should never get here  -- can't find the requested key
+	  return ""
 	end
-	return "" -- should never ever get here
-end
+end -- function msdpval
 
 function OnPluginSaveState ()
   -- save window current location for next time  
