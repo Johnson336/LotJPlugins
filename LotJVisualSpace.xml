@@ -895,6 +895,9 @@ function spaceCapStart()
 		return
 	end
 	EnableTriggerGroup("SpaceCap", true)
+	for _,v in pairs(systemobjs) do
+    WindowDeleteHotspot(win, "systemobjhover"..v.name)
+  end
 	systemobjs = {}
 	SendNoEcho("radar")
 end
@@ -999,8 +1002,8 @@ function drawWindow()  -- getting closer
   	
   	if (getmsdp("SHIPSYSNAME")) then
   		heading = getmsdp("SHIPSYSNAME")
-  	elseif (getmsdp("PLANET")) then
-  		heading = getmsdp("PLANET")
+  	--elseif (getmsdp("PLANET")) then
+  	--	heading = getmsdp("PLANET")
   	end
   	
    	-- heading line
@@ -1104,6 +1107,7 @@ function drawWindow()  -- getting closer
   		  WindowCircleOp(win, 1, realaax-1, realaay-1, realaax+1, realaay+1, ColourNameToRGB("red"), 0, 2, ColourNameToRGB("red"), 0)
   		end
   	end
+  	 	WindowText(win, font, "Zoom:"..zoom.."x", 4, height-font_height, 0, 0, ColourNameToRGB("white"))
   	
   	local ship = { name = "Player Ship", 
   	              x = (tonumber(getmsdp("SHIPSYSX")) or 0), 
@@ -1114,6 +1118,7 @@ function drawWindow()  -- getting closer
   	--tprint(systemobjs)
   	local displayColor = "silver"
   	
+  	shipsize = zoom * 3
   	for k, v in pairs(systemobjs) do
   	  local coords = getxy(v)
   	  local scaledX = scaleXcoord(coords.x)
@@ -1124,8 +1129,12 @@ function drawWindow()  -- getting closer
   	    else
   	      displayColor = "silver"
   	    end
-  	    WindowCircleOp(win, 1, scaledX-2, scaledY-2, scaledX+3, scaledY+3, ColourNameToRGB(displayColor), 0, 2, ColourNameToRGB(displayColor), 0)
-  	    WindowAddHotspot(win, "systemobjhover"..v.name, scaledX-2, scaledY-2, scaledX+3, scaledY+3, "", "", "", "", "", v.name..": ("..v.x..","..v.y..","..v.z..")",1,0)
+  	    WindowCircleOp(win, 1, scaledX-shipsize, scaledY-shipsize, scaledX+shipsize, scaledY+shipsize, ColourNameToRGB(displayColor), 0, 2, ColourNameToRGB(displayColor), 0)
+  	    if not WindowHotspotInfo(win, "systemobjhover"..v.name, 1) then
+  	      WindowAddHotspot(win, "systemobjhover"..v.name, scaledX-shipsize, scaledY-shipsize, scaledX+shipsize, scaledY+shipsize, "", "", "", "", "", v.name..": ("..v.x..","..v.y..","..v.z..")",1,0)
+  	    else
+  	      WindowMoveHotspot(win, "systemobjhover"..v.name, scaledX-shipsize, scaledY-shipsize, scaledX+shipsize, scaledY+shipsize)
+  	    end
   	  end
   	end
   	
@@ -1155,14 +1164,13 @@ function getxy(a)
   	-- attempt 5 -- seems to work properly, however needs a way to control Z rotation
   	-- z rotation
   	--local newX = (a.x*(math.cos(math.rad(zrotation)))) + (a.y*(math.sin(math.rad(zrotation))))
-  	--local newY = (a.x*(-math.sin(math.rad(zrotation)))) + (a.y*(math.cos(math.rad(zrotation))))
+    --local newY = (a.x*(-math.sin(math.rad(zrotation)))) + (a.y*(math.cos(math.rad(zrotation))))
   	-- y rotation
-  	--newX = (newX*(math.cos(math.rad(yrotation)))) + (a.z*(math.sin(math.rad(yrotation))))
-  	--local newZ = (newX*(-math.sin(math.rad(yrotation)))) + (a.z*(math.cos(math.rad(yrotation))))
-  	
+  	--newX = (a.x*(math.cos(math.rad(yrotation)))) + (a.z*(math.sin(math.rad(yrotation))))
+    --local newZ = (a.x*(-math.sin(math.rad(yrotation)))) + (a.z*(math.cos(math.rad(yrotation))))
   	-- x rotation
-  	--newX = (newY*(math.cos(math.rad(xrotation)))) + (newZ*(math.sin(math.rad(xrotation))))
-  	--newZ = (newY*(-math.sin(math.rad(xrotation)))) + (newZ*(math.cos(math.rad(xrotation))))
+  	--newX = (a.y*(math.cos(math.rad(xrotation)))) + (a.z*(math.sin(math.rad(xrotation))))
+  	--newZ = (a.y*(-math.sin(math.rad(xrotation)))) + (a.z*(math.cos(math.rad(xrotation))))
   	--b.x = newX
   	--b.y = newY
   	
@@ -1202,10 +1210,10 @@ end
 
 
 function scaleXcoord(coord)
-	return ((( coord / (50000 / zoom)) * ((width/2)*.75)) + ((width/2)+xcenter))
+	return ((( coord / (50000 / zoom)) * ((width/2)*.8)) + ((width/2)+xcenter))
 end
 function scaleYcoord(coord)
-	return ((( coord / (50000 / zoom)) * ((height/2)*.75)) + ((height/2)+ycenter))
+	return ((( coord / (50000 / zoom)) * ((height/2)*.8)) + ((height/2)+ycenter))
 end
 function scaleZcoord(coord)
 end
@@ -2047,39 +2055,16 @@ function MainDragCallback(flags, hotspot_id)
 		-- move the center of our window
 		xcenter = xcenter + posx - startx
 		startx = posx
-		--if (xcenter < -50000) then
-		--	xcenter = -50000
-		--	startx = -50000
-		--elseif (xcenter > 50000) then
-		--	xcenter = 50000
-		--	startx = 50000
-		--end
 		ycenter = ycenter + posy - starty
 		starty = posy
-		--if (ycenter < -50000) then
-		--	ycenter = -50000
-		--	starty = -50000
-		--elseif (ycenter > 50000) then
-		--	ycenter = 50000
-		--	starty = 50000
-		--end
-		--Note("shift pressed")
-		--Note("xcenter: "..xcenter.." ycenter: "..ycenter)
-		
 	elseif bit.band (flags, miniwin.drag_got_control) ~= 0 then -- pressed control while click and drag
 		-- twist display around our mouse TODO
-		--Note("control pressed")
 	else
 		-- twist display around the center of our view
 		xrotation = xrotation + (posx - startx)*.25
-		startx = posx
-
+    startx = posx
 		yrotation = yrotation - (posy - starty)*.25
-		starty = posy
-
-		--Note("xrotation: "..xrotation.." yrotation: "..yrotation)
-		--Note("startx: "..startx.." starty: "..starty)
-		
+    starty = posy
 	end
 	-- if we hold mouse down too long, refresh window at appropriate invervals
 	if (utils.timer() - lastRefresh > 0.0333) then
