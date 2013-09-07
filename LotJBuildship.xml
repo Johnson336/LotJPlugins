@@ -84,7 +84,7 @@ This string adds as many ships as you specify with a single command.
   <trigger name="afkOff" script="afkOff" match="You are no longer afk." enabled="y" group="AFKTracker" sequence="100" />
   <trigger name="BadBuildShip"  script="buildShip" match="Where to begin? It all looks so complex..." enabled="n" group="Shipbuilding" sequence="100" />
   <trigger name="FailedBuildShip" script="buildShip" match="You step away from *, and realize you've done it all wrong..." enabled="n" group="Shipbuilding" sequence="100" />
-  <trigger name="MoveOnToNextPart" script="buildNextPart" match="^Your (.*) doesnt need any( (.*))? of that\.$" enabled="n" regexp="y" group="Shipbuilding" sequence="100" />
+  <trigger name="MoveOnToNextPart" script="buildNextPart" match="^Your (.*) doesn\'t need any( (.*))? of that\.$" enabled="n" regexp="y" group="Shipbuilding" sequence="100" />  
   <trigger name="ContinueTheShip" script="buildShip" match="You finish modifying the ship." enabled="n" group="Shipbuilding" sequence="100" />
   <trigger name="ShipBotting" script="ReturnFromAFK" match="You may now bot again." enabled="n" group="Shipbuilding" sequence="100" />
   <trigger name="MoveToNextShip" script="buildNext" match="You don't see a ship like that nearby to work on." enabled="n"  group="Shipbuilding" sequence="100" />
