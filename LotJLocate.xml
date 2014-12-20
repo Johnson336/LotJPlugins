@@ -41,9 +41,9 @@ local cycle = false
 function locate(name, line, args)
   if not args or args[1] == "" then -- entered nothing
     if locpos > 0 then -- if we're using a list
-      Send("locateship \""..loclist[locpos].."\"")
+      Send("locateship "..loclist[locpos])
     elseif locitem ~= "" then -- not using a list
-      Send("locateship \""..locitem.."\"")
+      Send("locateship "..locitem)
     else
       locateStop()
     end
@@ -59,7 +59,7 @@ function locate(name, line, args)
     locitem = Trim(args[1])
     locpos = 0
     loctries = 1
-    Send("locateship \""..locitem.."\"")
+    Send("locateship "..locitem)
   end
   EnableTriggerGroup("LotJLocate", true)
 end
