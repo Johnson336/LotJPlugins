@@ -3,7 +3,7 @@
 <!--  Saved on Thursday, February 21, 2013, 8:52 PM   --> 
 <!-- MuClient version 4.73 --> 
 <muclient>
-<plugin name="LotJVisualSpace" author="@Johnson" id="a920ac5df84885eac6be8d61" language="Lua" purpose="Visual Space" save_state="y" requires="4.73" version="0.92">
+<plugin name="LotJVisualSpace" author="@Johnson" id="a920ac5df84885eac6be8d61" language="Lua" purpose="Visual Space" save_state="y" requires="4.73" version="0.93">
 <description trim="y">
 
 Type 'vsconfig' to display Visual Space Config window where you can check and uncheck which windows you want to display.
@@ -461,7 +461,7 @@ function drawStatWindow()
 		"Damroll",			getmsdp("DAMROLL") or 0,
 		"MoneyTotal",		getmsdp("MONEYTOTAL") or 0,
 		"Money Bank",		getmsdp("MONEYBANK") or 0,
-		"Money Held",			getmsdp("MONEYINV" or 0)
+		"Money Held",			getmsdp("MONEYINV") or 0
 		}
 			
 	local oY = 10
@@ -1880,7 +1880,7 @@ function getmsdp(fieldname)
 	assert (fieldname, "nil fieldname passed to msdpval")
 	
 	rc, result = CallPlugin("b3aae34498d5bf19b5b2e2af","msdpval",fieldname)
-	result2 = utils.base64decode(GetPluginVariable("b3aae34498d5bf19b5b2e2af", fieldname))
+	result2 = utils.base64decode(GetPluginVariable("b3aae34498d5bf19b5b2e2af", fieldname) or "")
 	
 	if result ~= nil then
 	  return result
