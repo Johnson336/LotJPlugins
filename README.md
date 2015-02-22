@@ -7,12 +7,23 @@ LotJ MUSHclient Plugins
 
 This directory contains LotJ MUSHclient plugins. Updates for individual files as follows:
 
+LotJVisualSpace.xml -
+-v0.93
+  -added redundancy to getmsdp() variable calls.
+-v0.90
+  -3D coordinate window works, check the option in the 'vsconfig' window to enable
+  -displays ship position as well as relative local space bodies
+  -scan local space with 'radar'
+-v0.82
+  -Experimenting with 3D coordinate transforms and attempting to display localized space bodies represented in a 2D window.
+
 LotJStarMap.xml -
--v2.18
+-v2.16
+  -Added a bit of redundancy to getmsdp() variable calls.
+-v2.15 
   -Added resizing capability. Also added automatic settings and planet information saving.
   -New command "showmap" displays currently loaded planet settings without the need to scan every time.
   -"hypmap" retains original scanning functionality
--v2.15 
   -Added support for ship coordinate display. Also added hyperjump route display.
 
 LotJFlight.xml -
@@ -39,10 +50,6 @@ LotJLocate.xml -
 Smaug_prog_parse.xml -
 -v1.0
   -Added automatic indenting with customizable indent size.
-  
-LotJVisualSpace.xml -
--v0.82-
-  -Experimenting with 3D coordinate transforms and attempting to display localized space bodies represented in a 2D window.
 
 LotJBuildShip.xml - 
 -v1.34-
