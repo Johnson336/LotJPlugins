@@ -37,6 +37,7 @@ This script can do several things, and is divided into sections that control eac
 	<trigger name="enhanceBadOverlay" script="enhanceBadItem" match="^Thats not the right kind of item\.$" regexp="y" enabled="n" group="AutoEnhance" sequence="100" />
 	<trigger name="EnhanceBotting" script="resumeEnhanceFromAFK" match="You may now bot again." enabled="n" group="AutoEnhance" sequence="100" />
 	<trigger name="EnhanceOnConnect" script="enhanceArmor" match="^Show what to whom\?$" enabled="n" regexp="y" group="AutoEnhance" omit_from_output="y" omit_from_log="y" sequence="100" />
+	<trigger name="Enhancemissingitem" script="enhanceBadItem" match="^You don\'t have an item like that\.$" regexp="y" enabled="n" group="AutoEnhance" sequence="100" />
 
 	<!-- Armor Crafting Triggers -->
 	<trigger name="NewArmorMade" script="NANext" match="^You create your new piece of (.*) armor\: (.*)$" enabled="n" regexp="y" group="NewArmor" sequence="100" />
@@ -210,14 +211,14 @@ function resumeArmorFromAFK(name, line, args)
 end
 
 function displayList(name, line, args)
-   Note("Armor List Contains: ")
-   for i = 0, #armorList, 1 do
-      if (i ~= currentPos) then
-         Note (armorList[i])
+    ColourNote("silver","","Armor List Contains: ")
+    for i, v in ipairs(armorList) do
+      if (i == currentPos) then
+        ColourNote("lime","","--]>"..v.."<[--")
       else
-         ColourNote("lime","", "--]>" .. armorList[i] .. "<[--")
+        ColourNote("silver","",v)
       end
-   end
+    end
 end
 
 function armorAuto(name, line, args)
@@ -348,14 +349,13 @@ function resumeEnhanceFromAFK(name, line, args)
 end
 
 function displayEnhanceList(name, line, args)
-   t = #enhanceList
-   Note("Enhance List Contains: ")
-   for i = 1, t, 1 do
-      if (i ~= currentEnh) then
-         Note (enhanceList[i][1] .. ":" .. enhanceList[i][2])
-      else
-         ColourNote("lime","", "--]>" .. enhanceList[i][1] .. ":" .. enhanceList[i][2] .. "<[--")
-      end
+   ColourNote("silver","","Enhance List Contains: ")
+   for i, v in ipairs(enhanceList) do
+    if (i == currentEnh) then
+      ColourNote("lime","","--]>"..v[1]..":"..v[2].."<[--")
+    else
+      ColourNote("silver","","--]>"..v[1]..":"..v[2].."<[--")
+    end
    end
 end
 
@@ -539,9 +539,9 @@ end
 
 function displayNAList(name, line, args)
 	Note("New Armor List Contains: ")
-	for k, v in pairs(NAList) do
+	for k, v in ipairs(NAList) do
 		Note(v.keyword .. ":")
-		for ke, va in pairs(v) do
+		for ke, va in ipairs(v) do
  			Note("  " .. tostring(ke) .. ":" .. tostring(va))
 	    end     
    end
