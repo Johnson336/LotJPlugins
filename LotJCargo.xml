@@ -95,6 +95,12 @@ local cycle = true
 local hyperCompleted = false
 local scannedCargo = false
 
+-- Activate some settings to ensure proper functioning
+SetOption("enable_aliases", true)
+SetOption("enable_timers", true)
+SetOption("enable_triggers", true)
+SetOption("enable_scripts", true)
+
 function beginManifest(name, line, args)
   if not args or args[1] == "" then -- entered nothing
     if not ship.name or ship.name == "" then -- don't have a stored ship name, error out
@@ -133,6 +139,7 @@ function disableShipManifest()
   EnableTriggerGroup("ManifestStart", false)
   ColourNote("yellow","","Disabled ship manifest capture. Found "..#ship.cargo.." pods carrying "..getCargoCarrying().."/"..getCargoCapacity().." units.")
   scannedCargo = true
+  ColourNote("yellow","","Beginning cargo session momentarily...")
   DoAfterSpecial(2, 'cargoStart()', sendto.script)
 end
 -- gets amount of cargo we're currently carrying
@@ -544,8 +551,27 @@ function toggleACOff()
 	EnableTimer("EfficiencyTimer", false)
 	ColourNote("yellow","","AutoCargo deactivated.")
 end
+require "copytable"
 function listSystems(name, list, args)
-	tprint(systems)
+  local tempsystems = copytable.deep(systems)
+  for i, j in ipairs(tempsystems) do -- systems
+    for a, b in ipairs(j.bodies) do -- bodies
+      ColourNote("silver","",i..".","red","",b.name,"silver","",":")
+      if #b.resources == 0 then
+        ColourNote("silver","","  None.")
+      end
+      -- sort resources in ascending order by price
+      table.sort (b.resources, 
+          function (v1, v2)
+            return v1.price < v2.price
+          end -- function
+          )
+      for k, v in ipairs(b.resources) do
+        ColourNote("silver","",string.format("  %-16s : %5.2f",v.name,v.price))
+      end
+    end
+  end
+	--tprint(systems)
 end
 
 function cargoClear(name, list, args)
@@ -579,11 +605,13 @@ end
 
 function cargoBestRoute(name, list, args)					-- find the most profitable route in the entire galaxy
 	foundPlanet = false
-	bestRouteValue = 0
-	bestPlanet1 = {}
-	bestPlanet2 = {}
-	bestGoResource = {}
-	bestRetResource = {}
+	--bestRouteValue = 0
+	--bestPlanet1 = {}
+	--bestPlanet2 = {}
+	--bestGoResource = {}
+	--bestRetResource = {}
+	local bestPlanets = {}
+	local max,step = 0,0
 	for system1key, system1value in pairs(systems) do
 		for system2key, system2value in pairs(systems) do
 			if (system1value ~= system2value) then
@@ -603,14 +631,21 @@ function cargoBestRoute(name, list, args)					-- find the most profitable route 
 														local curGoValue = calculateRouteValue(system1value, system2value, resourcego2value.price, resourcego1value.price, tax2, tax1)
 														local curRetValue = calculateRouteValue(system1value, system2value, resourceret1value.price, resourceret2value.price, tax1, tax2)
 														local curTotalValue = curGoValue + curRetValue
-														if (curTotalValue > bestRouteValue) then
-															bestRouteValue = curTotalValue
-															bestPlanet1 = body1value
-															bestPlanet2 = body2value
-															bestGoResource = resourcego1value
-															bestRetResource = resourceret1value
-															ColourNote("silver","","New best found! Start: ","cyan","",body1value.name,"silver",""," (","cyan","",resourcego1value.name,"silver","",") Tax: ","cyan","",tax1,"silver",""," End: ","cyan","",body2value.name,"silver",""," (","cyan","",resourceret1value.name,"silver","",") Tax: ","cyan","",tax2,"silver",""," Value: ","cyan","",string.format("%.0f",bestRouteValue*1000))
-														end
+														
+														
+														--if (#bestPlanets == 0 or curTotalValue > bestPlanets[#bestPlanets].value) then
+															local route = { value = curTotalValue, planet1 = body1value, planet2 = body2value, resource1 = resourcego1value, resource2 = resourceret1value }
+															bestPlanets[#bestPlanets + 1] = route
+														--end
+														
+														--if (curTotalValue > bestRouteValue) then
+														--	bestRouteValue = curTotalValue
+														--	bestPlanet1 = body1value
+														--	bestPlanet2 = body2value
+														--	bestGoResource = resourcego1value
+														--	bestRetResource = resourceret1value
+														--ColourNote("silver","","New best found! Start: ","cyan","",body1value.name,"silver",""," (","cyan","",resourcego1value.name,"silver","",") End: ","cyan","",body2value.name,"silver",""," (","cyan","",resourceret1value.name,"silver","",") Value: ","cyan","",string.format("%.0f",bestRouteValue*1000))
+														--end
 													end
 												end
 											end
@@ -625,21 +660,32 @@ function cargoBestRoute(name, list, args)					-- find the most profitable route 
 		end
 	end
 
+	table.sort(bestPlanets, function (k1, k2) return k1.value > k2.value end )
+	
 	if (foundPlanet == false) then
 		ColourNote("red","","Planet '" .. Trim(args[1]) .. "' either not found or does not possess cargo resources.")
 		return
 	end
 	if (args[2] ~= "") then
-		ColourNote("silver","","Best route from ","cyan","",bestPlanet1.name,"silver","",":")
+		--ColourNote("silver","","Best route from ","cyan","",bestPlanet1.name,"silver","",":")
+		ColourNote("silver","","Top 10 best routes from ","cyan","",Trim(args[1]),"silver","",":")
+		max,step = 10,1
 	else
-		ColourNote("silver","","Best route in the entire galaxy:")
+		ColourNote("silver","","Top 10 best routes in the entire galaxy:")
+		max,step = 20,2
 	end
-	ColourNote("silver","","Start: ","red","",bestPlanet1.name,"silver",""," (","red","",bestGoResource.name,"silver","",") End: ","red","",bestPlanet2.name,"silver",""," (","red","",bestRetResource.name,"silver","",") Value: ","red","",string.format("%.0f",bestRouteValue*1000))
+	--ColourNote("silver","","Start: ","red","",bestPlanet1.name,"silver",""," (","red","",bestGoResource.name,"silver","",") End: ","red","",bestPlanet2.name,"silver",""," (","red","",bestRetResource.name,"silver","",") Value: ","red","",string.format("%.0f",bestRouteValue*1000))
+	--tprint(bestPlanets)
+	for i=1, max, step do
+	best = bestPlanets[i]
+	ColourNote("silver","","Start: ","red","",best.planet1.name,"silver",""," (","red","",best.resource1.name,"silver","",") End: ","red","",best.planet2.name,"silver",""," (","red","",best.resource2.name,"silver","",") Value: ","red","",string.format("%.0f",best.value*1000))
+	end
+	
 end
 
 function calculateRouteValue(sys1, sys2, resourcecost1, resourcecost2, tax1, tax2)
 	local distance = distance(sys1, sys2)
-	local time = (((((distance * 10) / 130) * 1000) / 50) * 2)
+	local time = (((((distance * 10) / 95) * 1000) / 50) * 2)
 	-- extra time it takes to get from A to B not including hyperspace. Launch time/calculation time/land time
 	local constant = 270
 	time = time + constant
@@ -741,7 +787,7 @@ function cargoList()
    			ColourNote("silver","",v.name.." (","cyan","",v.resource,"silver","",")")
    		end -- if
    	end -- for
-end -- listSystems
+end
 
 function storeBody(name, list, args)
 	local storage = { name = "", type = "", tax = 0, x = 0, y = 0, z = 0, resources = {} }
