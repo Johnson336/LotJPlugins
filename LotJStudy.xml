@@ -140,7 +140,7 @@ function study(name, line, args)
 	if (studyList[currentPos]) then
 		Send("study ".. studyList[currentPos])
 	else
-		Send("Study list empty, aborting!")
+		ColourNote("red","","Study list empty, aborting!")
 		toggleOff()
 	end
 end
