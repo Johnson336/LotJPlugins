@@ -14,7 +14,8 @@ LotJLocate v 1.0 by Johnson. Enter 'alochelp' for general command information.
 <!--   Triggers    --> 
 <triggers>
   <trigger enabled="n" match="^You manage to locate a record on the target vessel\.\.\.$" script="locateNext" name="LocSuccess" regexp="y" group="LotJLocate" sequence="100" /> 
-  <trigger enabled="n" match="^You were unable to locate any records on the target ship\.$" script="locateFailed" name="LocFail" regexp="y" group="LotJLocate" sequence="100" /> 
+  <trigger enabled="n" match="^You were unable to locate any records on the target ship\.$" script="locateFailed" name="LocFail" regexp="y" group="LotJLocate" sequence="100" />
+  <trigger enabled="n" match="^You can\'t seem to call up the right information on the datapad\!$" script="locateFailed" name="LocFail2" regexp="y" group="LotJLocate" sequence="100" />
   </triggers>
 <!--   Aliases    --> 
 <aliases>
@@ -41,9 +42,9 @@ local cycle = false
 function locate(name, line, args)
   if not args or args[1] == "" then -- entered nothing
     if locpos > 0 then -- if we're using a list
-      Send("locateship \""..loclist[locpos].."\"")
+      Send("locateship "..loclist[locpos])
     elseif locitem ~= "" then -- not using a list
-      Send("locateship \""..locitem.."\"")
+      Send("locateship "..locitem)
     else
       locateStop()
     end
@@ -59,7 +60,7 @@ function locate(name, line, args)
     locitem = Trim(args[1])
     locpos = 0
     loctries = 1
-    Send("locateship \""..locitem.."\"")
+    Send("locateship "..locitem)
   end
   EnableTriggerGroup("LotJLocate", true)
 end
@@ -217,33 +218,33 @@ local commands = { { name = "aloc", desc = "Multi-purpose command used to resume
 function locHelp(name, line, args)
   local found = false
   if args[1] == "" then -- show general help
-    ColourNote("green","black","LotJLocate v 1.0 by Johnson. Enter 'alochelp <command>' for more detailed information.")
+    ColourNote("white","black","LotJLocate v 1.0 by Johnson. Enter 'alochelp <command>' for more detailed information.")
     for a, b in ipairs(commands) do -- commands
       local command = b
-      ColourNote("green","black",string.format("%-20s", command.name).." : "..command.desc)
+      ColourNote("silver","black",string.format("%-20s", command.name).." : "..command.desc)
     end
     Note("")
   else -- entered something
-    ColourNote("green","black","LotJLocate v 1.0 by Johnson. Enter 'alochelp' for more general information.")
+    ColourNote("white","black","LotJLocate v 1.0 by Johnson. Enter 'alochelp' for more general information.")
 
     for a, b in ipairs(commands) do -- scroll through commands
     
       if (string.lower(b.name) == string.lower(Trim(args[1]))) then -- found our argument
         found = true
-        ColourNote("green","black",b.name .. " : " .. b.desc)
-        ColourNote("green","black","Available arguments:")
+        ColourNote("silver","black",b.name .. " : " .. b.desc)
+        ColourNote("silver","black","Available arguments:")
         if #b.args == 0 then -- no arguments
-          ColourNote("green","black","   None.")
+          ColourNote("silver","black","   None.")
         else -- arguments to print
           for i, k in ipairs(b.args) do
-            ColourNote("green","black",string.format("%20s", k.name).." : " .. k.desc)
+            ColourNote("silver","black",string.format("%20s", k.name).." : " .. k.desc)
           end -- end print arguments
         end -- end no arguments
         Note("")
       end -- end found command
     end -- end scroll commands
     if not found then
-      ColourNote("green","black","Command '"..args[1].."' not found.")
+      ColourNote("silver","black","Command '"..args[1].."' not found.")
     end
   end -- end no input
 end
