@@ -1,6 +1,6 @@
 <?xml Version="1.0" encoding="UTF-8"?>
 <!DOCTYPE muclient [
-  <!ENTITY interval "10" >
+  <!ENTITY interval "45" >
   <!ENTITY quit_command "quit" >
   <!ENTITY Connect_command "connect" >
   <!ENTITY noconnect_command "NOCONNECT" >
