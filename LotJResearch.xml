@@ -2,7 +2,7 @@
 <!DOCTYPE muclient> 
 <!--  Saved on Sunday, July 04, 2012, 5:39 AM   -->  
 <muclient>
-<plugin name="LotJResearch" author="@Johnson" id="0b90ce53347f37f34ff36fcf" language="Lua" purpose="Automatic Researching" save_state="y" requires="4.40" version="1.75">
+<plugin name="LotJResearch" author="@Johnson" id="0b90ce53347f37f34ff36fcf" language="Lua" purpose="Automatic Researching" save_state="y" requires="4.40" version="1.76">
 <description trim="y">
 <![CDATA[ 'ResearchHelp' - To see the commands available in the game.
 
@@ -118,9 +118,24 @@ function researchArg(name, line, args)
 	research()
 end
 
+function contains(list, item)
+	for k, v in ipairs(list) do
+		if v==item then
+			return k
+		end
+	end
+	return nil
+end
 
 function researchStart(name, line, args)
 	currentItem = ""
+	-- bump research skill to top of the list if it's present
+	local index = contains(researchList, "research")
+	if index then
+		table.remove(researchList, index)
+		table.insert(researchList, 1, "research")
+	end
+			
 	if (#researchList > 0) then -- we have stuff to research!
 		currentPos = 0
 		researchNext()
