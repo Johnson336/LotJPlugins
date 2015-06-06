@@ -23,6 +23,7 @@ LotJLocate v 1.0 by Johnson. Enter 'alochelp' for general command information.
   <alias name="LocAdd" script="locateAdd" match="^alocadd( +(.*))?$" enabled="y" group="LocateCmd" regexp="y" ignore_case="y" sequence="100" /> 
   <alias name="LocRem" script="locateRem" match="^alocrem( +(.*))?$" enabled="y" group="LocateCmd" regexp="y" ignore_case="y" sequence="100" /> 
   <alias name="LocClear" script="locateClear" match="^alocclear( +(.*))?$" enabled="y" group="LocateCmd" regexp="y" ignore_case="y" sequence="100" /> 
+  <alias name="LocReset" script="locateReset" match="^alocreset( +(.*))?$" enabled="y" group="LocateCmd" regexp="y" ignore_case="y" sequence="100" />
   <alias name="LocStart" script="locateStart" match="^alocstart( +(.*))?$" enabled="y" group="LocateCmd" regexp="y" ignore_case="y" sequence="100" /> 
   <alias name="LocList" script="locateList" match="^aloclist( +(.*))?$" enabled="y" group="LocateCmd" regexp="y" ignore_case="y" sequence="100" /> 
   <alias name="LocMax" script="setMaxTries" match="^alocmax( +(.*))?$" enabled="y" group="LocateCmd" regexp="y" ignore_case="y" sequence="100" />
@@ -163,7 +164,14 @@ function locateClear()
   locpos = 0
   loctries = 1
   locitem = ""
-  Note("Locate list cleared.")
+  ColourNote("yellow","","Locate list cleared.")
+end
+function locateReset()
+	locateClear()
+	cycle = false
+	maxtries = 3
+  SetVariable("maxtries", 3)
+	ColourNote("yellow","","LotJLocate settings have been reset to defaults.")
 end
 function locateStart()
   locpos = 0
@@ -198,6 +206,9 @@ local commands = { { name = "aloc", desc = "Multi-purpose command used to resume
                { name = "alocclear", desc = "Deletes the current locate list.",
                         args = { }
                           },
+							 { name = "alocreset", desc = "Reset LotJLocate settings to defaults.",
+												args = { }
+													},
                { name = "alocstart", desc = "Starts locating at the beginning of the current locate list.",
                         args = { }
                           },
@@ -218,14 +229,14 @@ local commands = { { name = "aloc", desc = "Multi-purpose command used to resume
 function locHelp(name, line, args)
   local found = false
   if args[1] == "" then -- show general help
-    ColourNote("white","black","LotJLocate v 1.0 by Johnson. Enter 'alochelp <command>' for more detailed information.")
+    ColourNote("white","black","LotJLocate v"..GetPluginInfo(GetPluginID(), 19).." by Johnson. Enter 'alochelp <command>' for more detailed information.")
     for a, b in ipairs(commands) do -- commands
       local command = b
       ColourNote("silver","black",string.format("%-20s", command.name).." : "..command.desc)
     end
     Note("")
   else -- entered something
-    ColourNote("white","black","LotJLocate v 1.0 by Johnson. Enter 'alochelp' for more general information.")
+    ColourNote("white","black","LotJLocate v"..GetPluginInfo(GetPluginID(), 19).." by Johnson. Enter 'alochelp' for more general information.")
 
     for a, b in ipairs(commands) do -- scroll through commands
     
