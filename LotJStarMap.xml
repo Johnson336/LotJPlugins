@@ -340,7 +340,11 @@ function sysdistance(sys)
 end
   
 function drawWindow(name, line, args)
-
+  -- exit safely when not connected to the game
+	if not IsConnected() then
+		return
+	end
+	
 	WindowRectOp (win, miniwin.rect_fill, 0, 0, width, height, ColourNameToRGB("black"))  -- draw blank rectangle to "erase" window contents
 	
 	 -- draw border
@@ -622,6 +626,10 @@ function onClick(flags, hotspot_id)
 end
 
 function drawPaths(flags, hotspot_id)
+ -- bug out to prevent crashes when not connected
+	if not IsConnected() then
+		return
+	end
 	local sys = systems[tonumber(hotspot_id)]
 	if not sys then
 		return
@@ -901,7 +909,7 @@ function getmsdp(fieldname)
     return ""
   end
 
-	assert (fieldname, "nil fieldname passed to msdpval")
+	assert (fieldname, "nil fieldname passed to getmsdp()")
 	
 	rc, result = CallPlugin("b3aae34498d5bf19b5b2e2af","msdpval",fieldname)
 	result2 = utils.base64decode(GetPluginVariable("b3aae34498d5bf19b5b2e2af", fieldname) or "")
