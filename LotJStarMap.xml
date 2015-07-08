@@ -109,6 +109,7 @@ local posy        = ""
 local RESIZE_TAG_SIZE = 10
 local MIN_WIDTH   = 50
 local MIN_HEIGHT  = 50
+local redraw_scheduled = false
 
 local width       = tonumber(GetVariable("width")) or 800
 local height      = tonumber(GetVariable("height")) or 600
@@ -193,7 +194,7 @@ function setupWindow(name, line, args)
 	setupConflicts()
 	
 	visible = true
-  drawWindow()
+  scheduleRedraw()
 end
 
 function setupConflicts()
@@ -417,7 +418,7 @@ function drawWindow(name, line, args)
   drawResizer(win, width, height)
  	
   WindowShow (win,  true)  -- show it
-  	--BroadcastPlugin(999, "repaint")
+  BroadcastPlugin(999, "repaint")
 end
 
 function drawHyperpath()
@@ -435,6 +436,9 @@ function haveCoords()
   currentSystem = getmsdp("SHIPSYSNAME")
   --currentPlanet = getmsdp("PLANET") -- disabled until planet is fixed
   
+	-- this is a little wonky because MSDP reports SHIPGALX and SHIPGALY default values as being 0
+	-- which could also be the center of the galaxy.
+	
   if ((startx ~= nil and starty ~= nil) and inHyper) then -- if we have a starting spot on the map (we should be in hyper)
     --Note("passed havecoords 1")
     return true
@@ -613,7 +617,7 @@ end
 
 function hidePaths(flags, hotspot_id)
 	--WindowRectOp (win, miniwin.rect_fill, 0, 0, 800, 600, ColourNameToRGB("black"))  -- draw blank rectangle to "erase" window contents
-	drawWindow() -- redraw window
+	scheduleRedraw() -- redraw window
 	
 end
 
@@ -656,7 +660,8 @@ function drawPaths(flags, hotspot_id)
 			
 		end
 	end
-	WindowShow (win,  true)  -- show it
+	--WindowShow (win,  true)  -- show it
+	scheduleRedraw()
 	BroadcastPlugin(999, "repaint")
 
 end
@@ -676,7 +681,7 @@ function hyperJumpTick()
 		partialJump = partialJump - 50
 		if (visible) then
 			--Note("Tick: " .. partialJump .. "/" .. totalJump)
-			drawWindow()
+			scheduleRedraw()
 		end
 	end
 end
@@ -686,7 +691,7 @@ function storeTotalJump(name, list, args)
 		totalJump = tonumber(args[1])
 	end
 	if (visible) then
-		drawWindow()
+		scheduleRedraw()
 	end
 end
 
@@ -701,7 +706,7 @@ function storePartialJump(name, list, args)
 	end
 	if (visible) then
 		--Note("Tock: " .. partialJump .. "/" .. totalJump)
-		drawWindow()
+		scheduleRedraw()
 	end
 end
 
@@ -725,7 +730,7 @@ function clearJump()
 	CallPlugin("b2c06b3dcc775c0ede861316", "clearPlanet", "")
 	EnableTimer("hyperJumpTicker", false)
 	if (visible) then
-		drawWindow()
+		scheduleRedraw()
 	end
 end
 
@@ -810,7 +815,7 @@ function OnPluginInstall ()
   -- add the fonts                
   check(WindowFont (win, font, "Arial", 10, true, false, false, false))
   
-  drawWindows()
+  scheduleRedraw()
     
 end -- OnPluginInstall
 
@@ -836,11 +841,17 @@ function SetUpHotspotsAndDraw(firstTime)
 		WindowResize(win, effectiveWidth, height, 0x000000)
 		WindowMoveHotspot(win, "resize", effectiveWidth-RESIZE_TAG_SIZE, height-RESIZE_TAG_SIZE, effectiveWidth, height)
 		setupConflicts()
-    drawWindows()
+    redraw_scheduled = true
+		drawWindows()
 	end
 end
 
 function drawWindows()
+	if redraw_scheduled == false then
+		return
+	else
+		redraw_scheduled = false
+	end
   if visible then
     drawWindow()
   end
@@ -872,9 +883,15 @@ function OnPluginBroadcast (msg, id, name, text)
 			page_built = false
 			return
 		end
-	drawWindows()
-	BroadcastPlugin (999, "repaint")
+	scheduleRedraw()
   end
+end
+
+function scheduleRedraw()
+	if redraw_scheduled == false then
+		redraw_scheduled = true
+		DoAfterSpecial(0.1, 'drawWindows()', sendto.script)
+	end
 end
 
 function OnPluginSaveState ()
