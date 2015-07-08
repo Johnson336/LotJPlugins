@@ -3,7 +3,7 @@
 <!--  Saved on Thursday, February 21, 2013, 8:52 PM   --> 
 <!-- MuClient version 4.73 --> 
 <muclient>
-<plugin name="LotJVisualSpace" author="@Johnson" id="a920ac5df84885eac6be8d61" language="Lua" purpose="Visual Space" save_state="y" requires="4.73" version="0.93">
+<plugin name="LotJVisualSpace" author="@Johnson" id="a920ac5df84885eac6be8d61" language="Lua" purpose="Display character and ship information visually" save_state="y" requires="4.73" version="0.93">
 <description trim="y">
 
 Type 'vsconfig' to display Visual Space Config window where you can check and uncheck which windows you want to display.
@@ -62,12 +62,14 @@ require "tprint"
 require "movewindow"
 require "serialize"
 require "pairsbykeys"
+require "LotJMSDPHelper"
 
 local win = "visual_space_" .. GetPluginID()  -- unique window name
 local configwin = "config_win_" .. GetPluginID() -- unique config window name
 local speedwin = "speed_win_" .. GetPluginID() -- unique speed window name
 local jumpwin = "jump_win_" .. GetPluginID() -- unique jump window name
 local statwin = "stat_win_" .. GetPluginID() -- unique stat window name
+local shipwin = "ship_win_" .. GetPluginID() -- unique ship stat window name
 
 local font = "font"..GetPluginID()
 local digiFont = "digiFont"..GetPluginID()
@@ -78,6 +80,7 @@ local visualSpaceConfigVisible = tonumber(GetVariable("show_config") or 1)
 local visualSpaceSpeedVisible =  tonumber(GetVariable("show_speed") or 0)
 local visualSpaceJumpVisible =   tonumber(GetVariable("show_jump") or 0)
 local visualSpaceStatVisible =   tonumber(GetVariable("show_stat") or 0)
+local visualSpaceShipVisible =   tonumber(GetVariable("show_ship") or 0)
 
 local levels = {}
 
@@ -114,6 +117,7 @@ posy       = 0
 hotspot_id = ""
 page_built = false
 line_height= 0
+redraw_scheduled = false
 
 -- space position variables
 local zoom = tonumber(GetVariable("zoom")) or .75
@@ -127,6 +131,11 @@ local zrotation = -30
 systemobjs = {}
 
 function drawWindows()
+	if redraw_scheduled == false then
+		return
+	else
+		redraw_scheduled = false
+	end
 	for k, v in pairs(windows) do
 		if (v.visible == 1) then
 			makeWindow(v)
@@ -146,6 +155,9 @@ function drawWindows()
 	end
 	if (visualSpaceStatVisible == 1) then
 		drawStatWindow()
+	end
+	if (visualSpaceShipVisible == 1) then
+		drawShipWindow()
 	end
 	--BroadcastPlugin (999, "repaint")
 end
@@ -175,7 +187,7 @@ function drawConfigWindow()
 			"Close config window",
 			1, 0)
 	-- config window header
-	WindowText (configwin, font, "Visual Space Config v0.82", 5, 5, 0, 0, ColourNameToRGB("white"))
+	WindowText (configwin, font, "Visual Space Config v"..GetPluginInfo(GetPluginID(), 19), 5, 5, 0, 0, ColourNameToRGB("white"))
 	
 	local oX = 10
 	local oY = 30
@@ -213,6 +225,15 @@ function drawConfigWindow()
 			visualSpaceStatVisible,
 			"configWindowStatToggle",
 			"toggleVisualSpaceStat")
+			
+		-- move down 25 pixels
+	oY = oY + 25
+	 --config option for stat window
+	drawConfigEntry(configwin, oX, oY, "Display Ship Stat Window",
+			ColourNameToRGB("white"),
+			visualSpaceShipVisible,
+			"configWindowShipToggle",
+			"toggleVisualSpaceShip")
 			
 	for k, v in pairs(windows) do
 		-- move down 25 pixels
@@ -566,6 +587,85 @@ function drawStatWindow()
 	WindowShow (statwin, true)
 end
 
+-- window to display ship information
+
+function drawShipWindow()
+	shipwidth = 400
+	shipheight = 300
+	
+	-- clear window
+	WindowRectOp (shipwin, miniwin.rect_fill, 0, 0, shipwidth, shipheight, ColourNameToRGB("black"))
+	--border
+	WindowRectOp (shipwin, 5, 0, 0, 0, 0, 5, 15 + 0x1000)
+	--drag handler
+	movewindow.add_drag_handler (shipwin, 0, 0, 0, WindowFontInfo(shipwin, font, 1))
+	--draw X to close
+	drawX(shipwin, shipwidth-15, 5, ColourNameToRGB("white"), "shipWindowX", "destroyShipWindow", "Close ship window")
+	
+	local ship = {}
+	local piloting = tonumber(getmsdp("PILOTING") or "")
+	ship.name = "(Not piloting a ship)"
+	if piloting == 1 then -- we're in a cockpit, assume the room name is close enough to being the ship's name (not always true)
+		ship.name = strip_colours(getmsdp("ROOMNAME") or "")
+	end
+	local sysname = getmsdp("SHIPSYSNAME")
+	if sysname == "" then sysname = "(Not in a known system)" end
+	shipx = getmsdp("SHIPSYSX")
+	shipy = getmsdp("SHIPSYSY")
+	shipz = getmsdp("SHIPSYSZ")
+	shipheadx = getmsdp("SHIPHEADX")
+	local shipheady = getmsdp("SHIPHEADY")
+	local shipheadz = getmsdp("SHIPHEADZ")
+	
+	--local toplevel = getmsdp("TOPLEVEL") or ""
+	--local class = getmsdp("CLASS") or ""
+	--local race = getmsdp("RACE") or ""
+	--local align = tonumber(getmsdp("ALIGNMENT")) or 0
+	--local charstats = {
+	--	"Strength",			getmsdp("STR") or 0, getmsdp("STRPERM") or 0,
+	--	"Dexterity",   		getmsdp("DEX") or 0, getmsdp("DEXPERM") or 0,
+	--	"Constitution",		getmsdp("CON") or 0, getmsdp("CONPERM") or 0,
+	--	"Intelligence",		getmsdp("INT") or 0, getmsdp("INTPERM") or 0,
+	--	"Wisdom",			getmsdp("WIS") or 0, getmsdp("WISPERM") or 0,
+	--	"Charisma",			getmsdp("CHA") or 0, getmsdp("CHAPERM") or 0
+	--	}
+	--local charattribs = {
+	--	"Armor",			getmsdp("AC") or 0,
+	--	"Hitroll",			getmsdp("HITROLL") or 0,
+	--	"Damroll",			getmsdp("DAMROLL") or 0,
+	--	"MoneyTotal",		getmsdp("MONEYTOTAL") or 0,
+	--	"Money Bank",		getmsdp("MONEYBANK") or 0,
+	--	"Money Held",			getmsdp("MONEYINV") or 0
+	--	}
+			
+	local oY = 10
+	
+	local textWidth = WindowTextWidth(shipwin, font, shipname)
+	WindowText(shipwin, font, shipname, shipwidth/2-(textWith/2), oY, 0, 0, ColourNameToRGB("silver"))
+	--if (align < 0) then
+	--	aligncolor = "red"
+	--elseif (align > 0) then
+	--	aligncolor = "deepskyblue"
+	--else
+	--	aligncolor = "white"
+	--end
+	--WindowText(statwin, font, charname, statwidth/2-(textWidth/2), oY, 0, 0, ColourNameToRGB("silver"))
+	oY = oY + (line_height*1.5)
+	textWidth = WindowTextWidth(shipwin, font, "Current System: "..sysname)
+--	textWidth = WindowTextWidth(statwin, font, "Level "..toplevel.." "..race.." "..class.." main")
+	--WindowText(shipwin, font, "Level "..toplevel.." "..race.." "..class.." main", statwidth/2-(textWidth/2), oY, 0, 0, ColourNameToRGB("silver"))
+	WindowText(shipwin, font, "Current System: "..sysname, shipwidth/2-(textWidth/2), oY, 0, 0, ColourNameToRGB("silver"))
+	oY = oY + line_height*2
+	
+	--WindowText
+	
+	
+	
+	WindowShow (shipwin, true)
+end
+
+
+
 function storeLevel(name, list, args)
 	local storage = { 
 		class_name = "",
@@ -903,7 +1003,7 @@ function spaceCapStart()
 end
 function spaceCapStop()
 	EnableTriggerGroup("SpaceCap", false)
-  drawWindows()
+	scheduleRedraw()
 end
 
 function spaceCapStore(name, line, args, styles)
@@ -1161,7 +1261,7 @@ function getxy(a)
   	
   	--orthographic transforms
   	
-  	-- attempt 5 -- seems to work properly, however needs a way to control Z rotation
+  	-- attempt 5 -- seems to work properly, z rotation temporarily using ctrl + mouse left/right movement
   	-- z rotation
   	--local newX = (a.x*(math.cos(math.rad(zrotation)))) + (a.y*(math.sin(math.rad(zrotation))))
     --local newY = (a.x*(-math.sin(math.rad(zrotation)))) + (a.y*(math.cos(math.rad(zrotation))))
@@ -1186,7 +1286,7 @@ function getxy(a)
   	--mtx = matrix.mul(mtx, rotationXmatrix)
   	--mtx = matrix.mul(mtx, translationmatrix)
   	
-  	-- attempt 3 -- works the best out of all of them
+  	-- attempt 3 -- works well
   	-- sacrifices Y rotation for ease of use
   	s = { x = zoom, y = zoom, z = zoom } -- scale
   	c = { x = xcenter, y = ycenter, z = zcenter } -- shift
@@ -1588,8 +1688,7 @@ function OnPluginInstall ()
   
   OnPluginSaveState()
   installed = true
-  drawWindows()
-    
+  scheduleRedraw()  
 end -- OnPluginInstall
 
 --================================================================================
@@ -1775,6 +1874,7 @@ function SetUpHotspotsAndDraw(firstTime)
 		WindowMoveHotspot(win, win.."resize", effectiveWidth-RESIZE_TAG_SIZE, height-RESIZE_TAG_SIZE, effectiveWidth, height)
 		WindowMoveHotspot(win, "gridarea", RESIZE_TAG_SIZE, RESIZE_TAG_SIZE, effectiveWidth-RESIZE_TAG_SIZE, height-RESIZE_TAG_SIZE)
 		
+		redraw_scheduled = true
 		drawWindows()
 	end
 end
@@ -1809,55 +1909,26 @@ end -- function OnPluginSaveState
 
 
 --============================================================================
--- Central function for listening to data broadcast by LotJMSDPHandler.xml
--- Stores broadcast information locally to be easily accessed by plugin
+-- Function to listen for MSDP broadcast updates and refresh the windows if needed.
 --============================================================================
 
 function OnPluginBroadcast (msg, id, name, text)
-	-- Look for MSDP Handler.
 	if (id == 'b3aae34498d5bf19b5b2e2af') then
-		-- HUGE FIXME.. not an idea solution
-		--if (msg == 91) then -- we got table information from MSDP handler
-			-- store information in our own msdp table
-			--key = string.sub(text, 0, string.find(text,",",0,true)-1)  -- parse the variable key
-			--val = utils.base64decode(string.sub(text, string.find(text,",",0,true)+1, string.len(text))) -- parse the variable value
-			--msdp[key] = val -- store it
-		--end
 		if (text == 'reload') then
-			-- invalidate current data
+			-- invalidate current data -- currently does nothing
 			page_built = false
 			return
 		end
-		if (utils.timer() - lastRefresh > 0.0333) then
-      drawWindows()  -- delay time between window refreshes to avoid flicker
-		  lastRefresh = utils.timer()
-  	end
+		scheduleRedraw()
   end
 end
 
---============================================================================
--- Function to be used to retrieve msdp information. Returns either the
--- information stored in the local msdp table or gets the requested variable
--- from msdp_helper, if it doesn't exist locally
---============================================================================
-
--- took this out to reduce PluginBroadcast overhead, calls are now made directly to
--- MSDPHandler instead of caching a local version of all variables
---function getmsdp(key)
---	if not IsConnected() then  -- don't try to get stuff if we aren't connected to the mud
---		return ""
---	end
---	if (msdp[key] ~= nil) then  -- if the key has been updated by msdp handler already, retrieve it
---		return msdp[key]
---	elseif (GetPluginVariable("b3aae34498d5bf19b5b2e2af", key) ~= nil) then  -- if the key hasn't been updated, but msdp handler has it cached, retrieve it and store in local table for next time
---		msdp[key] = utils.base64decode(GetPluginVariable("b3aae34498d5bf19b5b2e2af", key))
---		return msdp[key]
---	else
---		ColourNote("red","black", "Warning: Unable to find key " .. key)
---		return ""   -- should never get here  -- can't find the requested key
---	end
---	return "" -- should never ever get here
---end
+function scheduleRedraw()
+	if redraw_scheduled == false then
+		redraw_scheduled = true
+		DoAfterSpecial(0.1, 'drawWindows()', sendto.script)
+	end
+end
 
 function findwinbyid(id)
 	for k, v in pairs(windows) do
@@ -1867,30 +1938,6 @@ function findwinbyid(id)
 	end
 	return nil
 end
-
---==============================================================================
--- function used to retrieve information from LotJMSDPHandler.xml
---==============================================================================
-
-function getmsdp(fieldname)
-  if not IsConnected() then
-    return ""
-  end
-
-	assert (fieldname, "nil fieldname passed to msdpval")
-	
-	rc, result = CallPlugin("b3aae34498d5bf19b5b2e2af","msdpval",fieldname)
-	result2 = utils.base64decode(GetPluginVariable("b3aae34498d5bf19b5b2e2af", fieldname) or "")
-	
-	if result ~= nil then
-	  return result
-	elseif result2 ~= nil then
-	  return result2
-	else
-	  return ""
-	end
-end -- function msdpval
-
 
 ----------------------------------------------------------------------
 -- Called as the windows are dragged around.
@@ -2059,6 +2106,10 @@ function MainDragCallback(flags, hotspot_id)
 		starty = posy
 	elseif bit.band (flags, miniwin.drag_got_control) ~= 0 then -- pressed control while click and drag
 		-- twist display around our mouse TODO
+		-- temporarily control zrotation
+		zrotation = zrotation + (posx - startx)*.25
+		startx = posx
+		starty = posy
 	else
 		-- twist display around the center of our view
 		xrotation = xrotation + (posx - startx)*.25
