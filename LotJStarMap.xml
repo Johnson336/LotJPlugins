@@ -3,14 +3,29 @@
 <!--  Saved on Thursday, July 05, 2012, 1:04 AM   --> 
 <!-- MuClient version 4.73 --> 
 <muclient>
-<plugin name="LotJStarMap" author="@Johnson" id="dd5080a41939faabc233da8f" language="Lua" purpose="Star System Map" save_state="y" requires="4.73" version="2.16">
+<plugin name="LotJStarMap" author="@Johnson" id="dd5080a41939faabc233da8f" language="Lua" purpose="Dynamically display a system map with player location overlay" save_state="y" requires="4.73" version="2.16">
 <description trim="y">
 <![CDATA[
+
+This plugin will gather information about the current galaxy's star systems 
+using a datapad in order to display an up-to-date version of what the galaxy 
+looks like. The map's scale is not preset, but gets cropped to the outermost 
+star systems in order to reduce empty space.
+
+This plugin relies on LotJMSDPHandler and LotJCalc to retrieve information 
+about the player's current location and current destination in order to overlay
+the ship position and hyperspace route.
+
+This plugin also relies on an in-game datapad for galaxy information retrieval.
+
+Basic usage:
+Type "hypmap" to use a datapad to scan for starsystems and plot on map.
 Type "showmap" to open map window without scanning, loading your saved planetary information.
 Type "hidemap" to close map window, or click the X in the upper right to close.
-Type "hypmap" to scan for new starsystems and plot on map.
-Hover mouse over systems to see distances to other systems.
-Click on a system to calculate a jump to the planet within that system.
+
+Hover mouse over planets to see distances to other planets.
+Click on a planet name to calculate a jump using LotJCalc.
+
   ]]> 
   </description>
   </plugin>
@@ -48,6 +63,7 @@ Click on a system to calculate a jump to the planet within that system.
 
 require "movewindow"
 require "serialize"
+require "LotJMSDPHelper"
 local win = "galaxy_map_" .. GetPluginID()  -- unique window name
 systems = {}
 local system = { name = "", x = 99999, y = 99999, planet = "", left = 0, top = 0, right = 0, bottom = 0 }
@@ -340,11 +356,6 @@ function sysdistance(sys)
 end
   
 function drawWindow(name, line, args)
-  -- exit safely when not connected to the game
-	if not IsConnected() then
-		return
-	end
-	
 	WindowRectOp (win, miniwin.rect_fill, 0, 0, width, height, ColourNameToRGB("black"))  -- draw blank rectangle to "erase" window contents
 	
 	 -- draw border
@@ -430,7 +441,7 @@ function haveCoords()
   end
   --if (currentX ~= 0 or currentY ~= 0 or currentSystem ~= "" or currentPlanet ~= "") then -- if we are in regular space
   -- planet doesn't work so we'll ignore it for now
-  if (currentX ~= 0 or currentY ~= 0 or currentSystem ~= "") then -- if we are in regular space
+  if (currentX ~= 0 or currentY ~= 0 or currentSystem ~= "") and (currentX ~= nil and currentY ~= nil) then -- if we are in regular space
 
     --Note("passed havecoords 2")
     return true
@@ -627,9 +638,6 @@ end
 
 function drawPaths(flags, hotspot_id)
  -- bug out to prevent crashes when not connected
-	if not IsConnected() then
-		return
-	end
 	local sys = systems[tonumber(hotspot_id)]
 	if not sys then
 		return
@@ -649,7 +657,7 @@ function drawPaths(flags, hotspot_id)
 		end
 	end
 	WindowShow (win,  true)  -- show it
-		--BroadcastPlugin(999, "repaint")
+	BroadcastPlugin(999, "repaint")
 
 end
 
@@ -859,69 +867,15 @@ end
 function OnPluginBroadcast (msg, id, name, text)
 	-- Look for MSDP Handler.
 	if (id == 'b3aae34498d5bf19b5b2e2af') then
-		-- HUGE FIXME.. not an idea solution
-		--if (msg == 91) then -- we got table information from MSDP handler
-			-- store information in our own msdp table
-			--key = string.sub(text, 0, string.find(text,",",0,true)-1)  -- parse the variable key
-			--val = utils.base64decode(string.sub(text, string.find(text,",",0,true)+1, string.len(text))) -- parse the variable value
-			--msdp[key] = val -- store it
-		--end
 		if (text == 'reload') then
 			-- invalidate current data
 			page_built = false
 			return
 		end
-		if (utils.timer() - lastRefresh > 0.0333) then
-      drawWindows()  -- delay time between window refreshes to avoid flicker
-		  lastRefresh = utils.timer()
-  	end
+	drawWindows()
+	BroadcastPlugin (999, "repaint")
   end
 end
-
---============================================================================
--- Function to be used to retrieve msdp information. Returns either the
--- information stored in the local msdp table or gets the requested variable
--- from msdp_helper, if it doesn't exist locally
---============================================================================
-
---function getmsdp(key)
---	if not IsConnected() then  -- don't try to get stuff if we aren't connected to the mud
---		return ""
---	end
---	if (msdp[key] ~= nil) then  -- if the key has been updated by msdp handler already, retrieve it
---		return msdp[key]
---	elseif (GetPluginVariable("b3aae34498d5bf19b5b2e2af", key) ~= nil) then  -- if the key hasn't been updated, but msdp handler has it cached, retrieve it and store in local table for next time
---		msdp[key] = utils.base64decode(GetPluginVariable("b3aae34498d5bf19b5b2e2af", key))
---		return msdp[key]
---	else
---		ColourNote("red","black", "Warning: Unable to find key " .. key)
---		return ""   -- should never get here  -- can't find the requested key
---	end
---	return "" -- should never ever get here
---end
-
---==============================================================================
--- function used to retrieve information from LotJMSDPHandler.xml
---==============================================================================
-
-function getmsdp(fieldname)
-  if not IsConnected() then
-    return ""
-  end
-
-	assert (fieldname, "nil fieldname passed to getmsdp()")
-	
-	rc, result = CallPlugin("b3aae34498d5bf19b5b2e2af","msdpval",fieldname)
-	result2 = utils.base64decode(GetPluginVariable("b3aae34498d5bf19b5b2e2af", fieldname) or "")
-	
-	if result ~= nil then
-	  return result
-	elseif result2 ~= nil then
-	  return result2
-	else
-	  return ""
-	end
-end -- function msdpval
 
 function OnPluginSaveState ()
   -- save window current location for next time  
