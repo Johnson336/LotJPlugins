@@ -63,7 +63,8 @@ Click on a planet name to calculate a jump using LotJCalc.
 
 require "movewindow"
 require "serialize"
-require "LotJMSDPHelper"
+dofile(GetPluginInfo(GetPluginID(), 20) .. "LotJMSDPHelper.lua")
+
 local win = "galaxy_map_" .. GetPluginID()  -- unique window name
 systems = {}
 local system = { name = "", x = 99999, y = 99999, planet = "", left = 0, top = 0, right = 0, bottom = 0 }

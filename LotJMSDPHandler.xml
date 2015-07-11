@@ -13,6 +13,13 @@ can use partial refreshes of data.
 
 This is based on GMCP_handler written by Lasher of AardwolfMud.
 
+
+To use this plugin to send MSDP variables to your plugin, enter this into the top of your plugin's code:
+  dofile(GetPluginInfo(GetPluginID(), 20) .. "LotJMSDPHelper.lua")
+	
+Then whenever you want to set a variable, use this syntax:
+  myVariable = getmsdp("VARIABLE NAME")
+
 </description>
 
 </plugin>
@@ -38,6 +45,8 @@ local IAC, SB, SE, DO = 0xFF, 0xFA, 0xF0, 0xFD
 local MSDP 		= 69
 local MSDPDebug = tonumber(GetVariable("MSDPDebug")) or 0
 msdp = {}
+local sqldb = {}
+local sqlfile = GetInfo(60) .. "\msdp.sqlite3"
 
 require "tprint"
 
@@ -130,7 +139,7 @@ function StoreVariable (MSDP_var, MSDP_val)
 		SendPkt ("\255\250\69\1PLUGIN_ID\2LotJMSPDHandler MUSHclient plugin (version 0.49)\255\240")
 	else -- store the variable
 		-- To get MSDP variables in external plugins:
-		--	require "LotJMSDPHelper"
+		--	dofile(GetPluginInfo(GetPluginID(), 20) .. "LotJMSDPHelper.lua")
 		--	myVariable = getmsdp("VARIABLE NAME")
 		msdp[MSDP_var] = MSDP_val
 		BroadcastPlugin(91,MSDP_var) -- broadcasts variable name so other plugins can see if they need to update
@@ -168,6 +177,12 @@ function OnPluginTelnetRequest (type, data)
 	
 	if type == MSDP and data == "SENT_DO" then
 		Note("Enabling MSDP.")
+		
+		--=======================
+		-- check sql database exists/create it
+		--=======================
+		sqldb = sqlite3.open(sqlfile)
+		
 		
 		Send_MSDP_Packet ("\1LIST\2COMMANDS")
 		Send_MSDP_Packet ("\1REPORT\2CHARACTERNAME\2SERVERID\2SERVERTIME\2SNIPPETVERSION\2AFFECTS\2ALIGNMENT\2HEALTH\2HEALTHMAX\2TOPLEVEL\2LEVELCOMBAT\2LEVELPILOTING\2LEVELENGINEERING\2LEVELHUNTING\2LEVELSMUGGLING\2LEVELDIPLOMACY\2LEVELLEADERSHIP\2LEVELFORCE\2LEVELESPIONAGE\2LEVELSLICER\2LEVELMEDIC\2LEVELSCIENCE\2COMMCHANNEL\2COMMENCRYPT\2OOCLIMIT\2OOCBREAK\2PLANET\2RACE\2CLAN\2PILOTING\2SHIPSPEED\2SHIPMAXSPEED\2SHIPHULL\2SHIPMAXHULL\2SHIPENERGY\2SHIPMAXENERGY\2SHIPSHIELD\2SHIPMAXSHIELD\2SHIPGALX\2SHIPGALY\2SHIPSYSX\2SHIPSYSY\2SHIPSYSZ\2SHIPHEADX\2SHIPHEADY\2SHIPHEADZ\2SHIPSYSNAME\2CLASS\2MANA\2MANAMAX\2WIMPY\2PRACTICE\2MONEYTOTAL\2MONEYINV\2MONEYBANK\2MOVEMENT\2MOVEMENTMAX\2HITROLL\2DAMROLL\2AC\2STR\2INT\2WIS\2DEX\2CON\2CHA\2STRPERM\2INTPERM\2WISPERM\2DEXPERM\2CONPERM\2CHAPERM\2OPPONENTHEALTH\2OPPONENTHEALTHMAX\2OPPONENT_LEVEL\2OPPONENTNAME\2AREA_NAME\2ROOMEXITS\2ROOMNAME\2ROOMVNUM\2WORLDTIME\2BOTTINGDELAY\2CURRENTAMMO\2MAXAMMO\2SHIELDENERGY\2LIGHTTIME\2MEDPACPOWER\2GRENADEROUNDS\2BLADEPOWER")

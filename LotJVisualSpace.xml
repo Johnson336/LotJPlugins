@@ -61,7 +61,8 @@ require "tprint"
 require "movewindow"
 require "serialize"
 require "pairsbykeys"
-require "LotJMSDPHelper"
+dofile(GetPluginInfo(GetPluginID(), 20) .. "LotJMSDPHelper.lua")
+
 local win = "visual_space_" .. GetPluginID()  -- unique window name
 local configwin = "config_win_" .. GetPluginID() -- unique config window name
 local speedwin = "speed_win_" .. GetPluginID() -- unique speed window name

@@ -3,12 +3,12 @@
 --[[
 
 This file is used to facilitate variable calls to LotJMSDPHandler.
-To use MSDP variables in your plugin:
 
-1. Save this file into your MUSHclient\lua folder.
-2. Insert somewhere into your code: require "LotJMSDPHelper"
-3. When you want to retrieve an MSDP variable, use this syntax:
-   myVariable = getmsdp("VARIABLE NAME")
+To use this plugin to send MSDP variables to your plugin, enter this into the top of your plugin's code:
+  dofile(GetPluginInfo(GetPluginID(), 20) .. "LotJMSDPHelper.lua")
+	
+Then whenever you want to set a variable, use this syntax:
+  myVariable = getmsdp("VARIABLE NAME")
 
 --]]
 
