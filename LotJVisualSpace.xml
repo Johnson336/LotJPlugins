@@ -3,7 +3,7 @@
 <!--  Saved on Thursday, February 21, 2013, 8:52 PM   --> 
 <!-- MuClient version 4.73 --> 
 <muclient>
-<plugin name="LotJVisualSpace" author="@Johnson" id="a920ac5df84885eac6be8d61" language="Lua" purpose="Display character and ship information visually" save_state="y" requires="4.73" version="0.93">
+<plugin name="LotJVisualSpace" author="@Johnson" id="a920ac5df84885eac6be8d61" language="Lua" purpose="Display character and ship information visually" save_state="y" requires="4.73" version="0.95">
 <description trim="y">
 
 Type 'vsconfig' to display Visual Space Config window where you can check and uncheck which windows you want to display.
@@ -57,23 +57,21 @@ Type 'vsconfig' to display Visual Space Config window where you can check and un
 <!--   Script    --> 
 <script>
 <![CDATA[ 
-
 require "tprint"
 require "movewindow"
 require "serialize"
 require "pairsbykeys"
 require "LotJMSDPHelper"
-
 local win = "visual_space_" .. GetPluginID()  -- unique window name
 local configwin = "config_win_" .. GetPluginID() -- unique config window name
 local speedwin = "speed_win_" .. GetPluginID() -- unique speed window name
 local jumpwin = "jump_win_" .. GetPluginID() -- unique jump window name
 local statwin = "stat_win_" .. GetPluginID() -- unique stat window name
 local shipwin = "ship_win_" .. GetPluginID() -- unique ship stat window name
-
 local font = "font"..GetPluginID()
 local digiFont = "digiFont"..GetPluginID()
 local statFont = "statFont"..GetPluginID()
+local shipFont = "shipFont"..GetPluginID()
 local displayJumpPercent =       tonumber(GetVariable("show_jump_percent") or 1)
 local visualSpaceVisible =       tonumber(GetVariable("show_space") or 0)
 local visualSpaceConfigVisible = tonumber(GetVariable("show_config") or 1)
@@ -81,34 +79,27 @@ local visualSpaceSpeedVisible =  tonumber(GetVariable("show_speed") or 0)
 local visualSpaceJumpVisible =   tonumber(GetVariable("show_jump") or 0)
 local visualSpaceStatVisible =   tonumber(GetVariable("show_stat") or 0)
 local visualSpaceShipVisible =   tonumber(GetVariable("show_ship") or 0)
-
 local levels = {}
-
 windows = {}
 window_info = {}
 loadstring(GetVariable("windows") or "")()
-
 local autopilot = false
 local recharge = false
 local totalJump = 0
 local partialJump = 0
-
 background_colour     = 0x000000
 border_color          = 0xcccccc
 default_width         = 400
 default_height		  = 40
 default_x             = 0
 default_y             = 552
-
 width = tonumber(GetVariable("width")) or 800
 height = tonumber(GetVariable("height")) or 600
-
 local RESIZE_TAG_SIZE = 10
 local MIN_WIDTH        = 50
 local MIN_HEIGHT	   = 40
 local LEFT_MARGIN     = 10
 local TOP_MARGIN      = 5
-
 -- Variables not saved.
 startx     = 0
 starty     = 0
@@ -118,7 +109,6 @@ hotspot_id = ""
 page_built = false
 line_height= 0
 redraw_scheduled = false
-
 -- space position variables
 local zoom = tonumber(GetVariable("zoom")) or .75
 local xcenter = 0
@@ -127,9 +117,7 @@ local zcenter = 0
 local xrotation = -30
 local yrotation = -120
 local zrotation = -30
-
 systemobjs = {}
-
 function drawWindows()
 	if redraw_scheduled == false then
 		return
@@ -161,13 +149,11 @@ function drawWindows()
 	end
 	--BroadcastPlugin (999, "repaint")
 end
-
 function drawConfigWindow()
-
 	left = 0
 	top = 0
 	right = 220
-	bottom = 340
+	bottom = 155+(#windows*25)
 	
 	WindowRectOp (configwin, miniwin.rect_fill, 0, 0, right, bottom, ColourNameToRGB("black"))
 	WindowRectOp (configwin, 5, 0, 0, 0, 0, 5, 15 + 0x1000)
@@ -245,10 +231,10 @@ function drawConfigWindow()
 				"windowToggle")
 	end
 			
+	WindowSetZOrder (configwin, 1) -- config window is always on top
 	WindowShow (configwin, true)
 	
 end
-
 function drawConfigEntry(w, x, y, tx, cr, cbb, hsn, hscn)
 	-- window, x, y, displayText, color, checkBoxBoolean, hotSpotName, hotSpotClickName
 	WindowRectOp (w, 5, x, y, x+20, y+20, 5, 15 + 0x1000) -- draw empty check box
@@ -265,13 +251,11 @@ function drawConfigEntry(w, x, y, tx, cr, cbb, hsn, hscn)
 			tx,  -- alt text
 			1, 0)
 end
-
 function drawcheckbox(window, left, top)
 	WindowLine (window, left+3, top+7, left+7, top+13, ColourNameToRGB("white"), miniwin.pen_solid, 2)
 	WindowLine (window, left+7, top+13, left+15, top+1, ColourNameToRGB("white"), miniwin.pen_solid, 2)
 	Redraw()
 end	
-
 function windowToggle(flags, hotspot_id)
 	clickedWin = findwinbyid(string.sub(hotspot_id, 0, string.find(hotspot_id, "configWindowToggle")-1))
 	if not clickedWin then
@@ -288,7 +272,6 @@ function windowToggle(flags, hotspot_id)
 		drawConfigWindow()
 	end
 end
-
 function windowSwap(flags, hotspot_id)
 	clickedWin = findwinbyid(string.sub(hotspot_id, 0, string.find(hotspot_id, "Swap")-1))
 	if not clickedWin then
@@ -308,7 +291,6 @@ function windowSwap(flags, hotspot_id)
 	end
 	SetUpHotspotsAndDraw(false)
 end
-
 function togglePercent(flags, hotspot_id)
 	clickedWin = findwinbyid(string.sub(hotspot_id, 0, string.find(hotspot_id, "TogglePercent")-1))
 	if not clickedWin then
@@ -321,8 +303,6 @@ function togglePercent(flags, hotspot_id)
 	end
 	makeWindow(clickedWin)
 end
-
-
 function unmakeWindow(flags, hotspot_id)
 	clickedWin = findwinbyid(string.sub(hotspot_id, 0, string.find(hotspot_id, "Close")-1))
 	if not clickedWin then
@@ -335,7 +315,6 @@ function unmakeWindow(flags, hotspot_id)
 		drawConfigWindow()
 	end
 end
-
 function makeWindow(ww)
 			
 	-- clear window
@@ -359,7 +338,6 @@ function makeWindow(ww)
 	else
 		filledPercent = 0
 	end
-
 	if (ww.style == "horizontal") then -- style horizontal
 	
 	filledPixels = filledPercent * (ww.width - MIN_WIDTH)
@@ -398,7 +376,6 @@ function makeWindow(ww)
     WindowGradient (ww.id, 50, ww.height/2, 46+filledPixels, ww.height-3, fillcolor, ColourNameToRGB("black"), 2)
     
     else -- style vertical
-
   	-- calculate the filled part
   	filledPixels = filledPercent * (ww.height - MIN_HEIGHT - 20)
   	
@@ -445,11 +422,8 @@ function makeWindow(ww)
 	drawResizer(ww.id, ww.width, ww.height)
 	
 	WindowShow (ww.id, true)
-
 end
-
 require "commas"
-
 function drawStatWindow()
 	statwidth = 400
 	statheight = 300
@@ -587,11 +561,11 @@ function drawStatWindow()
 	WindowShow (statwin, true)
 end
 
+dofile(GetPluginInfo(GetPluginID(), 20) .. "lotj_colors.lua")
 -- window to display ship information
-
 function drawShipWindow()
 	shipwidth = 400
-	shipheight = 300
+	shipheight = 150
 	
 	-- clear window
 	WindowRectOp (shipwin, miniwin.rect_fill, 0, 0, shipwidth, shipheight, ColourNameToRGB("black"))
@@ -610,62 +584,31 @@ function drawShipWindow()
 	end
 	local sysname = getmsdp("SHIPSYSNAME")
 	if sysname == "" then sysname = "(Not in a known system)" end
-	shipx = getmsdp("SHIPSYSX")
-	shipy = getmsdp("SHIPSYSY")
-	shipz = getmsdp("SHIPSYSZ")
-	shipheadx = getmsdp("SHIPHEADX")
+	local shipx = getmsdp("SHIPSYSX")
+	local shipy = getmsdp("SHIPSYSY")
+	local shipz = getmsdp("SHIPSYSZ")
+	local shipheadx = getmsdp("SHIPHEADX")
 	local shipheady = getmsdp("SHIPHEADY")
 	local shipheadz = getmsdp("SHIPHEADZ")
 	
-	--local toplevel = getmsdp("TOPLEVEL") or ""
-	--local class = getmsdp("CLASS") or ""
-	--local race = getmsdp("RACE") or ""
-	--local align = tonumber(getmsdp("ALIGNMENT")) or 0
-	--local charstats = {
-	--	"Strength",			getmsdp("STR") or 0, getmsdp("STRPERM") or 0,
-	--	"Dexterity",   		getmsdp("DEX") or 0, getmsdp("DEXPERM") or 0,
-	--	"Constitution",		getmsdp("CON") or 0, getmsdp("CONPERM") or 0,
-	--	"Intelligence",		getmsdp("INT") or 0, getmsdp("INTPERM") or 0,
-	--	"Wisdom",			getmsdp("WIS") or 0, getmsdp("WISPERM") or 0,
-	--	"Charisma",			getmsdp("CHA") or 0, getmsdp("CHAPERM") or 0
-	--	}
-	--local charattribs = {
-	--	"Armor",			getmsdp("AC") or 0,
-	--	"Hitroll",			getmsdp("HITROLL") or 0,
-	--	"Damroll",			getmsdp("DAMROLL") or 0,
-	--	"MoneyTotal",		getmsdp("MONEYTOTAL") or 0,
-	--	"Money Bank",		getmsdp("MONEYBANK") or 0,
-	--	"Money Held",			getmsdp("MONEYINV") or 0
-	--	}
-			
 	local oY = 10
 	
-	local textWidth = WindowTextWidth(shipwin, font, shipname)
-	WindowText(shipwin, font, shipname, shipwidth/2-(textWith/2), oY, 0, 0, ColourNameToRGB("silver"))
-	--if (align < 0) then
-	--	aligncolor = "red"
-	--elseif (align > 0) then
-	--	aligncolor = "deepskyblue"
-	--else
-	--	aligncolor = "white"
-	--end
-	--WindowText(statwin, font, charname, statwidth/2-(textWidth/2), oY, 0, 0, ColourNameToRGB("silver"))
+	local textWidth = WindowTextWidth(shipwin, shipFont, ship.name)
+	WindowText(shipwin, shipFont, ship.name, shipwidth/2-(textWidth/2), oY, 0, 0, ColourNameToRGB("silver"))
 	oY = oY + (line_height*1.5)
-	textWidth = WindowTextWidth(shipwin, font, "Current System: "..sysname)
---	textWidth = WindowTextWidth(statwin, font, "Level "..toplevel.." "..race.." "..class.." main")
-	--WindowText(shipwin, font, "Level "..toplevel.." "..race.." "..class.." main", statwidth/2-(textWidth/2), oY, 0, 0, ColourNameToRGB("silver"))
-	WindowText(shipwin, font, "Current System: "..sysname, shipwidth/2-(textWidth/2), oY, 0, 0, ColourNameToRGB("silver"))
+	textWidth = WindowTextWidth(shipwin, shipFont, "Current System: "..sysname)
+	WindowText(shipwin, shipFont, "Current System: "..sysname, shipwidth/2-(textWidth/2), oY, 0, 0, ColourNameToRGB("silver"))
 	oY = oY + line_height*2
+	textWidth = WindowTextWidth(shipwin, shipFont, "Coords [ X: "..shipx.." Y: "..shipy.." Z: "..shipz.." ]")
+	WindowText(shipwin, shipFont, "Coords [ X: "..shipx.." Y: "..shipy.." Z: "..shipz.." ]", shipwidth/2-(textWidth/2), oY, 0, 0, ColourNameToRGB("silver"))
+	oY = oY + line_height*2
+	textWidth = WindowTextWidth(shipwin, shipFont, "Heading [ X: "..shipheadx.." Y: "..shipheady.." Z: "..shipheadz.." ]")
+	WindowText(shipwin, shipFont, "Heading [ X: "..shipheadx.." Y: "..shipheady.." Z: "..shipheadz.." ]", shipwidth/2-(textWidth/2), oY, 0, 0, ColourNameToRGB("silver"))
 	
-	--WindowText
-	
-	
+	--drawResizer(shipwin, shipwidth, shipheight)
 	
 	WindowShow (shipwin, true)
 end
-
-
-
 function storeLevel(name, list, args)
 	local storage = { 
 		class_name = "",
@@ -696,9 +639,7 @@ function storeLevel(name, list, args)
 		if (visualSpaceStatVisible == 1) then
 			drawStatWindow()
 		end
-
 end
-
 function storeLevel2(name, list, args)
 	local storage = {
 		class_name = "",
@@ -715,7 +656,6 @@ function storeLevel2(name, list, args)
 		drawStatWindow()
 	end
 end
-
 function abbrev_class(classname)
 	if (classname == "combat") then
 		return "Com"
@@ -743,7 +683,6 @@ function abbrev_class(classname)
 		return "Frc"
 	end
 end
-
 function drawJumpWindow()
 	left = 0
 	top = 0
@@ -758,7 +697,6 @@ function drawJumpWindow()
 	movewindow.add_drag_handler (jumpwin, 0, 0, 0, WindowFontInfo(jumpwin, font, 1))
 	--draw X to close
 	drawX(jumpwin, right-15, 5, ColourNameToRGB("white"), "jumpWindowX", "destroyJumpWindow", "Close hyperjump window")	
-
 	
 	local percent = 0
 	local pixels = 0
@@ -814,7 +752,6 @@ function drawJumpWindow()
 	WindowShow (jumpwin, true)
 	
 end
-
 local speedSlide = 0
 local prevSpeed = 0
 local tempSpeed = 0
@@ -823,7 +760,6 @@ local tempPixels = 0
 local speed = 0
 local maxSpeed = 0
 local speedlist = {}
-
 function drawSpeedWindow()
 	left = 0
 	top = 0
@@ -847,7 +783,6 @@ function drawSpeedWindow()
 	movewindow.add_drag_handler (speedwin, 0, 0, 0, WindowFontInfo (speedwin, font, 1))
 	-- draw X to close
 	drawX(speedwin, right-15, 5, ColourNameToRGB("white"), "speedWindowX", "destroySpeedWindow", "Close speed window")
-
 	-- here is my attempt to slide the indicator nicely between speed changes
   	if (speed > prevSpeed) then 		-- you went up in speed
   		speedSlide = 1					
@@ -875,7 +810,6 @@ function drawSpeedWindow()
 	-- draw Speed text
 	local textWidth = WindowTextWidth (speedwin, font, "Speed")
   	WindowText (speedwin, font, "Speed", left+(150-(textWidth/2)), bottom-25, left+(150+(textWidth/2)), bottom-5, ColourNameToRGB("white"))
-
   	
   	--Note("speed: " .. speed .. " max: " .. maxSpeed .. " filled: " .. filledPercent .. " (" .. filledPixels .. ")")
 	
@@ -888,7 +822,6 @@ function drawSpeedWindow()
   		textWidth   = WindowTextWidth (speedwin, digiFont, speed) -- otherwise show the real speed
   		WindowText (speedwin, digiFont, speed, left+(150-(textWidth/2)), bottom-55, left+(150+(textWidth/2)), bottom-15, ColourNameToRGB("white"))
   	end
-
   	 -- surround dial with inverted border
   	WindowRectOp (speedwin, 5, left+8, top+38, right-8, bottom-68, 10, 15 + 0x1000)
   	
@@ -901,7 +834,6 @@ function drawSpeedWindow()
   	end
   	-- draw the ship's max speed (red line)
   	WindowLine (speedwin, left+((maxSpeed/200)*280)+10, top+40, left+((maxSpeed/200)*280)+10, bottom-110, ColourNameToRGB("darkred"), 0, 4)
-
   	
   	-- draw current speed indicator
   	if (#speedlist > 0 and speedlist[math.abs(speedSlide)] > 0) then -- if we're sliding, show the incremental change
@@ -949,7 +881,6 @@ function drawSpeedWindow()
 	WindowText (speedwin, font, "SHIELDS", right-WindowTextWidth(speedwin, font, "SHIELDS")-5, bottom-25, right-5, bottom-5, drawcolor)
 	WindowShow (speedwin, true)
 end
-
 -- method to draw a colored X in window at left, top with hotspotname and does hotspotclick when you click it
 function drawX(window, left, top, color, hotSpotName, hotSpotClick, hotSpotText)
 	WindowLine (window, left, top, left+10, top+10, color, miniwin.pen_solid, 1)
@@ -957,7 +888,6 @@ function drawX(window, left, top, color, hotSpotName, hotSpotClick, hotSpotText)
 	WindowAddHotspot(window, hotSpotName, left, top, left+10, top+10, "", "", hotSpotClick, "", "", hotSpotText, 1, 0)
 	Redraw()
 end
-
 function drawSwapper(window, left, top, color, hotSpotName, hotSpotClick, hotSpotText)
 	WindowLine(window, left, top, left+4, top, color, miniwin.pen_solid, 1)
 	WindowLine(window, left, top, left, top+4, color, miniwin.pen_solid, 1)
@@ -967,7 +897,6 @@ function drawSwapper(window, left, top, color, hotSpotName, hotSpotClick, hotSpo
 	WindowAddHotspot(window, hotSpotName, left, top, left+10, top+10, "", "", hotSpotClick, "", "", hotSpotText, 1, 0)
 	Redraw()
 end
-
 function drawResizer(window, width, height)
    -- draw the resize widget bottom right corner.
    WindowLine(window, width-3, height-2, width-2, height-3, 0xffffff, 0, 2)
@@ -979,17 +908,14 @@ function drawResizer(window, width, height)
    WindowLine(window, width-12, height-2, width-2, height-12, 0xffffff, 0, 2)
    WindowLine(window, width-13, height-2, width-2, height-13, 0x696969, 0, 1)
 end
-
 function round (x)
   if x >= 0 then
     return math.floor (x + 0.5)
     --return math.floor (x)
   end  -- if positive
-
   return math.ceil (x - 0.5)
   --return math.ceil (x)
 end -- function round
-
 function spaceCapStart()
 	if (visualSpaceVisible ~= 1) then
 		return
@@ -1005,7 +931,6 @@ function spaceCapStop()
 	EnableTriggerGroup("SpaceCap", false)
 	scheduleRedraw()
 end
-
 function spaceCapStore(name, line, args, styles)
 	local body = {
 		name=Trim(args[1]),
@@ -1026,7 +951,6 @@ function spaceCapStore(name, line, args, styles)
   end
   --Note("")
 end
-
 ----- 3D transform variables
 --a{x,y,z} - the 3D position of a point A that is to be projected
 --c{x,y,z} - the 3D position of a point C representing the camera
@@ -1034,7 +958,6 @@ end
 --e{x,y,z} - the viewer's position relative to the display surface
 -- which results in:
 -- b{x,y}  - the 2D projection of A
-
 -- to compute b{x,y} we first define a vector d{x,y,z} as the position of point A with respect to a coordinate system 
 -- defined by the camera, with origin in C and rotated by T with respect to the initial coordinate system. This is
 -- achieved by subtracting C from A and then applying a rotation by -T to the result. This transformation is often
@@ -1046,16 +969,13 @@ end
 --
 -- b{x} = (d{x} - e{x})*(e{z}/d{z})
 -- b{y} = (d{y} - e{y})*(e{z}/d{z})
-
 --local a = {x=0,y=0,z=0} -- position of point A to be projected
 --local c = {x=2000,y=2000,z=2000} -- position of point C representing the camera
 --local t = {x=30,y=30,z=30} -- orientation of the camera
 --local e = {x=2000,y=2000,z=2000} -- viewer's position relative to the display surface
 --local d = {x=0,y=0,z=0} -- position of point A with respect to coordinate system defined by the camera, with origin C and rotated by T
 --local b = {x=0,y=0}     -- our final point to be mapped in an 2D XY surface
-
 --function setval(name, line, args)
-
 --	if (args[1]~="" and args[2]~="" and args[3]~="" and args[4]~="") then
 --		if (args[1] == "t") then
 --			t = {x=tonumber(args[2]),y=tonumber(args[3]),z=tonumber(args[4])}
@@ -1072,9 +992,7 @@ end
 --		drawWindow()
 --	end
 --end
-
 --local matrix = require 'matrix'
-
 function drawWindow()  -- getting closer
 	-- clear window
 	WindowRectOp (win, miniwin.rect_fill, 0, 0, width, height, ColourNameToRGB("black"))  -- draw blank rectangle to "erase" window
@@ -1160,7 +1078,6 @@ function drawWindow()  -- getting closer
   	linea = getxy({x=-50000,y=-50000,z=-50000})
   	lineb = getxy({x=-50000,y=-50000,z=50000})
   	WindowLine(win, scaleXcoord(linea.x), scaleYcoord(linea.y), scaleXcoord(lineb.x), scaleYcoord(lineb.y), ColourNameToRGB("green"), 1, 1)
-
   	-- middle square
   	linea = getxy({x=50000,y=-50000,z=0})
   	lineb = getxy({x=-50000,y=-50000,z=0})
@@ -1226,8 +1143,10 @@ function drawWindow()  -- getting closer
   	  if scaledX > 0 and scaledY > 0 then
   	    if v.name == "Player Ship" then
   	      displayColor = "red"
+					shipsize = zoom * 3
   	    else
   	      displayColor = "silver"
+					shipsize = zoom * 10
   	    end
   	    WindowCircleOp(win, 1, scaledX-shipsize, scaledY-shipsize, scaledX+shipsize, scaledY+shipsize, ColourNameToRGB(displayColor), 0, 2, ColourNameToRGB(displayColor), 0)
   	    if not WindowHotspotInfo(win, "systemobjhover"..v.name, 1) then
@@ -1242,7 +1161,6 @@ function drawWindow()  -- getting closer
   
   	WindowShow (win,  true)  -- show it
 end
-
 function getxy(a)
   	-- begin the transform madness
   	--local d = {x=0,y=0,z=0}
@@ -1307,8 +1225,6 @@ function getxy(a)
   	
   	return b
 end
-
-
 function scaleXcoord(coord)
 	return ((( coord / (50000 / zoom)) * ((width/2)*.8)) + ((width/2)+xcenter))
 end
@@ -1317,12 +1233,10 @@ function scaleYcoord(coord)
 end
 function scaleZcoord(coord)
 end
-
 -- helper functions of 4th attempt
 --function makeXRotation(angleInRadians)
 --  local c = math.cos(angleInRadians)
 --  local s = math.sin(angleInRadians)
-
 --  return matrix{
 --    {1, 0, 0, 0},
 --    {0, c, s, 0},
@@ -1333,7 +1247,6 @@ end
 --function makeYRotation(angleInRadians)
 --  local c = math.cos(angleInRadians)
 --  local s = math.sin(angleInRadians)
-
 --  return matrix{
 --    {c, 0, -s, 0},
 --    {0, 1, 0, 0},
@@ -1351,7 +1264,6 @@ end
 --     {0, 0, 0, 1},
 --  }
 --end
-
 --function makeTranslation(tx, ty, tz)
 --  return matrix{
 --     {1,  0,  0,  0},
@@ -1360,7 +1272,6 @@ end
 --     {tx, ty, tz, 1},
 --  }
 --end
-
 --function makeScale(sx, sy, sz)
 --  return matrix{
 --    {sx, 0,  0,  0},
@@ -1369,7 +1280,6 @@ end
 --    {0,  0,  0,  1},
 --  }
 --end
-
 --function make3DProjection(width, height, depth)
   -- Note: This matrix flips the Y axis so 0 is at the top.
 --  return matrix{
@@ -1379,11 +1289,9 @@ end
 --    {-1, 1, 0, 1},
 --  }
 --end
-
 function displayTime(time)
 	local retval = {}
 	local secs = tonumber(time)
-
 	if (secs >= 315705600) then
 		local decades = secs / 315705600
 		secs = secs - (decades * 315705600)
@@ -1425,13 +1333,10 @@ function displayTime(time)
 	--1,60,3600,86400,604800,2630880,31570560,315705600
 	return table.concat(retval, ", ")
 end
-
-
 function reset()
 	OnPluginSaveState()
 	OnPluginInstall()
 end
-
 function hyperJumpTick()
 	if (totalJump > 0 and partialJump > 0) then
 		partialJump = partialJump - 50
@@ -1441,7 +1346,6 @@ function hyperJumpTick()
 		end
 	end
 end
-
 function storeTotalJump(name, list, args)
 	if (args[1] and tonumber(args[1]) > 0) then
 		totalJump = tonumber(args[1])
@@ -1450,7 +1354,6 @@ function storeTotalJump(name, list, args)
 		drawJumpWindow()
 	end
 end
-
 function storePartialJump(name, list, args)
 	if (args[1] and tonumber(args[1]) > 0) then
 		if (totalJump == 0) then
@@ -1464,7 +1367,6 @@ function storePartialJump(name, list, args)
 		drawJumpWindow()
 	end
 end
-
 function clearJump()
 	totalJump = 0
 	partialJump = 0
@@ -1473,16 +1375,12 @@ function clearJump()
 		drawJumpWindow()
 	end
 end
-
 -- toggles should probably be cleaned up into something more modular... TODO
-
-
 -------- stat window toggles
 function toggleVisualSpaceStatOn()
 	visualSpaceStatVisible = 1
 	drawStatWindow()
 end
-
 function toggleVisualSpaceStat()
 	if (visualSpaceStatVisible == 1) then
 		destroyStatWindow()
@@ -1493,7 +1391,6 @@ function toggleVisualSpaceStat()
 		drawConfigWindow()
 	end
 end
-
 function destroyStatWindow()
 	visualSpaceStatVisible = 0
 	WindowShow (statwin, false)
@@ -1502,15 +1399,34 @@ function destroyStatWindow()
 		drawConfigWindow()
 	end
 end
-
+-------- ship window toggles
+function toggleVisualSpaceShipOn()
+	visualSpaceShipVisible = 1
+	drawShipWindow()
+end
+function toggleVisualSpaceShip()
+	if (visualSpaceShipVisible == 1) then
+		destroyShipWindow()
+	else
+		toggleVisualSpaceShipOn()
+	end
+	if (visualSpaceConfigVisible == 1) then
+		drawConfigWindow()
+	end
+end
+function destroyShipWindow()
+	visualSpaceShipVisible = 0
+	WindowShow (shipwin, false)
+	--WindowDelete(energywin)
+	if (visualSpaceConfigVisible == 1) then
+		drawConfigWindow()
+	end
+end
 -------------- jump window toggles
-
-
 function toggleVisualSpaceJumpOn()
 	visualSpaceJumpVisible = 1
 	drawJumpWindow()
 end
-
 function toggleVisualSpaceJump()
 	if (visualSpaceJumpVisible == 1) then
 		destroyJumpWindow()
@@ -1521,7 +1437,6 @@ function toggleVisualSpaceJump()
 		drawConfigWindow()
 	end
 end
-
 function destroyJumpWindow(name, list, args)
 	visualSpaceJumpVisible = 0
 	WindowShow (jumpwin, false)
@@ -1529,7 +1444,6 @@ function destroyJumpWindow(name, list, args)
 		drawConfigWindow()
 	end
 end
-
 function toggleJumpPercent()
 	if (displayJumpPercent == 1) then
 		displayJumpPercent = 0
@@ -1538,7 +1452,6 @@ function toggleJumpPercent()
 	end
 	drawJumpWindow()
 end
-
 -------------- speed window toggles
 function toggleVisualSpaceSpeed()
 	if (visualSpaceSpeedVisible == 1) then
@@ -1550,12 +1463,10 @@ function toggleVisualSpaceSpeed()
 		drawConfigWindow()
 	end
 end
-
 function toggleVisualSpaceSpeedOn()
 	visualSpaceSpeedVisible = 1
 	drawSpeedWindow()
 end
-
 function destroySpeedWindow(name, list, args)
 	visualSpaceSpeedVisible = 0
 	WindowShow (speedwin, false)
@@ -1563,41 +1474,35 @@ function destroySpeedWindow(name, list, args)
 		drawConfigWindow()
 	end
 end
-
 function toggleAutopilotOn()
 	autopilot = true
 	if (visualSpaceSpeedVisible == 1) then
 		drawSpeedWindow()
 	end
 end
-
 function toggleAutopilotOff()
 	autopilot = false
 	if (visualSpaceSpeedVisible == 1) then
 		drawSpeedWindow()
 	end
 end
-
 function toggleShieldsOn()
 	recharge = true
 	if (visualSpaceSpeedVisible == 1) then
 		drawSpeedWindow()
 	end
 end
-
 function toggleShieldsOff()
 	recharge = false
 	if (visualSpaceSpeedVisible == 1) then
 		drawSpeedWindow()
 	end
 end
-
 -------------- config window toggles
 function toggleVisualSpaceConfigOn()
 	visualSpaceConfigVisible = 1
 	drawConfigWindow()
 end
-
 function toggleVisualSpaceConfig()
 	if (visualSpaceConfigVisible == 1) then
 		destroyConfigWindow()
@@ -1605,20 +1510,16 @@ function toggleVisualSpaceConfig()
 		toggleVisualSpaceConfigOn()
 	end
 end
-
 function destroyConfigWindow(name, list, args)
 	visualSpaceConfigVisible = 0
 	WindowShow (configwin, false)
 	--WindowDelete(configwin)
 end
-
-
 -------------- main window toggles
 function toggleVisualSpaceOn()
 	visualSpaceVisible = 1
 	drawWindow()
 end
-
 function toggleVisualSpace()
 	if (visualSpaceVisible == 1) then
 		destroyWindow()
@@ -1629,7 +1530,6 @@ function toggleVisualSpace()
 		drawConfigWindow()
 	end
 end
-
 function destroyWindow(name, list, args)
 	visualSpaceVisible = 0
 	WindowShow (win, false)
@@ -1638,34 +1538,29 @@ function destroyWindow(name, list, args)
 		drawConfigWindow()
 	end
 end
-
-
 ------------------- end toggles
-
 function hideWindows()
 	WindowShow (win, false)
 	WindowShow (configwin, false)
 	WindowShow (speedwin, false)
 	WindowShow (jumpwin, false)
 	WindowShow (statwin, false)
+	WindowShow (shipwin, false)
 	for k, v in pairs(windows) do
 		WindowShow (v.id, false)
 	end
 end
-
 function destroyWindows(name, list, args)
 	destroyWindow()
 	destroyConfigWindow()
 	destroySpeedWindow()
 	destroyJumpWindow()
 	destroyStatWindow()
+	destroyShipWindow()
 end
-
 function OnPluginInstall ()		
-
   --- Setup the windows
    SetUpHotspotsAndDraw(true)
-
   -- add the fonts                
   check(WindowFont (win, font, "Arial", 10, true, false, false, false))
   check(WindowFont (configwin, font, "Arial", 10, true, false, false, false))
@@ -1674,6 +1569,7 @@ function OnPluginInstall ()
   check(WindowFont (speedwin, digiFont, "Terminal", 20, true, false, false, false))
   check(WindowFont (statwin, font, "Arial", 10, true, false, false, false))
   check(WindowFont (statwin, statFont, "Courier", 10, false, false, false, false))
+	check(WindowFont (shipwin, shipFont, "Courier", 10, false, false, false, false))
   
   font_height = WindowFontInfo (win, font, 1) -  WindowFontInfo (win, font, 4) + 1 -- height
   font_width  = WindowFontInfo (win, font, 6)  -- avg width
@@ -1690,7 +1586,6 @@ function OnPluginInstall ()
   installed = true
   scheduleRedraw()  
 end -- OnPluginInstall
-
 --================================================================================
 -- Called by OnPluginInstall, but also by redraw routine to refresh the screen
 -- and (if the first time) add the resizer tag, otherwise move the resizer relative
@@ -1806,6 +1701,21 @@ function SetUpHotspotsAndDraw(firstTime)
 			color25 = "red",
 			style = "vertical",
 			percent = 1
+			},
+		{
+			id = "ammo_win_"..GetPluginID(),
+			name = "Ammo",
+			width = default_height+10,
+			height = default_width,
+			effectiveWidth = 0,
+			visible = 0,
+			stat1 = "CURRENTAMMO",
+			stat2 = "MAXAMMO",
+			color100 = "chartreuse",
+			color50 = "yellow",
+			color25 = "red",
+			style = "vertical",
+			percent = 1
 			}
 		}
 		
@@ -1815,25 +1725,29 @@ function SetUpHotspotsAndDraw(firstTime)
 		end
 	
 		
-		-- make windows so I can grab the font info
-		WindowCreate (win, 0, 0, width, height, miniwin.pos_center_all, 0, ColourNameToRGB("black"))  -- create window
-		WindowCreate (configwin, 0, 0, 220, 340, miniwin.pos_center_all, 0, ColourNameToRGB("black")) -- create config window
-		WindowCreate (speedwin, 0, 0, 300, 200, miniwin.pos_center_all, 0, ColourNameToRGB("black")) -- create speed window
-		WindowCreate (jumpwin, 0, 0, 400, 60, miniwin.pos_center_all, 0, ColourNameToRGB("black")) -- create jump window
-		WindowCreate (statwin, 0, 0, 400, 300, miniwin.pos_center_all, 0, ColourNameToRGB("black")) -- create stat window
-		
 		  -- install the window movement handlers, get back the window position
  		windowinfo =       movewindow.install (win, 6)  -- default to 6 (on top right)
-  		configwindowinfo = movewindow.install (configwin, 6) -- default to 6 (on top right)
-  		speedwindowinfo =  movewindow.install (speedwin, 6) -- default to 6 (on top right)
-  		jumpwindowinfo =   movewindow.install (jumpwin, 6) -- default to 6 (on top right)
-  		statwindowinfo =   movewindow.install (statwin, 6) -- default to 6 (on top right)
+  	configwindowinfo = movewindow.install (configwin, miniwin.pos_top_right, miniwin.create_absolute_location, false, nil, false, false) -- default to 6 (on top right)
+  	speedwindowinfo =  movewindow.install (speedwin, 6) -- default to 6 (on top right)
+  	jumpwindowinfo =   movewindow.install (jumpwin, 6) -- default to 6 (on top right)
+  	statwindowinfo =   movewindow.install (statwin, 6) -- default to 6 (on top right)
+		shipwindowinfo =   movewindow.install (shipwin, 6) -- default to 6 (on top right)
+			
+		-- make windows so I can grab the font info
+		WindowCreate (win, 0, 0, width, height, miniwin.pos_center_all, 0, ColourNameToRGB("black"))  -- create window
+		WindowCreate (configwin, 0, 0, 220, 155+(#windows*25), miniwin.pos_center_all, 0, ColourNameToRGB("black")) -- create config window
+		WindowCreate (speedwin, 0, 0, 300, 200, miniwin.pos_center_all, 0, ColourNameToRGB("black")) -- create speed window
+		WindowCreate (jumpwin, 0, 0, 400, 60, miniwin.pos_center_all, 0, ColourNameToRGB("black")) -- create jump window
+		WindowCreate (statwin, 0, 0, 400, 275, miniwin.pos_center_all, 0, ColourNameToRGB("black")) -- create stat window
+		WindowCreate (shipwin, 0, 0, 400, 115, miniwin.pos_center_all, 0, ColourNameToRGB("black")) -- create ship window
+
 		
 		movewindow.add_drag_handler (win, 0, 0, 0, WindowFontInfo (win, font, 1))
 		movewindow.add_drag_handler (configwin, 0, 0, 0, WindowFontInfo (configwin, font, 1))
 		movewindow.add_drag_handler (speedwin, 0, 0, 0, WindowFontInfo (speedwin, font, 1))
 		movewindow.add_drag_handler (jumpwin, 0, 0, 0, WindowFontInfo (jumpwin, font, 1))
 		movewindow.add_drag_handler (statwin, 0, 0, 0, WindowFontInfo (statwin, font, 1))
+		movewindow.add_drag_handler (shipwin, 0, 0, 0, WindowFontInfo (shipwin, font, 1))
 		
 		effectiveWidth = math.min(width, GetInfo(281)-windowinfo.window_left)
 		WindowAddHotspot(win, win.."resize", effectiveWidth-RESIZE_TAG_SIZE, height-RESIZE_TAG_SIZE, effectiveWidth, height, "MouseOver", "CancelMouseOver", "MouseDownMain", "CancelMouseDownMain", "MouseUpMain", "", 6, 0)
@@ -1841,7 +1755,6 @@ function SetUpHotspotsAndDraw(firstTime)
 		
   		-- catch for scroll wheel movement
 		WindowAddHotspot(win, "gridarea", RESIZE_TAG_SIZE, RESIZE_TAG_SIZE, effectiveWidth-RESIZE_TAG_SIZE, height-RESIZE_TAG_SIZE, "", "", "MouseDownMain", "CancelMouseDownMain", "MouseUpMain", "", 0, 0)
-
 		-- mouse wheel handler for scrolling up/down
 		WindowScrollwheelHandler(win, "gridarea", "wheel_move")
 		WindowDragHandler(win, "gridarea", "MainDragCallback", "MainReleaseCallback", 0)
@@ -1849,8 +1762,8 @@ function SetUpHotspotsAndDraw(firstTime)
 		
 		-- setup every window in our table
 		for k, v in pairs(windows) do
-			WindowCreate (v.id, 0, 0, v.width, v.height, miniwin.pos_center_all, 0, ColourNameToRGB("black")) -- create windows
 			window_info[v.id] = movewindow.install (v.id, 6) -- default to 6 (on top right)
+			WindowCreate (v.id, 0, 0, v.width, v.height, miniwin.pos_center_all, 0, ColourNameToRGB("black")) -- create windows
 			--v.info = movewindow.install (v.id, 6) -- default to 6 (on top right)
 			movewindow.add_drag_handler (v.id, 0, 0, 0, WindowFontInfo (v.id, font, 1))
 			v.effectiveWidth = math.min(v.width, GetInfo(281)-window_info[v.id].window_left)
@@ -1878,9 +1791,6 @@ function SetUpHotspotsAndDraw(firstTime)
 		drawWindows()
 	end
 end
-
-
-
 function OnPluginSaveState ()
   -- save window current location for next time  
   movewindow.save_state (win)
@@ -1888,6 +1798,7 @@ function OnPluginSaveState ()
   movewindow.save_state (speedwin)
   movewindow.save_state (jumpwin)
   movewindow.save_state (statwin)
+	movewindow.save_state (shipwin)
   
   for k, v in pairs(windows) do
   	movewindow.save_state (v.id)
@@ -1900,18 +1811,15 @@ function OnPluginSaveState ()
   SetVariable("show_speed", tostring(visualSpaceSpeedVisible))
   SetVariable("show_jump", tostring(visualSpaceJumpVisible))
   SetVariable("show_stat", tostring(visualSpaceStatVisible))
+	SetVariable("show_ship", tostring(visualSpaceShipVisible))
   SetVariable("windows", serialize.save("windows"))
   SetVariable("width", width)
   SetVariable("height", height)
   SetVariable("zoom", zoom)
-
 end -- function OnPluginSaveState
-
-
 --============================================================================
 -- Function to listen for MSDP broadcast updates and refresh the windows if needed.
 --============================================================================
-
 function OnPluginBroadcast (msg, id, name, text)
 	if (id == 'b3aae34498d5bf19b5b2e2af') then
 		if (text == 'reload') then
@@ -1922,14 +1830,12 @@ function OnPluginBroadcast (msg, id, name, text)
 		scheduleRedraw()
   end
 end
-
 function scheduleRedraw()
 	if redraw_scheduled == false then
 		redraw_scheduled = true
 		DoAfterSpecial(0.1, 'drawWindows()', sendto.script)
 	end
 end
-
 function findwinbyid(id)
 	for k, v in pairs(windows) do
 		if (v.id == id) then
@@ -1938,7 +1844,6 @@ function findwinbyid(id)
 	end
 	return nil
 end
-
 ----------------------------------------------------------------------
 -- Called as the windows are dragged around.
 ----------------------------------------------------------------------
@@ -1948,7 +1853,6 @@ function ResizeMoveCallback(flags, hotspot_id)
 		return
 	end
 	--Note("clickedwin.id = " .. clickedWin.id)
-
    posx, posy = WindowInfo (clickedWin.id, 17), WindowInfo (clickedWin.id, 18)
    clickedWin.width = clickedWin.width + posx - startx
    startx = posx
@@ -1976,16 +1880,13 @@ function ResizeMoveCallback(flags, hotspot_id)
 		lastRefresh = utils.timer()
 	end
 end
-
 lastRefresh = 0
-
 ---------------------------------------------------------------------------------
 -- Called after the resize widget is released.
 ---------------------------------------------------------------------------------
 function ResizeReleaseCallback()
    SetUpHotspotsAndDraw(false)
 end
-
 ---------------------------------------------------------------------------------
 -- Called when mouse button is pressed on hotspot.
 ---------------------------------------------------------------------------------
@@ -1998,13 +1899,11 @@ function MouseDown(flags, hotspot_id)
       startx, starty = WindowInfo (clickedWin.id, 17), WindowInfo (clickedWin.id, 18)
    --end
 end
-
 ---------------------------------------------------------------------------------
 -- Called when mouse moved away from hotspot. Doesn't really apply for draggables.
 ---------------------------------------------------------------------------------
 function CancelMouseDown(flags, hotspot_id)
 end
-
 ---------------------------------------------------------------------------------
 -- Called when mouse button released on hotspot.
 ---------------------------------------------------------------------------------
@@ -2014,17 +1913,12 @@ function MouseUp(flags, hotspot_id, win)
    end
    return true
 end
-
 function LeftClickOnly(flags, hotspot_id, win)
    if bit.band (flags, miniwin.hotspot_got_rh_mouse) ~= 0 then
       return true
    end
    return false
 end
-
-
-
-
 ------main window stuff
 ----------------------------------------------------------------------
 -- Called as main window is dragged around.
@@ -2056,7 +1950,6 @@ function ResizeMoveCallbackMain(flags, hotspot_id)
 		lastRefresh = utils.timer()
 	end
 end
-
 ----------------------------------------------------------------------------------
 -- Called when scroll wheel is moved
 ----------------------------------------------------------------------------------
@@ -2078,7 +1971,6 @@ function wheel_move (flags, hotspot_id)
 	end -- if
 	SetUpHotspotsAndDraw(false)
 end -- wheel_move
-
 ---------------------------------------------------------------------------------
 -- Called when mouse button is pressed in main window
 ---------------------------------------------------------------------------------
@@ -2087,14 +1979,11 @@ function MouseDownMain(flags, hotspot_id)
       startx, starty = WindowInfo (win, 17), WindowInfo (win, 18)
    --end
 end
-
 ---------------------------------------------------------------------------------
 -- Called when mouse moved away from main window. Doesn't really apply for draggables.
 ---------------------------------------------------------------------------------
 function CancelMouseDownMain(flags, hotspot_id)
 end
-
-
 -- called when mouse is dragged inside space window grid area
 function MainDragCallback(flags, hotspot_id)
 	posx, posy = WindowInfo(win, 17), WindowInfo(win, 18)
@@ -2124,12 +2013,10 @@ function MainDragCallback(flags, hotspot_id)
 	end
 	
 end
-
 -- called when mouse is released from dragging inside space window grid area
 function MainReleaseCallback()
 	SetUpHotspotsAndDraw(false)
 end
-
 ---------------------------------------------------------------------------------
 -- Called when mouse button released in main window
 ---------------------------------------------------------------------------------
@@ -2139,38 +2026,29 @@ function MouseUpMain(flags, hotspot_id, win)
    end
    return true
 end
-
 function LeftClickOnlyMain(flags, hotspot_id, win)
    if bit.band (flags, miniwin.hotspot_got_rh_mouse) ~= 0 then
       return true
    end
    return false
 end
-
-
-
-
 function OnPluginClose()
 	OnPluginDisable()
 	hideWindows()
 end
-
 function OnPluginDisable()
 	OnPluginSaveState()
 	hideWindows()
 end
-
 function OnPluginEnable()
 	WindowShow(configwin, true)
 	OnPluginSaveState()
 end
-
 require "checkplugin"
 function OnPluginListChanged()
 	do_plugin_check_now ("b3aae34498d5bf19b5b2e2af", "LotJMSDPHandler") -- check we have MSDP handler plugin
 	do_plugin_check_now ("e2a1af0b5e462318bb423764", "lotj_repaint_buffer") -- check we have the repaint buffer
 end
-
 ]]>
 </script>
 
