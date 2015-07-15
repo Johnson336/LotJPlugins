@@ -59,8 +59,8 @@ USAGE:
   <trigger enabled="n" name="councilnet" match="CouncilNet[*]*" regexp="n" omit_from_output="n" script="untagged_info" sequence="100" />
   
   -- blank line gag
-  <trigger enabled="n" match="^$" regexp="y" name="end_gag" group="end_gag" omit_from_output="y" sequence="100" send_to="12" >
-<send>EnableTriggerGroup("end_gag", false)</send></trigger>
+  <trigger enabled="n" match="^$" regexp="y" name="end_gag" omit_from_output="y" sequence="100" send_to="12" >
+<send>EnableTrigger("end_gag", false)</send></trigger>
 </triggers>
 
 <aliases>
@@ -75,9 +75,11 @@ USAGE:
 
 require "movewindow"  -- load the movewindow.lua module
 require "copytable"
+require "serialize"
+require "checkplugin"
 
 SCROLL_BAR_WIDTH = 15
-MAX_LINES = 10000 -- how many lines to store in scrollback
+MAX_LINES = 5000 -- how many lines to store in scrollback
 
 -- date_format = "[%d %b %H:%M:%S] "   -- [30 Aug 13:29:49]   date and time 24 hour
 -- date_format = "[%d %b %I:%M:%S%p] " -- [30 Aug 01:20:12PM] date and time 12 hour
@@ -114,8 +116,14 @@ WINDOW_BORDER_COLOUR = 0xE8E8E8
 -- offset of text from edge
 TEXT_INSET = 5
 
+-- our main windows structure
+win = GetPluginID()..GetUniqueID()
+windows = {}
+loadstring(GetVariable("windows") or "") ()
+          
+
 -- where to store the chat line
-lines = {}  -- table of recent chat lines
+lines = {}  -- table of chat lines
 rawlines = {}
 
 lineStart = ""
@@ -123,8 +131,32 @@ lineEnd = ""
 WINDOW_LINES = ""
 WINDOW_NAME = GetVariable("WINDOW_NAME") or "Communication Log"
 
--- functions for handling Aardwolf color codes
+-- functions for handling color codes
 dofile(GetPluginInfo(GetPluginID(), 20) .. "lotj_colors.lua")
+
+function createNewWindow(name, line, args)
+  newWindow = {}
+  newWindow.id = GetPluginID()..GetUniqueID()
+  newWindow.windowname = "Untitled Window"
+  newWindow.windowinfo = ""
+  newWindow.startx = ""
+  newWindow.starty = ""
+  newWindow.window_prefs = { 
+                             -- window preferences
+                             show_say = 1,
+                             show_clan = 1,
+                             show_comms = 1,
+                             show_broadcast = 1,
+                             show_buzz = 1,
+                             show_ooc = 1,
+                             show_newbie = 1,
+                             show_immchat = 1,
+                             show_rpcchat = 1,
+                             show_immnet = 1,
+                             show_councilnet = 1 }
+  windows[#windows+1] = newWindow
+  return newWindow
+end
 
 font_height = ""
 line_height = ""
@@ -243,8 +275,6 @@ function ResizeReleaseCallback ()
    init(true) -- true here causes old lines to re-wrap at the new size
 end
 
-win = GetPluginID()
-require "checkplugin"
 function OnPluginListChanged ()
    do_plugin_check_now ("e2a1af0b5e462318bb423764", "lotj_repaint_buffer") -- check we have the repaint buffer
 end -- OnPluginListChanged
@@ -391,7 +421,6 @@ function OnPluginEnable ()
    OnPluginSaveState()
 end -- OnPluginEnable
 
-require "serialize"
 function OnPluginSaveState()
   -- save window current location for next time  
   SetVariable("enabled", tostring (GetPluginInfo (GetPluginID(), 17)))
