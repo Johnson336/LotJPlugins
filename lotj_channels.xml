@@ -825,7 +825,7 @@ function untagged_info (name, line, wildcards, styles)
   if say_echo == 1 and (name == "say1" or name == "say2" or name=="ask1" or name=="ask2" or name=="exclaim1" or name=="exclaim2") then
   EnableTrigger("end_gag", true)
   end
-  if clan_echo == 1 and name=="clan" then
+  if clan_echo == 1 and (name=="clan" or name == "clan2") then
   EnableTrigger("end_gag", true)
   end
   if comms_echo == 1 and name=="comms" then
