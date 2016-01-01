@@ -46,7 +46,7 @@ Type 'vsconfig' to display Visual Space Config window where you can check and un
   <alias name="toggleConfigCommand" script="toggleVisualSpaceConfig" match="^vsconfig$" enabled="y" ignore_case="y" regexp="y" group="LotJVisualSpace" sequence="100" />
   <alias name="toggleSpeedCommand" script="toggleVisualSpaceSpeed" match="^vsspeed$" enabled="y" ignore_case="y" regexp="y" group="LotJVisualSpace" sequence="100" />
   <alias name="manualReset" script="reset" match="vsreset" enabled="y" ignore_case="y" group="LotJVisualSpace" sequence="100" />
-	<alias name="CoordCapStart" match="radar" script="spaceCapStart" enabled="y" group="LotJVisualSpace" ignore_case="y" sequence="100" />
+	<alias name="CoordCapStart" match="rad" script="spaceCapStart" enabled="y" group="LotJVisualSpace" ignore_case="y" sequence="100" />
   <!--alias name="manualwindowskew" script="setval" match="vsset * * * *" enabled="y" regexp="n" ignore_case="y" group="LotJVisualSpace" sequence="100" -->
 
   </aliases>
