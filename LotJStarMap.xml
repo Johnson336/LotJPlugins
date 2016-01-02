@@ -3,7 +3,7 @@
 <!--  Saved on Thursday, July 05, 2012, 1:04 AM   --> 
 <!-- MuClient version 4.73 --> 
 <muclient>
-<plugin name="LotJStarMap" author="@Johnson" id="dd5080a41939faabc233da8f" language="Lua" purpose="Dynamically display a system map with player location overlay" save_state="y" requires="4.73" version="2.16">
+<plugin name="LotJStarMap" author="@Johnson" id="dd5080a41939faabc233da8f" language="Lua" purpose="Dynamically display a system map with player location overlay" save_state="y" requires="4.73" version="2.27">
 <description trim="y">
 <![CDATA[
 
@@ -26,7 +26,9 @@ Type "hidemap" to close map window, or click the X in the upper right to close.
 Hover mouse over planets to see distances to other planets.
 Click on a planet name to calculate a jump using LotJCalc.
 
-Right click anywhere on the background to open an options menu.
+Right click anywhere on the background to open an options menu where you can 
+add/remove systems, customize system colors to your liking, rename the window, 
+change the display font and restore the window to defaults.
 
   ]]> 
   </description>
@@ -828,7 +830,6 @@ function OnPluginInstall ()
 	 font_name = GetVariable("font_name") or default_font_name
    font_size = tonumber(GetVariable("font_size")) or default_font_size
 
-	check(WindowFont (win, font, font_name, font_size, false, false, false, false))
 	
     --- Setup the windows
    SetUpHotspotsAndDraw(true)
@@ -850,6 +851,7 @@ function SetUpHotspotsAndDraw(firstTime)
 		WindowCreate (win, 0, 0, width, height, miniwin.pos_center_all, 0, ColourNameToRGB("black")) -- create windows
 		windowinfo = movewindow.install (win, 6) -- default to 6 (on top right)
 		movewindow.add_drag_handler (win, 0, 0, 0, WindowFontInfo (win, font, 1))
+		check(WindowFont (win, font, font_name, font_size, false, false, false, false))
 		effectiveWidth = math.min(width, GetInfo(281)-windowinfo.window_left)
 		WindowAddHotspot (win, "resize", effectiveWidth-RESIZE_TAG_SIZE, height-RESIZE_TAG_SIZE, effectiveWidth, height, "MouseOver", "CancelMouseOver", "MouseDown", "CancelMouseDown", "MouseUp", "", 6, 0)
 		WindowDragHandler(win, "resize", "ResizeMoveCallback", "ResizeReleaseCallback", 0)
@@ -954,12 +956,12 @@ function right_click_menu (hotspot_id)
 	menustring = menustring.."Add System|>Remove System|"
 	
 	for i, v in ipairs(systems) do
-		menustring = menustring..v.name.."|"
+		menustring = menustring..((v.planet~=nil and v.planet.." - ") or "")..v.name.."|"
 	end
 	menustring = menustring.."<|-|>Change System Color|"
 	
 	for i, v in ipairs(systems) do
-		menustring = menustring..v.name.."|"
+		menustring = menustring..((v.planet~=nil and v.planet.." - ") or "")..v.name.."|"
 	end
 	menustring = menustring.."<|-|"
 	
