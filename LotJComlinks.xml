@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="iso-8859-1" ?> 
+<!DOCTYPE muclient> 
+<!--  Saved on Wednesday, July 25, 2012, 7:14 PM   -->  
+<muclient>
+<plugin name="LotJComlinks" author="@Johnson" id="f12cd407b6087aa408be4efa" language="Lua" purpose="Overlay comlinks with channel info" save_state="y" requires="4.40" version="1.0">
+<description trim="y">
+<![CDATA[ 
+This plugin will passively watch for changes in your comlinks and overlay that information onto comlinks in your inventory.
+  ]]> 
+  </description>
+  </plugin>
+<!--   Get our standard constants   --> 
+	<include name="constants.lua" /> 
+<!--   Triggers    --> 
+<triggers>
+  <trigger match="^You tune (?P<comlink>.*) to channel (?P<channel>.*)\.$" script="storeComlink" regexp="y" enabled="y" group="Comlinks" sequence="100" />
+  <trigger match="^(Current comlink now\:)?(?P<comlink>.*) Frequency\:(?P<channel>.*) Encryption\:(?P<encryption>.*)$" script="storeComlink" regexp="y" enabled="y" group="Comlinks" sequence="100" />
+  <trigger match="^You are carrying\:$" script="enableComlinkInventory" regexp="y" enabled="y" group="Comlinks" sequence="100" />
+  <trigger match="^(.*)$" script="printComlink" regexp="y" enabled="n" group="ComlinkInventory" sequence="100" />
+  <trigger match="^$" script="disableComlinkInventory" regexp="y" enabled="n" group="ComlinkInventory" sequence="100" />
+  <trigger match="^You are using\:$" script="enableComlinkEquipment" regexp="y" enabled="y" group="Comlinks" sequence="100" />
+  <trigger match="^\<(.*)\> (?P<comlink>.*) \(Channel\: (?P<channel>.*)\)$" script="storeComlink" regexp="y" enabled="n" group="ComlinkEquipment" sequence="100" />
+  <trigger match="^$" script="disableComlinkEquipment" regexp="y" enabled="n" group="ComlinkEquipment" sequence="100" />
+  
+</triggers>
+
+<aliases>
+
+  <alias match="comlinkreset" script="resetComlinks" enabled="y" regexp="n" ignore_case="y" sequence="100" />
+
+</aliases>
+<!--   Script    --> 
+<script>
+<![CDATA[
+
+require "serialize"
+comlinks = {}
+loadstring(GetVariable("comlinks") or "")()
+
+function resetComlinks(name, line, args)
+  comlinks = {}
+  OnPluginSaveState()
+  ColourNote("yellow","","Stored comlink data erased.")
+end
+function storeComlink(name, line, args)
+  local comlink = { channel = 0, encryption = 0 }
+  if args.channel ~= nil then
+    comlink.channel = tonumber(args.channel) or 0
+  end
+  if args.encryption ~= nil then
+    comlink.encryption = tonumber(args.encryption) or 0
+  end
+  local name = Trim(string.gsub(args.comlink, '"', ''))
+  comlinks[name] = comlink -- rip out quotation marks
+  -- debug
+  --ColourNote("orange","","Comlink '"..name.."' ("..comlink.channel..","..comlink.encryption..") stored.")
+end
+function enableComlinkInventory(name, line, args)
+  EnableTriggerGroup("ComlinkInventory", true)
+end
+function printComlink(name, line, args, styles)
+  local comlink = comlinks[Trim(string.gsub(line, '"', ''))]
+  if comlink ~= nil then -- found a comlink with stored data
+    DeleteLines(1)
+    for a, b in pairs(styles) do
+      ColourTell (RGBColourToName(b.textcolour), RGBColourToName(b.backcolour), b.text) 
+    end 
+    ColourNote("yellow","","->","gray","","(Channel:","red","",comlink.channel,"gray","",",Encryption:","red","",comlink.encryption,"gray","",")")
+  end
+end
+function disableComlinkInventory(name, line, args)
+  EnableTriggerGroup("ComlinkInventory", false)
+end
+function enableComlinkEquipment(name, line, args)
+  EnableTriggerGroup("ComlinkEquipment", true)
+end
+function disableComlinkEquipment(name, line, args)
+  EnableTriggerGroup("ComlinkEquipment", false)
+end
+
+function OnPluginSaveState()
+  SetVariable("comlinks", serialize.save("comlinks"))
+end
+
+
+  ]]> 
+  </script>
+  </muclient>
+  
+  
