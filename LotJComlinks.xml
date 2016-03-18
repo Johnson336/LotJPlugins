@@ -14,6 +14,7 @@ This plugin will passively watch for changes in your comlinks and overlay that i
 <!--   Triggers    --> 
 <triggers>
   <trigger match="^You tune (?P<comlink>.*) to channel (?P<channel>.*)\.$" script="storeComlink" regexp="y" enabled="y" group="Comlinks" sequence="100" />
+  <trigger match="^You set (?P<comlink>.*) to encryption code (?P<encryption>.*)\.$" script="storeComlink" regexp="y" enabled="y" group="Comlinks" sequence="100" />
   <trigger match="^(Current comlink now\:)?(?P<comlink>.*) Frequency\:(?P<channel>.*) Encryption\:(?P<encryption>.*)$" script="storeComlink" regexp="y" enabled="y" group="Comlinks" sequence="100" />
   <trigger match="^You are carrying\:$" script="enableComlinkInventory" regexp="y" enabled="y" group="Comlinks" sequence="100" />
   <trigger match="^(.*)$" script="printComlink" regexp="y" enabled="n" group="ComlinkInventory" sequence="100" />
