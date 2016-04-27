@@ -121,6 +121,7 @@ function promptGrabStart()
   EnableTrigger("promptGrab", true)
 end
 function promptGrab(name, line, args)
+  EnableTrigger("StartPromptGrab", false)
   EnableTrigger("promptGrab", false)
   if args[1] ~= "" then
     promptString = args[1]
