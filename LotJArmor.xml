@@ -114,6 +114,7 @@ newarmor = {
 bactaCheck = false
 previousBacta = 0
 promptString = GetVariable("promptString") or ""
+re = ""
 
 
 function promptGrabStart()
@@ -151,6 +152,7 @@ function promptGrab(name, line, args)
   promptString = promptString:gsub("%%.", "(.+)?") -- replace all tokens with conditional regexp wildcards
   promptString = "^"..promptString.."$" -- add before and after tokens for regexp prompt
   ColourNote("red","","Prompt cropped to max HP line and converted to regular expression: ","silver","",promptString)
+  re = rex.new(promptString)
 end
 function OnPluginSaveState()
   SetVariable("promptString", promptString)
@@ -158,7 +160,6 @@ end
 
 function OnPluginLineReceived(s) -- we're going to use this to search for prompt lines to check bacta
   if bactaCheck then
-    re = rex.new(promptString)
     local st, e, t = re:match(s)
     if st ~= nil and t ~= nil then -- found prompt string
       if t.maxhp ~= nil and tonumber(t.maxhp) then
