@@ -2,7 +2,7 @@
 <!DOCTYPE muclient> 
 <!--  Saved on Sunday, July 04, 2012, 5:39 AM   -->  
 <muclient>
-<plugin name="LotJArmor" author="@Johnson" id="0bcd44221164545213c36fcf" language="Lua" purpose="Armor Crafting Made Easy" save_state="y" requires="4.40" version="1.81">
+<plugin name="LotJArmor" author="@Johnson" id="0bcd44221164545213c36fcf" language="Lua" purpose="Armor Crafting Made Easy" save_state="y" requires="4.40" version="1.82">
 <description trim="y">
 <![CDATA[ 
 'ArmorHelp'    - To see commands related to automatic armor stitching.
@@ -15,6 +15,8 @@ This script can do several things, and is divided into sections that control eac
 2) Automatic enhancing of armor that's already made.
 3) Automatic crafting of armor from start to finish, including automatic enhancing and automatic stitching.
   -You must have all materials in your inventory before you begin automatic crafting.
+  
+Bactacheck will now grab your current prompt string to correctly figure out your max HP for comparing bacta values in armor.
 
   ]]> 
   </description>
@@ -28,7 +30,8 @@ This script can do several things, and is divided into sections that control eac
 	<trigger name="armorComplete" script="makeNextArmor" match="^You hold up your finished piece of (.*) armor\!$" regexp="y" enabled="n" group="AutoArmor" sequence="100" />
 	<trigger name="ArmorBotting" script="resumeArmorFromAFK" match="You may now bot again." enabled="n" group="AutoArmor" sequence="100" />
 	<trigger name="ArmorOnConnect" script="makeArmor" match="^Show what to whom\?$" enabled="n" regexp="y" group="AutoArmor" omit_from_output="y" omit_from_log="y" sequence="100" />
-	<trigger name="BactaCheck" script="bactaNew" match="[*/*|*/*]*" enabled="n" group="BactaCheck" sequence="100" />
+  <trigger name="StartPromptGrab" script="promptGrabStart" match="Your current prompt string:" enabled="n" regexp="n" sequence="100" />
+  <trigger name="promptGrab" script="promptGrab" match="^(.*)$" enabled="n" regexp="y" sequence="100" />
 	<!-- Armor Enhancing Triggers -->
 	<trigger name="enhanceFailed" script="enhanceArmor" match="^You hold up the enhanced armor only to find that you failed\.$" regexp="y" enabled="n" group="AutoEnhance" sequence="100" />
 	<trigger name="enhanceComplete" script="enhanceNext" match="^You finish adding your (.*) to the armor\.$" regexp="y" enabled="n" group="AutoEnhance" sequence="100" />
@@ -110,6 +113,65 @@ newarmor = {
 	}
 bactaCheck = false
 previousBacta = 0
+promptString = GetVariable("promptString") or ""
+
+
+function promptGrabStart()
+  EnableTrigger("promptGrab", true)
+end
+function promptGrab(name, line, args)
+  EnableTrigger("promptGrab", false)
+  if args[1] ~= "" then
+    promptString = args[1]
+  else
+    ColourNote("red","","Invalid prompt detected, aborting grab procedure!")
+    toggleOff()
+    return
+  end
+  promptString = promptString:gsub("&.", "")  -- rip out color codes
+  
+  local foundMaxHP = promptString:find("%%H") -- position of max HP token
+  if foundMaxHP == nil then -- didn't find max hp prompt token... abort
+    ColourNote("red","","Unable to find max HP prompt token. Please use a prompt with %H somewhere for bactacheck to work.")
+    toggleOff()
+    return
+  end
+  
+  local starting = promptString:reverse():find("_%%", #promptString-foundMaxHP) or 0 -- search string in reverse for first occurrence of newline token before max HP token
+  if starting > 0 then
+    starting = (#promptString - starting)+2
+  end
+  local ending = promptString:find("%%_", foundMaxHP) or #promptString -- search string forward for first occurrence of newline token after max HP token
+  if ending < #promptString then
+    ending = ending - 1
+  end
+  promptString = promptString:sub(starting, ending) -- crop promptString to only the line containing max HP
+  promptString = promptString:gsub("[^%%%a_%s]", "\\%1") -- replace every character that isn't a prompt token with a literal
+  promptString = promptString:gsub("%%H", "(?P<maxhp>.+)") -- replace max HP token with regexp token
+  promptString = promptString:gsub("%%.", "(.+)?") -- replace all tokens with conditional regexp wildcards
+  promptString = "^"..promptString.."$" -- add before and after tokens for regexp prompt
+  ColourNote("red","","Prompt cropped to max HP line and converted to regular expression: ","silver","",promptString)
+end
+function OnPluginSaveState()
+  SetVariable("promptString", promptString)
+end
+
+function OnPluginLineReceived(s) -- we're going to use this to search for prompt lines to check bacta
+  if bactaCheck then
+    re = rex.new(promptString)
+    local st, e, t = re:match(s)
+    if st ~= nil and t ~= nil then -- found prompt string
+      if t.maxhp ~= nil and tonumber(t.maxhp) then
+        -- put stuff here for checking bacta
+        if (math.abs(previousBacta - tonumber(t.maxhp)) > 0) then
+          ColourNote("red","","LotJArmor Bactacheck: ","silver","",math.abs(previousBacta - tonumber(t.maxhp)))
+        end
+        previousBacta = tonumber(t.maxhp)
+      end
+    end
+  end
+  return true -- finish and display the line
+end
 
 function makeArmor(name, line, args)
 	if (armorList[currentPos]) then
@@ -140,6 +202,9 @@ end
 
 function toggleOff(name, line, args)
 	autoArmor = false
+  bactaCheck = false
+  promptString = ""
+  ColourNote("red","","Prompt string cleared.")
 	EnableTriggerGroup("AutoArmor", false)
 	EnableTriggerGroup("AutoAFK", false)
 	Note("AutoArmor deactivated.")
@@ -192,6 +257,7 @@ end
 function clearList(name, line, args)
 	armorList = {}
 	Note("Armor list cleared.")
+  previousBacta = 0
 	currentPos = 0
 	toggleOff()
 end
@@ -591,17 +657,15 @@ function displayNAHelp(name, line, args)
    Note("\n")
 end -- function
 
-function bactaNew(name, line, args)
-	if (math.abs(previousBacta - tonumber(args[2])) > 0) then
-		Note(math.abs(previousBacta - tonumber(args[2])))
-	end
-	previousBacta = tonumber(args[2])
-end
-
 function toggleBactaOn(name, line, args)
 	bactaCheck = true
 	EnableTriggerGroup("BactaCheck", true)
 	Note("BactaCheck activated.")
+  if promptString == "" then -- we need to populate our prompt
+    ColourNote("red","","We need to know the current prompt for bactacheck to work correctly.")
+    Send("prompt")
+    EnableTrigger("StartPromptGrab", true)
+  end
 end
 
 function toggleBactaOff(name, line, args)
