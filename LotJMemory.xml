@@ -14,7 +14,7 @@ LotJMemory v 1.0 by Johnson. Enter 'memhelp' for general command information.
   <include name="constants.lua" /> 
 <!--   Triggers    --> 
 <triggers>
-  <trigger name="chartochar" match="\A(?P<who>.+?) (has come cuts|has a few bruises|is slightly scratched|is in perfect health)\.\n(?P=who) is (?P<what>.+?)\.\Z" script="stripName" regexp="y" enabled="y" lines_to_match="2" multi_line="y" group="LotJMemory" sequence="100" />
+  <trigger name="chartochar" match="\A(?P<who>.+?) (has some cuts|has a few bruises|is slightly scratched|is in perfect health)\.\n(?P=who) is (?P<what>.+?)\.\Z" script="stripName" regexp="y" enabled="y" lines_to_match="2" multi_line="y" group="LotJMemory" sequence="100" />
   <trigger name="idgrab" match="^Player id (?P<idnum>.+?) Player home (.*)$" script="storeID" group="LotJMemory" regexp="y" enabled="y" sequence="100" />
   </triggers>
 <!--   Aliases    --> 
