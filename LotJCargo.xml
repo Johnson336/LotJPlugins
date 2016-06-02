@@ -2,10 +2,12 @@
 <!DOCTYPE muclient> 
 <!--  Saved on Wednesday, July 25, 2012, 7:12 PM   -->  
 <muclient>
-<plugin name="LotJCargo" author="@Johnson, update by @Domovoi" id="b4f195e776cff20d17a1abd2" language="Lua" purpose="Cargo Running Made Easy" save_state="y" requires="4.40" version="1.45">
+<plugin name="LotJCargo" author="@Johnson" id="b4f195e776cff20d17a1abd2" language="Lua" purpose="Cargo Running Made Easy" save_state="y" requires="4.40" version="1.45">
 <description trim="y">
 <![CDATA[ 
 'CargoHelp'      - To see the list of commands associated with this plugin.
+
+Initial contraband features added by Domovoi
 
   ]]> 
   </description>
@@ -36,14 +38,19 @@
 
 	<!-- Automatic cargo triggers -->
 	<trigger name="tradeCargo" script="leftShip" match="^You exit the ship\.$" enabled="n" regexp="y" group="AutoCargo" sequence="100" />
-	<trigger name="soldcargo" script="soldCargo" match="^You sell (.*) units of (.*)\.$" enabled="n" regexp="y" group="AutoCargo" sequence="100" />
+	<trigger name="soldcargo" script="soldCargo" match="^You sell (?P<quantity>.*) units of (?P<resource>.*)\.$" enabled="n" regexp="y" group="AutoCargo" sequence="100" />
 	<trigger name="earnedmoney" script="gainMoney" match="^You earned (.*) credits from the sale and pay (.*) in taxes\.$" enabled="n" regexp="y" group="AutoCargo" sequence="100" />
 	<trigger name="waitSell" script="waitSell" match="^The planets funds can\'t support such a sale\!$" enabled="n" regexp="y" group="AutoCargo" sequence="100" />
-	<trigger name="boughtcargo" script="boughtCargo" match="^You purchased (.*) units of (.*)\.$" enabled="n" regexp="y" group="AutoCargo" sequence="100" />
+	<trigger name="boughtcargo" script="boughtCargo" match="^You purchased (?P<quantity>.*) units of (?P<resource>.*)\.$" enabled="n" regexp="y" group="AutoCargo" sequence="100" />
 	<trigger name="lostmoney" script="loseMoney" match="^It cost you (.*) credits total\, (.*) credits in tax\.$" enabled="n" regexp="y" group="AutoCargo" sequence="100" />
 	<trigger name="jumpCompleteTrigger" match="^Hyperjump complete\.$" script="jumpComplete" group="AutoCargo" enabled="n" regexp="y" sequence="100" />
 	<trigger name="badsale" script="errorSelling" match="^You\'re not carrying any of the resource onboard\!$" group="AutoCargo" enabled="n" regexp="y" sequence="100" />
+  <trigger name="contrasellsuccess" script="soldCargo" match="^You find a contact willing to pay (?P<credits>.*) credits to unload (?P<quantity>.*) units of smuggled (?P<resource>.*)\.$" group="AutoCargo" enabled="n" regexp="y" sequence="100" />
+  <trigger name="contrabuysuccess" script="boughtCargo" match="^You pay (?P<credits>.*) credits to have (?P<quantity>.*) units of smuggled (?P<resource>.*) loaded on to your ship\.$" group="AutoCargo" enabled="n" regexp="y" sequence="100" />
+  <trigger name="contrasellfail" script="contraSellFailed" match="^You fail\.\nYou lose your cargo\!\Z" lines_to_match="2" multi_line="y" group="AutoCargo" enabled="n" regexp="y" sequence="100" />
+  <trigger name="contrabuyfail" script="contraBuyFailed" match="^You fail\.\nYou lose your credits\!\Z" lines_to_match="2" multi_line="y" group="AutoCargo" enabled="n" regexp="y" sequence="100" />
 
+  
 	<!-- Ship manifest triggers -->
   <trigger name="beginShipManifest" script="enableShipManifest" match="^Cargo Readout for (.*)\:$" group="ManifestStart" enabled="n" regexp="y" sequence="100" />
   <trigger name="errorwithmanifest" script="errorShipManifest" match="^Only the owner\/pilot\/copilot may view the cargo for that ship\!$" group="ManifestStart" enabled="n" regexp="y" sequence="100" />
@@ -94,6 +101,9 @@ local amountEarned = 0
 local cycle = true
 local hyperCompleted = false
 local scannedCargo = false
+local lastsoldamount = 0
+local lastsoldresource = ""
+local lastboughtamount = 0
 
 -- Activate some settings to ensure proper functioning
 SetOption("enable_aliases", true)
@@ -216,18 +226,38 @@ function cargoSetupPlanets(name, line, args)
 	end
 end
 
+function contraSellFailed(name, line, args)
+  removeCargo(lastsoldresource, lastsoldamount)
+  buyRemaining()
+end
+
+function contraBuyFailed(name, line, args)
+  -- need to add a line here to reduce amountearned or efficiency will be off!
+  buyRemaining()
+end
+
 function soldCargo(name, list, args)
-	removeCargo(args[2], tonumber(args[1]))
+  if args.quantity ~= nil and args.resource ~= nil then
+    removeCargo(args.resource, tonumber(args.quantity))
+    if args.credits ~= nil then
+      amountEarned = amountEarned + tonumber(args.credits)
+    end
+  end
 	buyRemaining()
 end
 
 function boughtCargo(name, list, args)
-	addCargo(args[2], tonumber(args[1]))
+  if args.quantity ~= nil and args.resource ~= nil then
+    addCargo(args.resource, tonumber(args.quantity))
+    if args.credits ~= nil then
+      amountEarned = amountEarned - tonumber(args.credits)
+    end
+  end
 	leftShip()
 end
 
 function removeCargo(cargotype, cargoamount)
-  if not cargotype or cargotype == "" or not cargoamount or cargoamount == "" then
+  if cargotype == nil or cargoamount == nil then
     return
   end
   local found = false
@@ -253,7 +283,7 @@ end
       
 -- usage: addcargo(name, amount)
 function addCargo(cargotype, cargoamount)
-  if not cargotype or cargotype == "" or not cargoamount or cargoamount == "" then
+  if cargotype == nil or cargoamount == nil then
     return
   end
   local amounttoadd = tonumber(cargoamount)
@@ -408,11 +438,15 @@ end
 function sellOnePod()
   for i, v in ipairs(ship.cargo) do
     if v.held > 0 and string.lower(v.name) ~= string.lower(getResource()) then -- pod is carrying something we don't want
-      if string.lower(getContraband()) == "yes" then
+      if getContraband():lower() == "yes" or getContraband():lower() == "y" then
       -- we're using sellcontraband
          Send("sellcontraband \""..ship.name.."\" \""..v.name.."\" "..v.held)
+         lastsoldamount = v.held
+         lastsoldresource = v.name
       else
          Send("sellcargo \""..ship.name.."\" \""..v.name.."\" "..v.held) -- sell the contents of the pod
+         lastsoldamount = v.held
+         lastsoldresource = v.name
       end
       return true -- abort out so we don't sell everything at once
     end
@@ -428,7 +462,7 @@ function buyOnePod()
       if (v.name == "(Empty)" or string.lower(v.name) == string.lower(getResource())) then -- our container is either empty or contains the resource we need
         needed = v.cap - v.held -- we need to buy remaining amount
         if needed > 0 then
-         if string.lower(getContraband()) == "yes" then
+         if getContraband():lower() == "yes" or getContraband():lower() == "y" then
             Send("buycontraband \""..ship.name.."\" \""..getResource().."\" "..needed)
          else
             Send("buycargo \""..ship.name.."\" \""..getResource().."\" "..needed)
@@ -445,7 +479,7 @@ function buyRemaining()
   if getResource() ~= "" and getResource() ~= "none" then -- we need to buy something
     local needed = getCargoCapacity() - getCargoCarrying()
     if needed > 0 then
-      if string.lower(getContraband()) == "yes" then
+      if getContraband():lower() == "yes" or getContraband():lower() == "y" then
          Send("buycontraband \""..ship.name.."\" \""..getResource().."\" "..needed)
       else
          Send("buycargo \""..ship.name.."\" \""..getResource().."\" "..needed)
