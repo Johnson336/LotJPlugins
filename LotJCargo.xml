@@ -2,7 +2,7 @@
 <!DOCTYPE muclient> 
 <!--  Saved on Wednesday, July 25, 2012, 7:12 PM   -->  
 <muclient>
-<plugin name="LotJCargo" author="@Johnson" id="b4f195e776cff20d17a1abd2" language="Lua" purpose="Cargo Running Made Easy" save_state="y" requires="4.40" version="1.45">
+<plugin name="LotJCargo" author="@Johnson, update by @Domovoi" id="b4f195e776cff20d17a1abd2" language="Lua" purpose="Cargo Running Made Easy" save_state="y" requires="4.40" version="1.45">
 <description trim="y">
 <![CDATA[ 
 'CargoHelp'      - To see the list of commands associated with this plugin.
@@ -166,11 +166,13 @@ function cargoSetup() -- old setup function, replacement planned
 	for i = 1, numWorlds, 1 do
 		planet.name = utils.inputbox("Name of world " .. i .. "?", "Name of world " .. i, "Name", "Courier", 9)
 		planet.resource = utils.inputbox("Resource to be bought on world " .. i .. "?", "Resource of world " .. i, "Resource", "Courier", 9)
+      planet.contraband = utils.inputbox("Do you need/want to use buy/sellcontraband?", "Use Buy/Sellcontraband", "No", "Courier", 9)
 		cPlanets[#cPlanets + 1] = planet
 		planet = {}
 	end
 	ship.name = utils.inputbox("Name of cargo vessel?", "Cargo vessel", "", "Courier", 9)
 end
+
 function cargoSetupShipName(name, line, args)
   if not args or args[1] == "" then
     ColourNote("yellow","","Cargo ship set to '"..ship.name.."'")
@@ -179,6 +181,7 @@ function cargoSetupShipName(name, line, args)
   ship.name = Trim(args[1])
   ColourNote("yellow","","Cargo ship set to '"..ship.name.."'")
 end
+
 function cargoSetupPlanets(name, line, args)
   if not args or args[1] == "" then
     ColourNote("red","","Usage: cargoPlanets <planet1>,<resource1>,<planet2>,<resource2>,...")
@@ -212,6 +215,7 @@ function cargoSetupPlanets(name, line, args)
 	  end
 	end
 end
+
 function soldCargo(name, list, args)
 	removeCargo(args[2], tonumber(args[1]))
 	buyRemaining()
@@ -404,7 +408,12 @@ end
 function sellOnePod()
   for i, v in ipairs(ship.cargo) do
     if v.held > 0 and string.lower(v.name) ~= string.lower(getResource()) then -- pod is carrying something we don't want
-      Send("sellcargo \""..ship.name.."\" \""..v.name.."\" "..v.held) -- sell the contents of the pod
+      if string.lower(getContraband()) == "yes" then
+      -- we're using sellcontraband
+         Send("sellcontraband \""..ship.name.."\" \""..v.name.."\" "..v.held)
+      else
+         Send("sellcargo \""..ship.name.."\" \""..v.name.."\" "..v.held) -- sell the contents of the pod
+      end
       return true -- abort out so we don't sell everything at once
     end
   end
@@ -419,7 +428,11 @@ function buyOnePod()
       if (v.name == "(Empty)" or string.lower(v.name) == string.lower(getResource())) then -- our container is either empty or contains the resource we need
         needed = v.cap - v.held -- we need to buy remaining amount
         if needed > 0 then
-          Send("buycargo \""..ship.name.."\" \""..getResource().."\" "..needed)
+         if string.lower(getContraband()) == "yes" then
+            Send("buycontraband \""..ship.name.."\" \""..getResource().."\" "..needed)
+         else
+            Send("buycargo \""..ship.name.."\" \""..getResource().."\" "..needed)
+         end
           return true-- abort out so we don't buy everything at once
         end
       end
@@ -432,7 +445,11 @@ function buyRemaining()
   if getResource() ~= "" and getResource() ~= "none" then -- we need to buy something
     local needed = getCargoCapacity() - getCargoCarrying()
     if needed > 0 then
-      Send("buycargo \""..ship.name.."\" \""..getResource().."\" "..needed)
+      if string.lower(getContraband()) == "yes" then
+         Send("buycontraband \""..ship.name.."\" \""..getResource().."\" "..needed)
+      else
+         Send("buycargo \""..ship.name.."\" \""..getResource().."\" "..needed)
+      end
       return true -- we bought something
     end
   end
@@ -537,6 +554,13 @@ function getPlanet()
     return ""
   end
   return cPlanets[cVar]
+end
+
+function getContraband()
+  if #cPlanets == 0 then
+    return ""
+  end
+  return cPlanets[cVar].contraband
 end
 
 function toggleACOn()
