@@ -5,7 +5,23 @@
 <plugin name="LotJCargo" author="@Johnson" id="b4f195e776cff20d17a1abd2" language="Lua" purpose="Cargo Running Made Easy" save_state="y" requires="4.40" version="1.46">
 <description trim="y">
 <![CDATA[ 
-'CargoHelp'      - To see the list of commands associated with this plugin.
+
+Usage:
+
+'cargoSetup'      - Use this to set up your cargo route with prompts.
+      - or -
+'cargoPlanets'    - Use this to set up your cargo route with a single command.
+'cargoShip <ship>'- Use this to assign your cargo ship.
+
+      - then -
+      
+'cargoStart'      - Use this while standing outside your ship to begin cargo running.
+
+      - misc - 
+
+'cargoClear'     - Use this to reset all cargo settings.
+'cargoAuto'      - Use this to toggle the script, useful for pausing and resuming where you left off.
+'cargoHelp'      - To see the list of commands associated with this plugin.
 
 Initial contraband features added by Domovoi
 
@@ -983,7 +999,7 @@ local commands = { { name = "cargoScan", desc = "Scans every system in the galax
                { name = "cargoClear", desc = "Clears all cargo running settings.",
                         args = { }
                           },
-               { name = "cargoEfficiency", desc = "Displays session statistical information.",
+               { name = "cargoEfficiency", desc = "Displays some stats to show how pro your cargo running skills are.",
                         args = { }
                           },
                { name = "cargoHelp", desc = "Displays this help file.",
