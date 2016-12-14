@@ -242,6 +242,10 @@ function calcPlanet(name, list, args)
 	if (planetName == "") then
 		planetName = utils.inputbox("Planet to fly to?", "Planet", "planet", "Courier", 9)
 	end
+  if not planetName then
+    ColourNote("red","","Cancel detected, aborting.")
+    return
+  end
 	Execute("calc " .. planetName)
 end		
 
@@ -265,14 +269,27 @@ function finishFlight(name, list, args)
 		Note("Planet name: '" .. planetName .. "'")
 	end
 	toggleFlyOn()
-	if (shipName == "") then
+	if (shipName == "" or not shipName) then
 		shipName = utils.inputbox("What ship are you in?", "Ship name", "", "Courier", 9)
+    if not shipName then
+      ColourNote("red","","Cancel detected, aborting.")
+      return
+    end
 	end
-	if (shipLeaveDirs == "") then
+	if (shipLeaveDirs == ""or not shipLeaveDirs) then
 		shipLeaveDirs = utils.inputbox("Dirs to leave ship?", "Exit", "", "Courier", 9)
+    if not shipLeaveDirs then
+      ColourNote("red","","Cancel detected, aborting.")
+      return
+    end
 	end
-	if (landPreference == -1) then
-		landPreference = tonumber(utils.inputbox("Preferred landing site at destination planet? (Numbered from top-down, 0 for automatic landing)", "Landing site", "0", "Courier", 9))
+	if (landPreference == -1 or not landPreference) then
+    local num = utils.inputbox("Preferred landing site at destination planet? (Numbered from top-down, 0 for automatic landing)", "Landing site", "0", "Courier", 9)
+    if not num then
+      ColourNote("red","","Cancel detected, aborting.")
+      return
+    end
+		landPreference = tonumber(num)
 	end
 end
 
@@ -281,6 +298,10 @@ function beginFlight(name, list, args)
 		planetName = Trim(args[1])
 	else
 		planetName = utils.inputbox("Enter planet name to fly to:", "Destination", "Planet", "Courier", 9)
+    if not planetName then
+      ColourNote("red","","Cancel detected, aborting.")
+      return
+    end
 	end
 	enterShip()
 	toCockpit()
@@ -291,16 +312,30 @@ function beginFlight(name, list, args)
 	Note("Flying to: '" .. planetName .. "'")
 	toggleFlyOn()
 	if (landPreference == -1) then
-		landPreference = tonumber(utils.inputbox("Preferred landing site at destination planet? (Numbered from top-down, 0 for automatic landing)", "Landing site", "0", "Courier", 9))
+    local num = utils.inputbox("Preferred landing site at destination planet? (Numbered from top-down, 0 for automatic landing)", "Landing site", "0", "Courier", 9)
+		if not num then
+      ColourNote("red","","Cancel detected, aborting.")
+      return
+    end
+    landPreference = tonumber(num)
 	end
 end
 
 function enterShip(name, list, args)
-	if (shipName == "") then
+	if (shipName == "" or not shipName) then
 		shipName = utils.inputbox("Ship to be flown?", "Shipname", "shipname", "Courier", 9)
+    if not shipName then
+      ColourNote("red","","Cancel detected, aborting.")
+      return
+    end
 	end
 	if (hatchCode == -1) then
-		hatchCode = tonumber(utils.inputbox("Hatch code? (0 for none)", "Hatchcode", "0", "Courier", 9))
+    local num = utils.inputbox("Hatch code? (0 for none)", "Hatchcode", "0", "Courier", 9)
+    if not num then
+      ColourNote("red","","Cancel detected, aborting.")
+      return
+    end
+		hatchCode = tonumber(num)
 	end
 	if (hatchCode < 1) then
 		Send("openhatch " .. shipName)
@@ -312,10 +347,10 @@ function enterShip(name, list, args)
 end
 
 function toCockpit(name, list, args)
-	if (shipEnterDirs == "") then
+	if (shipEnterDirs == "" or not shipEnterDirs) then
 		shipEnterDirs = utils.inputbox("Dirs to cockpit?\nFormat options:\nSpaces: E U N\nCommas: E,U,N\nSemi-colons: E;U;N\n1-Room Ship: none", "Cockpit", "", "Courier", 9)
 	end
-	if (shipLeaveDirs == "") then
+	if (shipLeaveDirs == "" or not shipLeaveDirs) then
 		shipLeaveDirs = utils.inputbox("Dirs to leave ship?\nFormat options:\nSpaces: S D W\nCommas: S,D,W\nSemi-colons: S;D;W\n1-Room Ship: none", "Exit", "", "Courier", 9)
 	end
 	

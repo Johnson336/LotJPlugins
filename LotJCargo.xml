@@ -196,10 +196,18 @@ function cargoSetup() -- old setup function, replacement planned
 		planet.name = utils.inputbox("Name of world " .. i .. "?", "Name of world " .. i, "Name", "Courier", 9)
 		planet.resource = utils.inputbox("Resource to be bought on world " .. i .. "?", "Resource of world " .. i, "Resource", "Courier", 9)
     planet.contraband = utils.inputbox("Do you need/want to use buy/sellcontraband?", "Use Buy/Sellcontraband", "No", "Courier", 9)
+    if not planet.name or not planet.resource or not planet.contraband then
+      ColourNote("red","","Cancel detected, aborting.")
+      return
+    end
 		cPlanets[#cPlanets + 1] = planet
 		planet = {}
 	end
 	ship.name = utils.inputbox("Name of cargo vessel?", "Cargo vessel", "", "Courier", 9)
+  if not ship.name then
+    ColourNote("red","","Cancel detected, aborting.")
+    return
+  end
 end
 
 function cargoSetupShipName(name, line, args)

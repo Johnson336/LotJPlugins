@@ -40,14 +40,17 @@ The code will automatically go through the list, studying everything at once or 
   <alias name="StartStudying" script="StartStudying" match="studystart" enabled="y" group="Studying" send_to="1" ignore_case="y" sequence="100" /> 
   <alias name="SkipItem" script="studyNext" match="studyskip" enabled="y" group="Studying" send_to="1" sequence="100" /> 
   <alias name="ToggleAutoStudyStatus" script="SetStudyStatus" match="studyauto" enabled="y" group="StudyToggle" send_to="1" ignore_case="y" sequence="100" /> 
-  <alias name="Study" script="study" match="^study( +(.*))?$" regexp="y" enabled="y" group="Studying" ignore_case="y" sequence="100" />
+  <alias name="Study" script="studyArg" match="^study(?:\s+(.*))?$" regexp="y" enabled="y" group="Studying" ignore_case="y" sequence="100" />
   <alias name="StudyContainer" script="setContainer" match="^studycontainer( +(.*))?$" regexp="y" enabled="y" group="Studying" ignore_case="y" sequence="100" />
 
   </aliases>
 <!--   Script    --> 
 <script>
-<![CDATA[ studyList = {}
+<![CDATA[ 
+
+studyList = {}
 studyStatus = false
+studyitem = ""
 studyMode = "single"
 currentPos = 0
 studyNum = 0
@@ -136,13 +139,28 @@ function setContainer(name, line, args)
 	end
 end
 
+
+
+function studyArg(name, line, args)
+  args = utils.split(args[1], " ")
+  if args[1] ~= nil and args[1] ~= "" and #args == 1 then -- entered one argument, start studying that item
+		studyitem = Trim(args[1])
+  elseif studyitem ~= "" then
+    -- do nothing here so we will fall back to study()
+  elseif studyList[currentPos] then -- no argument, study list has valid item, study it
+    studyitem = studyList[currentPos]
+  else -- no argument, no valid item in list
+    Send("study "..table.concat(args, " ")) -- pass through whatever we typed here
+    return
+  end
+  study()
+end
+
+
 function study(name, line, args)
-	if (studyList[currentPos]) then
-		Send("study ".. studyList[currentPos])
-	else
-		ColourNote("red","","Study list empty, aborting!")
-		toggleOff()
-	end
+  if studyitem ~= "" and studyitem ~= nil then
+    Send("study ".. studyitem)
+  end
 end
 
 function finishedItem()
@@ -188,10 +206,11 @@ function studyNext(name, line, args)
 			StartStudying()
 		end
 	else                                    -- middle of list
-	if (studyContainer ~= "") then          -- if you're using a container
-		Send("get " .. studyList[currentPos] .. " " .. studyContainer)  -- get next item from container
-	end
-	study()  -- finally, study item
+    if (studyContainer ~= "") then          -- if you're using a container
+      Send("get " .. studyList[currentPos] .. " " .. studyContainer)  -- get next item from container
+    end
+    studyitem = studyList[currentPos]
+    study()  -- finally, study item
 	end
 end
 

@@ -26,10 +26,10 @@ Bactacheck will now grab your current prompt string to correctly figure out your
 <!--   Triggers    --> 
 <triggers>
 	<!-- Armor Stitching Triggers -->
-	<trigger name="stitchComplete" script="makeArmor" match="^You finish working on (.*)\.$" regexp="y" enabled="n" group="AutoArmor" sequence="100" />
+	<trigger name="stitchComplete" script="stitch" match="^You finish working on (.*)\.$" regexp="y" enabled="n" group="AutoArmor" sequence="100" />
 	<trigger name="armorComplete" script="makeNextArmor" match="^You hold up your finished piece of (.*) armor\!$" regexp="y" enabled="n" group="AutoArmor" sequence="100" />
 	<trigger name="ArmorBotting" script="resumeArmorFromAFK" match="You may now bot again." enabled="n" group="AutoArmor" sequence="100" />
-	<trigger name="ArmorOnConnect" script="makeArmor" match="^Show what to whom\?$" enabled="n" regexp="y" group="AutoArmor" omit_from_output="y" omit_from_log="y" sequence="100" />
+	<trigger name="ArmorOnConnect" script="stitch" match="^Show what to whom\?$" enabled="n" regexp="y" group="AutoArmor" omit_from_output="y" omit_from_log="y" sequence="100" />
   <trigger name="StartPromptGrab" script="promptGrabStart" match="Your current prompt string:" enabled="n" regexp="n" sequence="100" />
   <trigger name="promptGrab" script="promptGrab" match="^(.*)$" enabled="n" regexp="y" sequence="100" />
 	<!-- Armor Enhancing Triggers -->
@@ -58,7 +58,7 @@ Bactacheck will now grab your current prompt string to correctly figure out your
 	<alias name="ArmorAuto" script="armorAuto" match="^armorAuto( +(.*))?$" enabled="y" group="AutoArmorCmd" regexp="y" ignore_case="y" sequence="100" />
 	<alias name="ArmorList" script="displayList" match="armorList" enabled="y" group="AutoArmorCmd" send_to="1" ignore_case="y" sequence="100" />
 	<alias name="ArmorStart" script="armorStart" match="armorStart" enabled="y" group="AutoArmorCmd" send_to="1" ignore_case="y" sequence="100" />
-	<alias name="makearmor" script="makeArmor" match="^makearmor( +(.*))?$" enabled="y" group="AutoArmor" regexp="y" ignore_case="y" sequence="100" /> 
+	<alias name="makearmor" script="makeArmor" match="^makearmor(?:\s+(.*))?$" enabled="y" group="AutoArmor" regexp="y" ignore_case="y" sequence="100" /> 
 	<alias name="makeNextArmor" script="makeNextArmor" match="armorNext" enabled="y" group="AutoArmorCmd" ignore_case="y" send_to="1" sequence="100" />
 	<alias name="DisplayArmorHelp" script="displayArmorHelp" match="armorhelp" enabled="y" group="AutoArmorCmd" ignore_case="y" send_to="1" sequence="100" />
 	<alias name="BactaCheck" script="switchBacta" match="^bactaCheck( +(.*))?$" enabled="y" group="AutoArmorCmd" regexp="y" ignore_case="y" sequence="100" />
@@ -88,8 +88,10 @@ Bactacheck will now grab your current prompt string to correctly figure out your
 <!--   Script    --> 
 <script>
 <![CDATA[ 
+
 armorList = {}
 currentPos = 1
+stitching = ""
 autoArmor = false
 enhanceList = {}
 autoEnhance = false
@@ -176,12 +178,24 @@ function OnPluginLineReceived(s) -- we're going to use this to search for prompt
 end
 
 function makeArmor(name, line, args)
-	if (armorList[currentPos]) then
-		Send("makearmor ".. armorList[currentPos])
-	else
-		Note("Armor list empty, aborting!")
-		toggleOff()
-	end
+  args = utils.split(args[1], " ")
+  if args[1] ~= nil and args[1] ~= "" and #args == 1 then -- entered one argument, start stitching that item
+		stitching = Trim(args[1])
+  elseif stitching ~= "" then
+    -- do nothing here so we will fall back to stitch()
+  elseif armorList[currentPos] then -- no argument, armor list has valid item, stitch it
+    stitching = armorList[currentPos]
+  else -- no argument, no valid item in list
+    Send("makearmor "..table.concat(args, " ")) -- pass through whatever we typed here
+    return
+  end
+  stitch()
+end
+
+function stitch(name, line, args)
+  if stitching ~= "" and stitching ~= nil then
+    Send("makearmor ".. stitching)
+  end
 end
 
 function armorStart(name, line, args)
@@ -226,7 +240,8 @@ function makeNextArmor(name, line, args)
 		Note("Armormaking complete.")      -- finished
 		toggleOff()
 	else                                    -- middle of list
-		makeArmor()  -- finally, make armor
+		stitching = armorList[currentPos]
+    stitch()    -- finally, make armor
 	end
 end
 
@@ -275,7 +290,7 @@ function resumeArmorFromAFK(name, line, args)
 		Send("afk")
 	end
 	Send("bot start")
-	makeArmor()
+	stitch()
 end
 
 function displayList(name, line, args)
@@ -538,6 +553,13 @@ function newArmorAdd(name, line, args)
 	newarmor.keyword  = utils.inputbox("Keyword for armor?", "Keyword", "armor", "Courier", 9)
 	newarmor.enhance  = utils.inputbox("Autoenhancing?", "Enhance?", "yes", "Courier", 9)
 	newarmor.work     = utils.inputbox("Autostitching?", "Stitch?", "yes", "Courier", 9)
+  
+  if not newarmor.material or not newarmor.wearloc or not newarmor.cover or not newarmor.desc or not newarmor.restring
+      or not newarmor.underlay or not newarmor.coating or not newarmor.keyword or not newarmor.enhance or not newarmor.work then
+    ColourNote("red","","Cancel detected, aborting.")
+    return
+  end
+  
 	if ((newarmor.underlay ~= "") and (newarmor.enhance == "yes")) then
 		Execute("eadd " .. newarmor.keyword .. " " .. newarmor.underlay)
 	end
