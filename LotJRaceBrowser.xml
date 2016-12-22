@@ -416,7 +416,7 @@ end
 function getRaceStat(r, s)
   if r[s] ~= nil then
     if s=="price" or s=="deposit" then -- normalize price and deposit to be in line with stats
-      return r[s]/1000
+      return -r[s]/1000
     elseif s=="apponly" then -- convert apponly into a number
       return ((r[s]=="Yes" and 10) or 0)
     elseif s=="ac" then -- convert ac to positive and normalize
