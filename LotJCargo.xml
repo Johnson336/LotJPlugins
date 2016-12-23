@@ -56,7 +56,7 @@ Initial contraband features added by Domovoi
 	<trigger name="tradeCargo" script="leftShip" match="^You exit the ship\.$" enabled="n" regexp="y" group="AutoCargo" sequence="100" />
 	<trigger name="soldcargo" script="soldCargo" match="^You sell (?P<quantity>.*) units of (?P<resource>.*)\.$" enabled="n" regexp="y" group="AutoCargo" sequence="100" />
 	<trigger name="earnedmoney" script="gainMoney" match="^You earned (.*) credits from the sale and pay (.*) in taxes\.$" enabled="n" regexp="y" group="AutoCargo" sequence="100" />
-	<trigger name="waitSell" script="waitSell" match="^The planets funds can\'t support such a sale\!$" enabled="n" regexp="y" group="AutoCargo" sequence="100" />
+	<trigger name="waitSell" script="waitSell" match="^The planet\'s funds can\'t support such a sale\!$" enabled="n" regexp="y" group="AutoCargo" sequence="100" />
 	<trigger name="boughtcargo" script="boughtCargo" match="^You purchased (?P<quantity>.*) units of (?P<resource>.*)\.$" enabled="n" regexp="y" group="AutoCargo" sequence="100" />
 	<trigger name="lostmoney" script="loseMoney" match="^It cost you (.*) credits total\, (.*) credits in tax\.$" enabled="n" regexp="y" group="AutoCargo" sequence="100" />
 	<trigger name="jumpCompleteTrigger" match="^Hyperjump complete\.$" script="jumpComplete" group="AutoCargo" enabled="n" regexp="y" sequence="100" />
