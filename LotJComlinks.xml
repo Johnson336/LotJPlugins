@@ -44,14 +44,19 @@ function resetComlinks(name, line, args)
   ColourNote("yellow","","Stored comlink data erased.")
 end
 function storeComlink(name, line, args)
-  local comlink = { channel = 0, encryption = 0 }
-  if args.channel ~= nil then
-    comlink.channel = tonumber(args.channel) or 0
-  end
-  if args.encryption ~= nil then
-    comlink.encryption = tonumber(args.encryption) or 0
-  end
   local name = Trim(string.gsub(args.comlink, '"', ''))
+  local comlink = { channel = 0, encryption = 0 }
+  comlink = comlinks[name] or comlink -- load an existing comlink or make a new one
+  if args.channel ~= nil then -- got a channel
+    if comlink.channel ~= args.channel then -- new channel is different than existing channel
+      comlink.channel = tonumber(args.channel) or 0
+    end
+  end
+  if args.encryption ~= nil then -- got an encryption
+    if comlink.encryption ~= args.encryption then -- new encryption is different than existing
+      comlink.encryption = tonumber(args.encryption) or 0
+    end
+  end
   comlinks[name] = comlink -- rip out quotation marks
   -- debug
   --ColourNote("orange","","Comlink '"..name.."' ("..comlink.channel..","..comlink.encryption..") stored.")
