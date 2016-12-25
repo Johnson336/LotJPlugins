@@ -150,7 +150,8 @@ end
 function raceClick()
   hottop = WindowHotspotInfo(win, "leftbackground", 2)
   clickpos = WindowInfo(win, 15)
-  raceIndex = math.floor((clickpos-hottop)/raceLineHeight)+raceDisplayedStart  
+  raceIndex = math.floor((clickpos-hottop)/raceLineHeight)+raceDisplayedStart
+  --Note("tFit: "..textFit.." tStart: "..textStart.." eEnd: "..textEnd.." #text: "..#text)
   updateSelectedRace()
 end
 
@@ -160,7 +161,7 @@ function updateRaceText()
     if race.price == nil or race.deposit==nil or race.language==nil or race.ac==nil or race.hp==nil or race.apponly==nil or race.str==nil or race.dex==nil or race.con==nil or race.int==nil or race.wis==nil or race.cha==nil or race.frc==nil or race.lck==nil or race.erarestrict==nil then
       -- tried to access while still scanning or invalid scan data
       addText( {"red","Either your race data is invalid or scan is still underway..."}, font, "center")
-      textEnd = math.min(textFit, #text)
+      textEnd = math.min(#text, textStart+textFit-2)
       return
     end
     if race ~= nil then
@@ -203,7 +204,7 @@ function updateRaceText()
         end
       end
 
-    textEnd = math.min(textFit, #text)
+    textEnd = math.min(#text, textStart+textFit-2)
     end
   end
   
@@ -218,7 +219,6 @@ function drawText()
   --textEnd = math.min(textFit, #text)
   local posy = titleHeight
   local bound = { left = config.split+2, top = titleHeight, right = config.width-SCROLL_BAR_WIDTH, bot = config.height-2 } -- valid bounding box for drawing
-
 
   if #text >= 1 then
     for i = textStart, textEnd do
@@ -859,7 +859,7 @@ function ScrollerMoveCallback(flags, hotspot_id)
       textEnd = #text
     else
       textStart = math.max(1,math.floor((barPos2-SCROLL_BAR_WIDTH-titleHeight)/(SCROLL_BAR_HEIGHT/totalSteps2)+1))
-      textEnd = math.min(textStart + textFit-2, #text)
+      textEnd = math.min(#text, textStart+textFit-2)
     end
   end
   scheduleRedraw()
@@ -1196,10 +1196,10 @@ function SetUpHotspotsAndDraw(firstTime)
   raceDisplayedStart = 1
   raceDisplayedEnd = math.min(racesFit, #races)
   -- right window
-  textFit = math.ceil((config.height-titleHeight-4)/textLineHeight)
+  textFit = math.ceil((config.height-titleHeight)/textLineHeight)
   
   textStart = 1
-  textEnd = math.min(textFit, #text)
+  textEnd = math.min(#text, textFit)
     
   redraw_scheduled = true
   drawWindows()
