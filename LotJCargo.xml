@@ -192,7 +192,7 @@ function cargoSetup() -- old setup function, replacement planned
 	cPlanets = {}
 	local planet = {}
 	local numWorlds = tonumber(utils.inputbox("Number of worlds on cargo route?", "Number", "2", "Courier", 9))
-	for i = 1, numWorlds, 1 do
+	for i = 1, (numWorlds or 0), 1 do
 		planet.name = utils.inputbox("Name of world " .. i .. "?", "Name of world " .. i, "Name", "Courier", 9)
 		planet.resource = utils.inputbox("Resource to be bought on world " .. i .. "?", "Resource of world " .. i, "Resource", "Courier", 9)
     planet.contraband = utils.inputbox("Do you need/want to use buy/sellcontraband?", "Use Buy/Sellcontraband", "No", "Courier", 9)
@@ -533,7 +533,7 @@ function cargoStart()
 	  ColourNote("red","","You must assign your cargo route using cargosetup or cargoplanets <planet1>,<resource1>,<trafficking>,<planet2>,<resource2>,<trafficking>...")
 	  return
 	end
-	if not ship.cargo or not scannedCargo then
+	if ((not ship.cargo or not scannedCargo) and getResource():lower()~="none") then -- make it possible to run script without any cargo by entering 'none' into resource
 	  ColourNote("yellow","","Retrieving ship's cargo manifest for you...")
 	  beginManifest()
 	  return
@@ -659,7 +659,7 @@ function listSystems(name, list, args)
 end
 
 function cargoClear(name, list, args)
-  ship = {}
+  ship = { name = "", cargo = {} }
 	cPlanets = {}
 	startTime = 0
 	amountEarned = 0
