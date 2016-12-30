@@ -117,7 +117,6 @@ TEXT_INSET = 5
 -- where to store the chat line
 lines = {}  -- table of recent chat lines
 rawlines = {}
-
 lineStart = ""
 lineEnd = ""
 WINDOW_LINES = ""
