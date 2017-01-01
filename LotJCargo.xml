@@ -2,7 +2,7 @@
 <!DOCTYPE muclient> 
 <!--  Saved on Wednesday, July 25, 2012, 7:12 PM   -->  
 <muclient>
-<plugin name="LotJCargo" author="@Johnson" id="b4f195e776cff20d17a1abd2" language="Lua" purpose="Cargo Running Made Easy" save_state="y" requires="4.40" version="1.46">
+<plugin name="LotJCargo" author="@Johnson" id="b4f195e776cff20d17a1abd2" language="Lua" purpose="Cargo Running Made Easy" save_state="y" requires="4.40" version="1.47">
 <description trim="y">
 <![CDATA[ 
 
@@ -89,9 +89,10 @@ Initial contraband features added by Domovoi
 	<alias name="CargoClear" script="cargoClear" match="cargoclear" enabled="y" group="LotJCargo" ignore_case="y" send_to="1" sequence="100" />
 	<alias name="Cargoefficiency" script="displayEfficiency" match="cargoefficiency" enabled="y" group="LotJCargo" ignore_case="y" sequence="100" />
 	<alias name="CargoCycle" script="toggleCycle" match="cargocycle" enabled="y" group="LotJCargo" ignore_case="y" sequence="100" />
-	<alias name="cargosetupplanetcmd" script="cargoSetupPlanets" match="cargoplanets(\s*(.*))?" enabled="y" regexp="y" group="LotJCargo" ignore_case="y" sequence="100" />
+	<alias name="cargosetupplanetcmd" script="cargoSetupPlanets" match="^cargoplanets(\s*(.*))?$" enabled="y" regexp="y" group="LotJCargo" ignore_case="y" sequence="100" />
 	<alias name="cargosetupshipcmd" script="cargoSetupShipName" match="cargoship *" enabled="y" group="LotJCargo" ignore_case="y" sequence="100" />
 	<alias name="cargomanifestcmd" script="cargoManifest" match="cargomanifest" enabled="y" group="LotJCargo" ignore_case="y" sequence="100" />
+  <alias script="flyNext" match="cargonext" enabled="y" group="LotJCargo" ignore_case="y" sequence="100" />
 </aliases>
 <timers>
 	<timer name="EfficiencyTimer" script="displayEfficiency" enabled="n" minute="5" group="AutoCargo" />
@@ -512,6 +513,8 @@ function buyRemaining()
       end
       return true -- we bought something
     end
+  else -- not buying anything, continue selling
+    leftShip()
   end
   return false -- we didn't buy anything
 end
@@ -533,7 +536,7 @@ function cargoStart()
 	  ColourNote("red","","You must assign your cargo route using cargosetup or cargoplanets <planet1>,<resource1>,<trafficking>,<planet2>,<resource2>,<trafficking>...")
 	  return
 	end
-	if ((not ship.cargo or not scannedCargo) and getResource():lower()~="none") then -- make it possible to run script without any cargo by entering 'none' into resource
+	if ((not ship.cargo or not scannedCargo) and checkForResources()) then -- make it possible to run script without any cargo by entering 'none' into every resource
 	  ColourNote("yellow","","Retrieving ship's cargo manifest for you...")
 	  beginManifest()
 	  return
@@ -543,8 +546,19 @@ function cargoStart()
 	beginTradingStage() -- sell off stuff we don't want and refill the ship
 end
 
+function checkForResources()
+  for i, v in pairs(cPlanets) do
+    if v.resource:lower() ~= "none" and v.resource ~= "" then
+      return true
+    end
+  end
+  return false
+end
+
 function flyNext()
-  buyRemaining() -- fill up the ship (without selling it off since hyperCompleted is now false)
+  if getResource() ~= "" and getResource() ~= "none" then
+    buyRemaining() -- fill up the ship (without selling it off since hyperCompleted is now false)
+  end
   cVar = cVar + 1
   if (cVar > #cPlanets) then  -- if we're at the end of the list
     if cycle then         -- wrap to the beginning
