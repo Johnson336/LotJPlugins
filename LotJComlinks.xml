@@ -2,7 +2,7 @@
 <!DOCTYPE muclient> 
 <!--  Saved on Wednesday, July 25, 2012, 7:14 PM   -->  
 <muclient>
-<plugin name="LotJComlinks" author="@Johnson" id="f12cd407b6087aa408be4efa" language="Lua" purpose="Overlay comlinks with channel info" save_state="y" requires="4.40" version="1.0">
+<plugin name="LotJComlinks" author="@Johnson" id="f12cd407b6087aa408be4efa" language="Lua" purpose="Overlay comlinks with channel info" save_state="y" requires="4.40" version="1.02">
 <description trim="y">
 <![CDATA[ 
 This plugin will passively watch for changes in your comlinks and overlay that information onto comlinks in your inventory.
@@ -29,6 +29,9 @@ This plugin will passively watch for changes in your comlinks and overlay that i
 
   <alias match="comlinkreset" script="resetComlinks" enabled="y" regexp="n" ignore_case="y" sequence="100" />
   <alias match="^comlinknote(\s+(.*))?$" script="setNote" enabled="y" regexp="y" ignore_case="y" sequence="100" />
+  <alias match="comlinkdelete *" script="deleteComlink" enabled="y" ignore_case="y" sequence="100" />
+	<alias match="^comlinkhelp(\s*(.*))?$" script="comlinkHelp"  enabled="y" regexp="y" ignore_case="y" group="LotJComlinks" sequence="100" />
+
 
 </aliases>
 <!--   Script    --> 
@@ -36,11 +39,29 @@ This plugin will passively watch for changes in your comlinks and overlay that i
 <![CDATA[
 
 require "serialize"
+
+AUTHOR = GetPluginInfo(GetPluginID(), 2) -- author info
+VERSION = string.format("%1.2f", GetPluginInfo(GetPluginID(), 19)) -- version info
+
 comlinks = {}
 loadstring(GetVariable("comlinks") or "")()
 
+
+
+function deleteComlink(name, line, args)
+  for i, v in pairs(comlinks) do
+    if string.find(i:lower(), args[1]:lower(), 0, true) or (v.note and (string.find(v.note:lower(), com:lower(), 0, true))) then -- search by comlink keyword or note keyword
+      ColourNote("yellow","","Comlink '"..i.."' removed from stored comlinks.")
+      comlinks[i] = nil
+      return
+    end
+  end
+  ColourNote("red","","Comlink '"..args[1].."' not found in comlinks.")
+end
+
 function setNote(name, line, args)
   if args[2] == "" then -- print them all
+    ColourNote("white","","Listing all stored comlinks with notes:")
     for i, v in pairs(comlinks) do
       if v.note then
         ColourNote("darkgray","",i,"yellow","","->","darkgray","","(Note:","red","",v.note,"darkgray","",")")
@@ -50,7 +71,19 @@ function setNote(name, line, args)
     args = utils.split(args[2], " ")
     local com = table.remove(args, 1)
     local note = table.concat(args, " ")
-    Note(com..":"..note)
+    for i, v in pairs(comlinks) do
+      if string.find(i:lower(), com:lower(), 0, true) or (v.note and (string.find(v.note:lower(), com:lower(), 0, true))) then -- search by comlink keyword or note keyword
+        if note == "" or note == nil then
+          ColourNote("yellow","","Removed '"..v.note.."' as note from comlink '"..i.."'.")
+          v.note = nil
+        else
+          v.note = note
+          ColourNote("yellow","","Added '"..v.note.."' as note to comlink '"..i.."'.")
+        end
+        return
+      end
+    end
+    ColourNote("red","","Comlink '"..com.."' note found in comlinks.")
   end
 end
 function resetComlinks(name, line, args)
@@ -79,12 +112,6 @@ end
 function enableComlinkInventory(name, line, args)
   EnableTriggerGroup("ComlinkInventory", true)
 end
-function foundOpen(str)
-  return string.find(str, "(", 0, true)
-end
-function foundClose(str)
-  return string.find(str, ")", 0, true)
-end
 function printComlink(name, line, args, styles)
   line = string.sub(line, (string.find(line, ")", 0, true) or 0)+1, #line) -- chop out humming
   local comlink = comlinks[Trim(string.gsub(line, '"', ''))]
@@ -93,7 +120,7 @@ function printComlink(name, line, args, styles)
     for a, b in pairs(styles) do
       ColourTell (RGBColourToName(b.textcolour), RGBColourToName(b.backcolour), b.text) 
     end 
-    ColourNote("yellow","","->","gray","","(Channel:","red","",comlink.channel,"gray","",",Encryption:","red","",comlink.encryption,"gray","",")")
+    ColourNote("yellow","","->","gray","","(Channel:","red","",comlink.channel,"gray","",",Encryption:","red","",comlink.encryption,"gray","",((comlink.note and ",Note:") or ""),"red","",((comlink.note and comlink.note) or ""),"gray","",")")
   end
 end
 function disableComlinkInventory(name, line, args)
@@ -108,6 +135,55 @@ end
 
 function OnPluginSaveState()
   SetVariable("comlinks", serialize.save("comlinks"))
+end
+
+-- define our help command structure
+local commands = { { name = "comlinkReset", desc = "Deletes the stored comlink list.",
+                         args = {  }
+                          },
+               { name = "comlinkDelete", desc = "Deletes a single comlink from stored comlink list.",
+                        args = { { name = "<comlink>", desc = "Deletes the first comlink matching the specified keyword from the comlink list.\nNotice: Will match either the comlink description or the note attached to that comlink."}, }
+                          },
+               { name = "comlinkNote", desc = "Adds a note onto the specified comlink.",
+                        args = { { name = "<none>", desc = "Prints a list of every comlink that has a note."},
+                                 { name = "<comlink>", desc = "Deletes the existing note from the first comlink matching the specified keyword.\nNotice: Will match either the comlink description or the note attached to that comlink."},
+                                 { name = "<comlink> <note>", desc = "Adds a note to the first comlink matching the specified keyword.\nNotice: Will match either the comlink description or the not eattached to that comlink."}, }
+                          },
+               { name = "comlinkHelp", desc = "Displays this help file.",
+                        args = { { name = "<command>", desc = "Displays more detailed information on the specified command."}, }
+                          },
+                        }
+
+function comlinkHelp(name, line, args)
+  local found = false
+  if args[1] == "" then -- show general help
+    ColourNote("white","black","LotJComlinks v"..VERSION.." by "..AUTHOR..". Enter 'comlinkhelp <command>' for more detailed information.")
+    for a, b in ipairs(commands) do -- commands
+      local command = b
+      ColourNote("silver","black",string.format("%-20s", command.name).." : "..command.desc)
+    end
+    Note("")
+  else -- entered something
+    ColourNote("white","black","LotJComlinks v"..VERSION.." by "..AUTHOR..". Enter 'comlinkhelp' for more general information.")
+    for a, b in ipairs(commands) do -- scroll through commands
+      if (string.lower(b.name) == string.lower(Trim(args[1]))) then -- found our argument
+        found = true
+        ColourNote("silver","black",b.name .. " : " .. b.desc)
+        ColourNote("silver","black","Available arguments:")
+        if #b.args == 0 then -- no arguments
+          ColourNote("silver","black","   None.")
+        else -- arguments to print
+          for i, k in ipairs(b.args) do
+            ColourNote("silver","black",string.format("%20s", k.name).." : " .. k.desc)
+          end -- end print arguments
+        end -- end no arguments
+        Note("")
+      end -- end found command
+    end -- end scroll commands
+    if not found then
+      ColourNote("silver","black","Command '"..args[1].."' not found.")
+    end
+  end -- end no input
 end
 
 
