@@ -20,7 +20,7 @@ This plugin will passively watch for changes in your comlinks and overlay that i
   <trigger match="^(.*)$" script="printComlink" regexp="y" enabled="n" group="ComlinkInventory" sequence="100" />
   <trigger match="^$" script="disableComlinkInventory" regexp="y" enabled="n" group="ComlinkInventory" sequence="100" />
   <trigger match="^You are using\:$" script="enableComlinkEquipment" regexp="y" enabled="y" group="Comlinks" sequence="100" />
-  <trigger match="^\<(.*)\> (?P<comlink>.*) \(Channel\: (?P<channel>.*)\)$" script="storeComlink" regexp="y" enabled="n" group="ComlinkEquipment" sequence="100" />
+  <trigger match="^\<(.*)\> (?P<comlink>.*) \(Channel\: (?P<channel>.*?)\)( \(Code\: (?P<encryption>.*?)\))?$" script="storeComlink" regexp="y" enabled="n" group="ComlinkEquipment" sequence="100" />
   <trigger match="^$" script="disableComlinkEquipment" regexp="y" enabled="n" group="ComlinkEquipment" sequence="100" />
   
 </triggers>
@@ -28,6 +28,7 @@ This plugin will passively watch for changes in your comlinks and overlay that i
 <aliases>
 
   <alias match="comlinkreset" script="resetComlinks" enabled="y" regexp="n" ignore_case="y" sequence="100" />
+  <alias match="^comlinknote(\s+(.*))?$" script="setNote" enabled="y" regexp="y" ignore_case="y" sequence="100" />
 
 </aliases>
 <!--   Script    --> 
@@ -38,13 +39,27 @@ require "serialize"
 comlinks = {}
 loadstring(GetVariable("comlinks") or "")()
 
+function setNote(name, line, args)
+  if args[2] == "" then -- print them all
+    for i, v in pairs(comlinks) do
+      if v.note then
+        ColourNote("darkgray","",i,"yellow","","->","darkgray","","(Note:","red","",v.note,"darkgray","",")")
+      end
+    end
+  else
+    args = utils.split(args[2], " ")
+    local com = table.remove(args, 1)
+    local note = table.concat(args, " ")
+    Note(com..":"..note)
+  end
+end
 function resetComlinks(name, line, args)
   comlinks = {}
   OnPluginSaveState()
   ColourNote("yellow","","Stored comlink data erased.")
 end
 function storeComlink(name, line, args)
-  local name = Trim(string.gsub(args.comlink, '"', ''))
+  local name = Trim(args.comlink:gsub('"', ''))
   local comlink = { channel = 0, encryption = 0 }
   comlink = comlinks[name] or comlink -- load an existing comlink or make a new one
   if args.channel ~= nil then -- got a channel
@@ -64,7 +79,14 @@ end
 function enableComlinkInventory(name, line, args)
   EnableTriggerGroup("ComlinkInventory", true)
 end
+function foundOpen(str)
+  return string.find(str, "(", 0, true)
+end
+function foundClose(str)
+  return string.find(str, ")", 0, true)
+end
 function printComlink(name, line, args, styles)
+  line = string.sub(line, (string.find(line, ")", 0, true) or 0)+1, #line) -- chop out humming
   local comlink = comlinks[Trim(string.gsub(line, '"', ''))]
   if comlink ~= nil then -- found a comlink with stored data
     DeleteLines(1)
