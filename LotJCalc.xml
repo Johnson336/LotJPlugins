@@ -21,7 +21,7 @@ Automatically calculate hyperjumps to the specified sector.
   <trigger enabled="n" group="CalcCap" match="^Coordinates\: (.*) (.*) (.*)$" name="CoordCap" script="setCoords" regexp="y" omit_from_log="y" omit_from_output="y" sequence="100"></trigger>
   <trigger enabled="n" group="GagAll" match="^(.*)$" name="GagAll" regexp="y" keep_evaluating="y" omit_from_log="y" omit_from_output="y" sequence="100"></trigger>
   <trigger enabled="n" group="CalcCap" match="^Use \'SHOWPLANET \<planet\> RESOURCES\' for current resources\.$" name="CalcEnd" regexp="y" omit_from_log="y" omit_from_output="y" script="calculate" sequence="100"></trigger>
-  <trigger enabled="n" group="CalcCap" match="^You have failed.$" script="repeatCalc" regexp="y" sequence="100" />
+  <trigger enabled="n" group="CalcStart" match="^You have failed.$" script="repeatCalc" regexp="y" sequence="100" />
 	
 	<!-- triggers relating to space capturing -->
 	<trigger name="StoreSpaceCoordinate" match="^(.*) (\-?\d+) (\-?\d+) (\-?\d+)(.*)?$" script="spaceCapStore" omit_from_output="y" keep_evaluating="y" group="SpaceCap" enabled="n" regexp="y" sequence="100" />
