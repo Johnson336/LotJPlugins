@@ -347,10 +347,11 @@ function drawWindow(name, line, args)
 	 -- draw border
   WindowRectOp (win, 5, 0, 0, 0, 0, 5, 15 + 0x1000)
 	
-	WindowAddHotspot(win, "background", 0, 15, width-15, height-15, "", "", "MouseDown", "CancelMouseDown", "MouseUp", "", 0, 0)
+	WindowAddHotspot(win, "background", 0, WindowFontInfo(win, font, 1)+6, width-15, height-15, "", "", "MouseDown", "CancelMouseDown", "MouseUp", "", 0, 0)
 	
 	--drag handler
-	--movewindow.add_drag_handler (win, 0, 0, 0, WindowFontInfo(win, font, 1))
+  movewindow.add_drag_handler (win, 0, 0, width-15, WindowFontInfo (win, font, 1)+5)
+
 	
 	for i=1,#systems,1 do
 		local sys = systems[i]
@@ -372,7 +373,7 @@ function drawWindow(name, line, args)
                  sys.left, sys.top, sys.right, sys.bottom,
                  "drawPaths", -- mousehover
                  "hidePaths",        -- mousecancelhover
-                 "onClick",         -- mousedown
+                 "",         -- mousedown
                  "CancelMouseDown",   -- mousecanceldown
                  "LeftClickOnly",           -- mouseup
                  sys.name.. " (" .. sys.x .. "," .. sys.y .. ")",  -- tooltip text
@@ -419,7 +420,7 @@ function haveCoords()
   currentX = tonumber(getmsdp("SHIPGALX"))
   currentY = tonumber(getmsdp("SHIPGALY"))
   currentSystem = getmsdp("SHIPSYSNAME")
-  --currentPlanet = getmsdp("PLANET") -- disabled until planet is fixed
+  -- currentPlanet = getmsdp("PLANET") -- this is only updated if you use 'showplanet', leads to planet ghosting so leaving it out for now
   
 	-- this is a little wonky because MSDP reports SHIPGALX and SHIPGALY default values as being 0
 	-- which could also be the center of the galaxy.
@@ -428,13 +429,14 @@ function haveCoords()
     --Note("passed havecoords 1")
     return true
   end
-  --if (currentX ~= 0 or currentY ~= 0 or currentSystem ~= "" or currentPlanet ~= "") then -- if we are in regular space
-  -- planet doesn't work so we'll ignore it for now
   if (currentX ~= 0 or currentY ~= 0 or currentSystem ~= "") and (currentX ~= nil and currentY ~= nil) then -- if we are in regular space
     --Note("passed havecoords 2")
     return true
-  end -- we arent anywhere! abort!!
-  return false
+  end 
+  if currentPlanet ~= "" then -- we are on a planet
+    return true
+  end
+  return false -- we arent anywhere! abort!!
 end
 function drawCoords()
   if currentX ~= 0 or currentY ~= 0 then -- our coords are in the x,y form
@@ -614,11 +616,22 @@ function drawPaths(flags, hotspot_id)
 	end
 	local ax = scaleXCoord(tonumber(sys.x))
 	local ay = scaleYCoord(tonumber(sys.y))
-	for i, v in ipairs(systems) do
+  for i, v in ipairs(systems) do -- do this first so we don't overlap
 		if (v ~= sys) then
 			local bx = scaleXCoord(tonumber(v.x))
 			local by = scaleYCoord(tonumber(v.y))
 			WindowLine (win, ax, ay, bx, by, ColourNameToRGB ("orange"), miniwin.pen_solid, 1)
+    end
+  end
+  
+	for i, v in ipairs(systems) do
+		if (v ~= sys) then
+			local bx = scaleXCoord(tonumber(v.x))
+			local by = scaleYCoord(tonumber(v.y))
+      --make a box to more easily see the distance number
+      local textwidth = WindowTextWidth(win, font, distance(sys, v))
+      WindowRectOp (win, miniwin.rect_fill, ((ax+bx)/2)-1, (ay+by)/2, ((ax+bx)/2)+textwidth+1, ((ay+by)/2)+WindowFontInfo(win, font, 1), ColourNameToRGB("black"))  -- draw blank rectangle to "erase" window contents
+      WindowRectOp (win, 1, ((ax+bx)/2)-1, (ay+by)/2, ((ax+bx)/2)+textwidth+1, ((ay+by)/2)+WindowFontInfo(win, font, 1), ColourNameToRGB("white"))
 			WindowText (win, font, distance(sys, v),   -- text
                 (ax+bx)/2, (ay+by)/2, 0, 0,        --draw distance in the middle of draw path
                 ColourNameToRGB ("white"), -- colour
@@ -627,7 +640,7 @@ function drawPaths(flags, hotspot_id)
 		end
 	end
 	--WindowShow (win,  true)  -- show it
-	scheduleRedraw()
+	--scheduleRedraw()
 	BroadcastPlugin(999, "repaint")
 end
 function destroyWindow(name, list, args)
@@ -749,11 +762,18 @@ end
 function MouseUp(flags, hotspot_id, win)
    if bit.band (flags, miniwin.hotspot_got_rh_mouse) ~= 0 then
       right_click_menu()
+      return true
    end
-   return true
+   return false
 end
 function LeftClickOnly(flags, hotspot_id, win)
-	if bit.band (flags, miniwin.hotspot_got_rh_mouse) ~= 0 then
+	if bit.band (flags, miniwin.hotspot_got_lh_mouse) ~= 0 then
+    local sys = systems[tonumber(hotspot_id)]
+    if (sys.planet ~= "") then
+      Execute("calculate " .. sys.planet)
+    else
+      Execute("calculate '" .. sys.x .. " " .. sys.y .. "'")
+    end
     return true
 	end
 	return false
@@ -781,7 +801,6 @@ function SetUpHotspotsAndDraw(firstTime)
 	if (firstTime) then
 		WindowCreate (win, 0, 0, width, height, miniwin.pos_center_all, 0, ColourNameToRGB("black")) -- create windows
 		windowinfo = movewindow.install (win, 6) -- default to 6 (on top right)
-		movewindow.add_drag_handler (win, 0, 0, 0, WindowFontInfo (win, font, 1))
 		check(WindowFont (win, font, font_name, font_size, false, false, false, false))
 		effectiveWidth = math.min(width, GetInfo(281)-windowinfo.window_left)
 		WindowAddHotspot (win, "resize", effectiveWidth-RESIZE_TAG_SIZE, height-RESIZE_TAG_SIZE, effectiveWidth, height, "MouseOver", "CancelMouseOver", "MouseDown", "CancelMouseDown", "MouseUp", "", 6, 0)
@@ -789,7 +808,6 @@ function SetUpHotspotsAndDraw(firstTime)
 	else -- not our first time drawing
 		-- everything has already been made
 		-- just move them back into place
-		
 		effectiveWidth = math.min(width, GetInfo(281)-windowinfo.window_left)
 		WindowResize(win, effectiveWidth, height, 0x000000)
 		WindowMoveHotspot(win, "resize", effectiveWidth-RESIZE_TAG_SIZE, height-RESIZE_TAG_SIZE, effectiveWidth, height)
@@ -831,7 +849,7 @@ function OnPluginBroadcast (msg, id, name, text)
 			page_built = false
 			return
 		end
-	scheduleRedraw()
+	--scheduleRedraw()
   end
 end
 function scheduleRedraw()
