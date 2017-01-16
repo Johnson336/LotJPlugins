@@ -24,8 +24,8 @@
     Installation (Dropbox):
       https://www.dropbox.com/sh/iqwhx27wte04pd4/WrDTVI4yPi
     
-   1. Click download button at top of page and save .xml files to your Worlds 
-      or Worlds/LotJ directory.
+   1. Click download button at top right of main page and extract the LotJPlugins.zip
+      file into your MUSHclient\Worlds\LotJ directory.
    2. Delete any previous versions of plugins you may be using to ensure no
       conflicts arise.
    3. Open your plugin manager by pressing ctrl+shift+p in MUSHclient, or click
@@ -34,13 +34,13 @@
    5. Click 'Show Info' on each plugin to see a brief description of what each
       does and information on the provided in-game help system for each.
    6. Disconnect from the game world, then reconnect to allow changes to take
-      effect.
+      effect. (This step only really applies to the MSDP handler)
    
     Installation (GitHub):
       https://github.com/Johnson336/LotJPlugins
     
-   1. In the top center of the main directory, click the "ZIP" button to download
-      the entire directory as a zip file.
+   1. In the top right of the "<>Code" tab, click the "Clone or download" button,
+      followed by "Download ZIP" button to download the entire directory as a zip file.
    2. Alternatively, click whichever plugin you wish to use and copy/paste the 
       code into a text editor, saving each .xml file individually.
       
@@ -56,4 +56,4 @@
    6. Click 'Show Info' on each plugin to see a brief description of what each
       does and information on the provided in-game help system for each.
    7. Disconnect from the game world, then reconnect to allow changes to take
-      effect.
+      effect. (This step only really applies to the MSDP handler)
