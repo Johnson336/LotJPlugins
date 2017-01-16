@@ -614,6 +614,7 @@ function drawPaths(flags, hotspot_id)
 	if not sys then
 		return
 	end
+  local fontheight = WindowFontInfo(win, font, 1)
 	local ax = scaleXCoord(tonumber(sys.x))
 	local ay = scaleYCoord(tonumber(sys.y))
   for i, v in ipairs(systems) do -- do this first so we don't overlap
@@ -630,10 +631,10 @@ function drawPaths(flags, hotspot_id)
 			local by = scaleYCoord(tonumber(v.y))
       --make a box to more easily see the distance number
       local textwidth = WindowTextWidth(win, font, distance(sys, v))
-      WindowRectOp (win, miniwin.rect_fill, ((ax+bx)/2)-1, (ay+by)/2, ((ax+bx)/2)+textwidth+1, ((ay+by)/2)+WindowFontInfo(win, font, 1), ColourNameToRGB("black"))  -- draw blank rectangle to "erase" window contents
-      WindowRectOp (win, 1, ((ax+bx)/2)-1, (ay+by)/2, ((ax+bx)/2)+textwidth+1, ((ay+by)/2)+WindowFontInfo(win, font, 1), ColourNameToRGB("white"))
+      WindowRectOp (win, miniwin.rect_fill, ((ax+bx)/2)-(textwidth/2)-2, ((ay+by)/2)-(fontheight/2), ((ax+bx)/2)+(textwidth/2)+2, ((ay+by)/2)+(fontheight/2), ColourNameToRGB("black"))  -- draw blank rectangle to "erase" window contents
+      WindowRectOp (win, 1, ((ax+bx)/2)-(textwidth/2)-2, ((ay+by)/2)-(fontheight/2), ((ax+bx)/2)+(textwidth/2)+2, ((ay+by)/2)+(fontheight/2), ColourNameToRGB("white"))
 			WindowText (win, font, distance(sys, v),   -- text
-                (ax+bx)/2, (ay+by)/2, 0, 0,        --draw distance in the middle of draw path
+                ((ax+bx)/2)-(textwidth/2), ((ay+by)/2)-(fontheight/2), ((ax+bx)/2)+(textwidth/2), ((ay+by)/2)+(fontheight/2),        --draw distance in the middle of draw path
                 ColourNameToRGB ("white"), -- colour
                 false)              -- not Unicode
 			
