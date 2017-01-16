@@ -1,23 +1,23 @@
                         Johnson's LotJPlugins
                ===========================================
     Overview:
-  I offer these plugins to the LotJ community in an attempt to make certain
+  This is a repository of plugins that I use with LotJ in an attempt to make certain 
  aspects of the game less tedious, easier to see visually, or to provide an 
- overall greater playing experience. I do not provide these as a means with 
- which to cheat or exploit in any fashion. Some of these plugins are written 
- entirely by me, some have been inspired by plugins on other MUDs and some 
- were created by other members of the LotJ community. I try to give credit in 
- each respective plugin where it is due, though I am by no means perfect and 
- if you see something posted here that you had any part in helping create that
- hasn't been attributed to you, I humbly apologize and ask that you inform me 
- ASAP so I can remedy my mistake.
+ overall greater playing experience. These aren't intended to circumnavigate
+ rules or allow cheating or exploiting in any fashion. Some of these plugins 
+ are written entirely by me, some have been inspired by plugins on other MUDs 
+ and some were created by other members of the LotJ community. I try to give 
+ credit in each respective plugin where it is due, but if you see something 
+ posted here that you had any part in helping create that hasn't been attributed 
+ to you, I humbly apologize and ask that you inform me ASAP so I can remedy my 
+ mistake.
   These plugins are largely a work in progress and as a result often see many,
  many changes and differing versions. If something isn't working properly,
  first check to see if you have the most recent version, and if something still
  doesn't seem right, congratulations, you may have found a bug! Please let me
  know about it so I can fix it!
   Questions, comments, complaints, suggestions, bug reports can be directed 
- via email to lotjJohnson@gmail.com, in game @Johnson, in the issues section
+ via email to LotJJohnson@gmail.com, in game @Johnson, in the issues section
  of the GitHub repository, or on the LotJ forums.
  
  
