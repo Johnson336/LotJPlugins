@@ -41,7 +41,6 @@ Automatically calculate hyperjumps to the specified sector.
 <script>
 <![CDATA[ 
 
-require "tprint"
 local planets = {}
 local planetname = ""
 local systemname = ""
@@ -122,8 +121,8 @@ function showPlanet(name, line, args)
     local xcoord = string.sub(args[1], xstart+1, xend)
     local ystart, yend = string.find(args[1], "[%d-]+%'", xend, false)
     local ycoord = string.sub(args[1], ystart, yend-1)
-    Note("xstart: "..xstart.." xend: "..xend.." xcoord: "..xcoord)
-    Note("ystart: "..ystart.." yend: "..yend.." ycoord: "..ycoord)
+    --Note("xstart: "..xstart.." xend: "..xend.." xcoord: "..xcoord)
+    --Note("ystart: "..ystart.." yend: "..yend.." ycoord: "..ycoord)
 
     SetVariable("planetname", "("..xcoord..","..ycoord..")")
     --Note(GetVariable("planetname"))
