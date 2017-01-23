@@ -641,7 +641,7 @@ function drawPaths(flags, hotspot_id)
 		end
 	end
 	--WindowShow (win,  true)  -- show it
-	--scheduleRedraw()
+	scheduleRedraw()
 	BroadcastPlugin(999, "repaint")
 end
 function destroyWindow(name, list, args)
@@ -850,7 +850,7 @@ function OnPluginBroadcast (msg, id, name, text)
 			page_built = false
 			return
 		end
-	--scheduleRedraw()
+	scheduleRedraw()
   end
 end
 function scheduleRedraw()
