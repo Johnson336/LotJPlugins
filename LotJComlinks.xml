@@ -40,8 +40,8 @@ This plugin will passively watch for changes in your comlinks and overlay that i
 
 require "serialize"
 
-AUTHOR = GetPluginInfo(GetPluginID(), 2) -- author info
-VERSION = string.format("%1.2f", GetPluginInfo(GetPluginID(), 19)) -- version info
+local AUTHOR = GetPluginInfo(GetPluginID(), 2) -- author info
+local VERSION = string.format("%1.2f", GetPluginInfo(GetPluginID(), 19)) -- version info
 
 comlinks = {}
 loadstring(GetVariable("comlinks") or "")()
@@ -50,7 +50,7 @@ loadstring(GetVariable("comlinks") or "")()
 
 function deleteComlink(name, line, args)
   for i, v in pairs(comlinks) do
-    if string.find(i:lower(), args[1]:lower(), 0, true) or (v.note and (string.find(v.note:lower(), com:lower(), 0, true))) then -- search by comlink keyword or note keyword
+    if string.find(i:lower(), args[1]:lower(), 0, true) or (v.note and (string.find(v.note:lower(), args[1]:lower(), 0, true))) then -- search by comlink keyword or note keyword
       ColourNote("yellow","","Comlink '"..i.."' removed from stored comlinks.")
       comlinks[i] = nil
       return
@@ -92,7 +92,7 @@ function resetComlinks(name, line, args)
   ColourNote("yellow","","Stored comlink data erased.")
 end
 function storeComlink(name, line, args)
-  local name = Trim(args.comlink:gsub('"', ''))
+  local name = Trim(args.comlink:gsub('"', ""))
   local comlink = { channel = 0, encryption = 0 }
   comlink = comlinks[name] or comlink -- load an existing comlink or make a new one
   if args.channel ~= nil then -- got a channel
@@ -113,14 +113,16 @@ function enableComlinkInventory(name, line, args)
   EnableTriggerGroup("ComlinkInventory", true)
 end
 function printComlink(name, line, args, styles)
-  line = string.sub(line, (string.find(line, ")", 0, true) or 0)+1, #line) -- chop out humming
-  local comlink = comlinks[Trim(string.gsub(line, '"', ''))]
+  line = Trim(line:gsub("%(%d+%)", ''))
+  line = line:gsub('"', '')
+  line = line:gsub("'", '')
+  local comlink = comlinks[line]
   if comlink ~= nil then -- found a comlink with stored data
     DeleteLines(1)
     for a, b in pairs(styles) do
       ColourTell (RGBColourToName(b.textcolour), RGBColourToName(b.backcolour), b.text) 
     end 
-    ColourNote("yellow","","->","gray","","(Channel:","red","",comlink.channel,"gray","",",Encryption:","red","",comlink.encryption,"gray","",((comlink.note and ",Note:") or ""),"red","",((comlink.note and comlink.note) or ""),"gray","",")")
+    ColourNote("yellow","","->","gray","","(Chan:","red","",comlink.channel,"gray","",",Enc:","red","",comlink.encryption,"gray","",((comlink.note and ",Note:") or ""),"red","",((comlink.note and comlink.note) or ""),"gray","",")")
   end
 end
 function disableComlinkInventory(name, line, args)
