@@ -35,6 +35,7 @@ v1.42 -
 	<trigger name="LeftShip" match="^You exit the ship\.$" script="reenterCheck" group="Flight" enabled="n" regexp="y" sequence="100" />
   <trigger name="squadronlaunched" match="^(?P<fightertype>.+?) '(?P<fightername>.+?)' launches from a hangar on (?P<hangartype>.+?) '(?P<hangarname>.+?)'\,(.*)$" script="fighterGrab" group="Squadron" enabled="y" regexp="y" sequence="100" />
   <trigger name="squadronview" match="^(L\[(.*)\]\:P\[(.*)\] )?(?P<fightertype>.+?) '(?P<fightername>.+?)'((\s+[\d-]+\s[\d-]+\s[\d-]+|\s+Prox\: \d+))?$" script="fighterShow" group="Squadron" enabled="y" regexp="y" sequence="100" />
+  <trigger match="Checking hyperspace course integrity. Please wait." script="calcEntered" group="Flight" regexp="n" sequence="100" />
 
 </triggers>
 
@@ -45,28 +46,38 @@ v1.42 -
 	<alias name="Flyauto" match="^flyauto( +(.*))?$" script="flyAuto" enabled="y" regexp="y" group="FlightCmd" ignore_case="y" sequence="100" />
 	<alias name="Flyclear" match="flyclear" script="flyClear" enabled="y" regexp="n" group="FlightCmd" ignore_case="y" sequence="100" />
 	<alias name="FlyHelp" match="^flyhelp$" script="flightHelp" enabled="y" regexp="y" group="FlightCmd" ignore_case="y" sequence="100" />
+  <alias match="^flychecksale$" script="toggleCheckSale" enabled="y" regexp="y" group="FlightCmd" ignore_case="y" sequence="100" />
 	<alias name="FlyReenterToggle" match="^flyreenter(\s*(.*))?$" script="toggleReenter" enabled="y" regexp="y" group="FlightCmd" ignore_case="y" sequence="100" />
 	<alias name="fighterclear" match="fighterclear" script="fighterClear" enabled="y" regexp="n" group="FlightCmd" ignore_case="y" sequence="100" />
 </aliases>
 <!--   Script    --> 
 <script>
 <![CDATA[
-shipName = ""
-hatchCode = -1
-shipEnterDirs = ""
-shipLeaveDirs = ""
-planetName = ""
-lastPlanet = ""
-autoFly = false
-landingSites = {}
-landingSiteNum = 0
-landgrabbing = false
-landPreference = -1
+local shipName = ""
+local hatchCode = -1
+local shipEnterDirs = ""
+local shipLeaveDirs = ""
+local pilotToNav = ""
+local navToPilot = ""
+local planetName = ""
+local lastPlanet = ""
+local autoFly = false
+local landingSites = {}
+local landingSiteNum = 0
+local landgrabbing = false
+local landPreference = -1
 local hangars = {}
-reentership = false
-hypertries = 0
+local reentership = false
+local hypertries = 0
+local checkSale = false
+local navEntered = false
 
 require "tprint"
+
+function toggleCheckSale(name, line, args)
+  checkSale = not checkSale
+  ColourNote("yellow","","Checking for sale spacecraft upon leaving ship is "..((checkSale and "ON") or "OFF")..".")
+end
 
 function fighterGrab(name, line, args)
   assert(args, "Nil value passed to fighterGrab")
@@ -127,6 +138,8 @@ function flyClear()
 	hatchCode = -1
 	shipEnterDirs = ""
 	shipLeaveDirs = ""
+  pilotToNav = ""
+  navToPilot = ""
 	planetName = ""
 	lastPlanet = ""
 	autoFly = false
@@ -135,6 +148,8 @@ function flyClear()
 	landgrabbing = false
 	landPreference = -1
 	reentership = false
+  checkSale = false
+  navEntered = false
 	hypertries = 0
 	Note("Fly variables cleared.")
 	toggleFlyOff()
@@ -161,7 +176,9 @@ function endFlight()
   Send("leaveship")
   Send("closehatch "..shipName)
   Send("refuel " .. shipName .. " full")
-  Send("ships sale")
+  if checkSale then
+    Send("ships sale")
+  end
   landingSites = {}
   lastPlanet = planetName
   toggleFlyOff()
@@ -233,6 +250,13 @@ function coursePlanet()
 	Send("course '" .. planetName .. "'")
 end
 
+function calcEntered()
+  if navToPilot and navToPilot ~= "" then
+    Execute(navToPilot)
+    Send("pilot")
+  end
+end
+
 function calcDone()
   hypertries = 1
 	Send("hyper")
@@ -245,6 +269,9 @@ function calcPlanet(name, list, args)
   if not planetName then
     ColourNote("red","","Cancel detected, aborting.")
     return
+  end
+  if pilotToNav and pilotToNav ~= "" then
+    Execute(pilotToNav)
   end
 	Execute("calc " .. planetName)
 end		
@@ -261,6 +288,7 @@ function flightStatus(name, list, args)
 	if reentership then
 	  Note("  Will re-enter ship when flight is completed.")
 	end
+  ColourNote("yellow","","Checking for sale spacecraft upon leaving ship is "..((checkSale and "ON") or "OFF")..".")
 end
 
 function finishFlight(name, list, args)
@@ -276,6 +304,13 @@ function finishFlight(name, list, args)
       return
     end
 	end
+  if not navEntered and pilotToNav and pilotToNav == "" then
+    pilotToNav = utils.inputbox("Dirs from pilot to nav station?", "Pilot To Nav", "", "Courier", 9)
+  end
+  if not navEntered and navToPilot and navToPilot == "" then
+    navToPilot = utils.inputbox("Dirs from nav to pilot station?", "Nav To Pilot", "", "Courier", 9)
+    navEntered = true
+  end
 	if (shipLeaveDirs == ""or not shipLeaveDirs) then
 		shipLeaveDirs = utils.inputbox("Dirs to leave ship?", "Exit", "", "Courier", 9)
     if not shipLeaveDirs then
@@ -353,6 +388,12 @@ function toCockpit(name, list, args)
 	if (shipLeaveDirs == "" or not shipLeaveDirs) then
 		shipLeaveDirs = utils.inputbox("Dirs to leave ship?\nFormat options:\nSpaces: S D W\nCommas: S,D,W\nSemi-colons: S;D;W\n1-Room Ship: none", "Exit", "", "Courier", 9)
 	end
+  if not navEntered and pilotToNav and pilotToNav == "" then
+    pilotToNav = utils.inputbox("Dirs from pilot to nav station?", "Pilot To Nav", "", "Courier", 9)
+  end
+  if not navEntered and navToPilot and navToPilot == "" then
+    navToPilot = utils.inputbox("Dirs from nav to pilot station?", "Nav To Pilot", "", "Courier", 9)
+  end
 	
 	if not shipEnterDirs or not shipLeaveDirs then
 	  ColourNote("red","","Cancelled dialog box, aborting script.")
@@ -415,6 +456,7 @@ function flightHelp()
 	Note("Flyauto on/off      - Enable or disable automatic flight")
 	Note("Flyclear            - Clears all current fly variables")
 	Note("Flyreenter          - Re-enter your ship at the end of a flight")
+  Note("FlyCheckSale        - Check for sale spacecraft at the end of a flight")
 	Note("FlyHelp             - Display this help menu")
 	Note("\n")
 end
