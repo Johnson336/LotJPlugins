@@ -92,7 +92,7 @@ function resetComlinks(name, line, args)
   ColourNote("yellow","","Stored comlink data erased.")
 end
 function storeComlink(name, line, args)
-  local name = Trim(args.comlink:gsub('"', ""))
+  local name = cleanupline(args.comlink)
   local comlink = { channel = 0, encryption = 0 }
   comlink = comlinks[name] or comlink -- load an existing comlink or make a new one
   if args.channel ~= nil then -- got a channel
@@ -112,10 +112,15 @@ end
 function enableComlinkInventory(name, line, args)
   EnableTriggerGroup("ComlinkInventory", true)
 end
-function printComlink(name, line, args, styles)
+function cleanupline(line)
+  line = line:gsub("%(Humming%)", '')
   line = Trim(line:gsub("%(%d+%)", ''))
   line = line:gsub('"', '')
   line = line:gsub("'", '')
+  return line
+end
+function printComlink(name, line, args, styles)
+  line = cleanupline(line)
   local comlink = comlinks[line]
   if comlink ~= nil then -- found a comlink with stored data
     DeleteLines(1)
