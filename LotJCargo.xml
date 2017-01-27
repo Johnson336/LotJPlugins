@@ -566,7 +566,7 @@ function shipCargoList(name, line, args)
 end
 
 function printShip(indent, ship)
-  ColourNote("white","",string.rep(" ", indent)..((indent>0 and "|->") or "")..ship.type.."'"..ship.name.."' (Size:"..ship.size..") Hangars:"..#ship.hangars.." ("..getTotalHangarUsed(ship).."/"..getTotalHangarCapacity(ship)..")")
+  ColourNote("white","",string.rep(" ", indent)..((indent>0 and "|->") or "")..ship.type.." '"..ship.name.."' (Size:"..ship.size..") Hangars:"..#ship.hangars.." ("..getTotalHangarUsed(ship).."/"..getTotalHangarCapacity(ship)..")")
   for i, v in ipairs(ship.hangars or {}) do
     ColourNote("white","",string.rep(" ", indent+2).."Hangar "..i.."("..getHangarUsed(v).."/"..v.capacity.."):")
     for k, j in ipairs(v.ships or {}) do
@@ -665,8 +665,22 @@ end
 
 function shipProfileList(name, line, args)
   args = utils.split(Trim(args[1]), " ")
-  ColourNote("silver","","Current ship profile: ")
-  tprint(shipProfile)
+  local v = shipProfile
+  ColourNote("gray","","Current working ship profile: ")
+  ColourNote("gray","","[","cyan","",((v.type and v.type) or "not set").." '"..((v.name and v.name) or "not set").."'","gray","","] [","cyan","","Hangars: "..((v.hangars and #v.hangars) or 0),"gray","","] [","cyan","","Size: "..((v.size and v.size) or "not set"),"gray","","] [","cyan","","Dirs: ",((checkShipDirs(v) and "lime") or "red"),"",((checkShipDirs(v) and "set") or "not set"),"gray","","]")
+  ColourNote("gray","","[Dirs:]")
+  for k, j in pairs(v.dirs or {}) do
+    ColourNote("gray","","  [","cyan","",k..":".."'"..j.."'","gray","","]")
+  end
+  if v.hangars and #v.hangars > 0 then
+    ColourNote("gray","","[Hangar Dirs:]")
+    for k, j in ipairs(v.hangars or {}) do
+      ColourNote("gray","","  [","cyan","","Hangar "..k,"gray","","]")
+      ColourNote("gray","","    [","cyan","","pilottohangar:'"..((j["pilottohangar"] and j["pilottohangar"]) or "none").."'","gray","","]")
+      ColourNote("gray","","    [","cyan","","hangartohatch:"..((j["hangartohatch"] and j["hangartohatch"]) or "none").."'","gray","","]")
+    end
+  end
+  --tprint(shipProfile)
 end
 function shipProfileName(name, line, args)
   args = utils.split(Trim(args[1]), " ")
@@ -748,7 +762,65 @@ function shipProfilePush(name, line, args)
 end
 function shipDBList(name, line, args)
   args = utils.split(Trim(args[1]), " ")
-  tprint(shipdb)
+  local found = false
+  local ship = nil
+  if args[1] ~= "" then -- user input an argument
+    for i, v in ipairs(shipdb) do
+      if (tonumber(args[1]) and tonumber(args[1]) == i) or v.name:lower():find(args[1]:lower()) then
+        ColourNote("gray","","Found matching ship '","cyan","",v.name,"gray","","' in ship db:")
+        ColourNote("gray","","[","cyan","",string.format("%2d", i),"gray","","] [","cyan","",v.type.." '"..v.name.."'","gray","","] [","cyan","","Hangars: "..((v.hangars and #v.hangars) or 0),"gray","","] [","cyan","","Size: "..v.size,"gray","","] [","cyan","","Dirs: ",((checkShipDirs(v) and "lime") or "brightred"),"",((checkShipDirs(v) and "set") or "not set"),"gray","","]")
+        ColourNote("gray","","[Dirs:]")
+        for k, j in pairs(v.dirs or {}) do
+          ColourNote("gray","","  [","cyan","",k..":".."'"..j.."'","gray","","]")
+        end
+        if v.hangars and #v.hangars > 0 then
+          ColourNote("gray","","[Hangar Dirs:]")
+          for k, j in ipairs(v.hangars) do
+            ColourNote("gray","","  [","cyan","","Hangar "..k,"gray","","]")
+            ColourNote("gray","","    [","cyan","","pilottohangar:'"..((j["pilottohangar"] and j["pilottohangar"]) or "none").."'","gray","","]")
+            ColourNote("gray","","    [","cyan","","hangartohatch:"..((j["hangartohatch"] and j["hangartohatch"]) or "none").."'","gray","","]")
+          end
+        found = true
+        break
+        end
+      end
+    end
+  
+  else -- no argument
+    ColourNote("gray","","Cargo ship db full ship list: ")
+    for i, v in ipairs(shipdb) do
+      ColourNote("gray","","[","cyan","",string.format("%2d", i),"gray","","] [","cyan","",v.type.." '"..v.name.."'","gray","","] [","cyan","","Hangars: "..((v.hangars and #v.hangars) or 0),"gray","","] [","cyan","","Size: "..v.size,"gray","","] [","cyan","","Dirs: ",((checkShipDirs(v) and "lime") or "brightred"),"",((checkShipDirs(v) and "set") or "not set"),"gray","","]")  
+    end
+    ColourNote("gray","","Showing ","cyan","",((shipdb and #shipdb) or 0),"gray",""," ship profiles saved total.")
+    return
+  end
+  if not found then
+    ColourNote("red","","Ship '"..args[1].."' not found in ship db.")
+  end
+  --tprint(shipdb)
+end
+function checkShipDirs(ship)
+  local pass = true
+  if ship.dirs then
+    if not ship.dirs["hatchtopilot"] or not ship.dirs["pilottonav"] or not ship.dirs["hatchtopilot"] or not ship.dirs["navtopilot"] then
+      pass = false
+    end
+  else
+    pass = false
+  end
+  if ship.hangars then
+    for i, v in ipairs(ship.hangars) do
+      if not v["pilottohangar"] or not v["hangartohatch"] then
+        pass = false
+      end
+    end
+  else
+    pass = false
+  end
+  return pass
+end
+function printDBShip(ship)
+  ColourNote("gray","","[","cyan","","Num: "..i,"gray","","] [","cyan","",ship.type.." '"..ship.name.."' ","gray","","] [","cyan","","Size: "..ship.size,"gray","","] [","cyan","","Dirs: ",((checkShipDirs(ship) and "lime") or "brightred"),"",((checkShipDirs(ship) and "set") or "not set"),"gray","","]")  
 end
 function shipDBRem(name, line, args)
   args = utils.split(Trim(args[1]), " ")
