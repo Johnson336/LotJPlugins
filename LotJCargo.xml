@@ -211,6 +211,12 @@ Initial contraband features added by @Domovoi.
 	<trigger enabled="n" group="ResourceCap" match="^Use \'SHOWPLANET \<planet\> RESOURCES\' for current resources\.$" name="ResourceCoordEnd" regexp="y" omit_from_log="y" omit_from_output="y" script="resourceEnd" sequence="100" />
 	<trigger enabled="n" group="ResourceCap" match="^Show what to whom\?$" regexp="y" name="resourceCapEnd" script="resourceEnd" omit_from_log="y" omit_from_output="y" sequence="100" />
 
+  <!-- planet retrieval triggers -->
+  <trigger match="^(.*)$" group="RetrievePlanet" regexp="y" keep_evaluating="y" omit_from_log="y" omit_from_output="y" sequence="100" />
+  <trigger match="^Usage\: showplanet \<planet\>$" script="retrievePlanetFailed" regexp="y" enabled="y" group="RetrievePlanet" sequence="100" />
+  <trigger match="--Planet Data: -------------------------------\nPlanet: (.*)\Z" script="storePlanet" regexp="y" enabled="n" multi_line="y" lines_to_match="2" omit_from_log="y" omit_from_output="y" group="RetrievePlanet" sequence="100" />
+  <trigger match="^Use \'SHOWPLANET \<planet\> RESOURCES\' for current resources\.$" script="updateListPosition" regexp="y" enabled="n" group="RetrievePlanet" sequence="100" />
+  
 	<!-- Automatic cargo triggers -->
 	<trigger name="tradeCargo" script="leftShip" match="^You exit the ship\.$" enabled="n" regexp="y" group="AutoCargo" sequence="100" />
 	<trigger name="soldcargo" script="soldCargo" match="^You sell (?P<quantity>.*) units of (?P<resource>.*)\.$" enabled="n" regexp="y" group="AutoCargo" sequence="100" />
@@ -242,7 +248,7 @@ Initial contraband features added by @Domovoi.
 	<alias name="cargoBestRoute" script="cargoBestRoute" match="^cargobest( +(.*))?$" enabled="y" ignore_case="y" regexp="y" group="LotJCargo" sequence="100" />
 	<alias name="Cargosetup" script="cargoSetup" match="^cargosetup$" enabled="y" ignore_case="y" regexp="y" group="LotJCargo" sequence="100" />
 	<alias name="cargoHelp" script="cargoHelp" match="^cargohelp(\s*(.*))?$" enabled="y" regexp="y" ignore_case="y" group="LotJCargo" sequence="100" />
-	<alias name="cargoStart" script="cargoStart" match="^cargostart(\s*(.*))?" enabled="y" regexp="y" ignore_case="y" group="LotJCargo" sequence="100" />
+	<alias name="cargoStart" script="retrievePlanet" match="^cargostart(\s*(.*))?" enabled="y" regexp="y" ignore_case="y" group="LotJCargo" sequence="100" />
 	<alias name="CargoAuto" match="^cargoauto( +(.*))?$" script="cargoAuto" enabled="y" regexp="y" group="LotJCargo" ignore_case="y" sequence="100" />
 	<alias name="CargoList" script="cargoList" match="cargoList" enabled="y" group="LotJCargo" send_to="1" ignore_case="y" sequence="100" />
 	<alias name="CargoClear" script="cargoClear" match="cargoclear" enabled="y" group="LotJCargo" ignore_case="y" send_to="1" sequence="100" />
@@ -313,6 +319,11 @@ local lastboughtamount = 0
 shipdb = {}
 loadstring(GetVariable("shipdb") or "")()
 
+local planet = ""
+
+local darkblue = RGBColourToName(GetNormalColour(5))
+local gray = RGBColourToName(GetBoldColour(1))
+local cyan = RGBColourToName(GetBoldColour(7))
 
 -- Activate some settings to ensure proper functioning
 SetOption("enable_aliases", true)
@@ -867,7 +878,7 @@ function scanNextManifest()
   -- from disableshipmanifest
 
   ColourNote("yellow","","Beginning cargo session momentarily...")
-  DoAfterSpecial(2, 'cargoStart()', sendto.script)
+  DoAfterSpecial(2, 'retrievePlanet()', sendto.script)
   
   else
     if not getShip(scannednum).name or getShip(scannednum).name == "" then -- name isn't set, bug out
@@ -1084,16 +1095,16 @@ end
 function cargoManifest()
   for i=0,getNumCargoShips(),1 do
     if getShip(i) then
-      ColourNote("gray","","Cargo Readout for ","cyan","",getShip(i).name..":")
+      ColourNote(gray,"","Cargo readout for ",cyan,"",getShip(i).name..":")
       if getShip(i).cargo and #getShip(i).cargo > 0 then
-        ColourNote("gray","","-------------------------------------------")
-        ColourNote("gray","","[","dodgerblue","","ID:","gray","","] [","dodgerblue","","Contents:           ","gray","","] [","dodgerblue","","Amount:  ","gray","","]")
+        ColourNote(gray,"","-------------------------------------------")
+        ColourNote(gray,"","[",darkblue,"","ID:",gray,"","] [",darkblue,"","Contents:           ",gray,"","] [",darkblue,"","Amount:  ",gray,"","]")
         for i, v in ipairs(getShip(i).cargo) do
-          ColourNote("gray","","[","cyan","",string.format("%-3d",i),"gray","","] [","cyan","",string.format("%-20s",v.name),"gray","","] [","cyan","",string.format("%-9s",v.held.."/"..v.cap),"gray","","]")
+          ColourNote(gray,"","[",cyan,"",string.format("%-3d",i),gray,"","] [",cyan,"",string.format("%-20s",v.name),gray,"","] [",cyan,"",string.format("%-9s",v.held.."/"..v.cap),gray,"","]")
         end
         Note("")
       else
-        ColourNote("silver","","No cargo pods.")
+        ColourNote(gray,"","No cargo pods.")
       end
     end
   end
@@ -1183,6 +1194,7 @@ function leftShip()
   if not hyperCompleted or not tradingCompleted then
     return
   end
+  planet = getName()
   unloadShips()
   beginTradingStage()
 end
@@ -1291,11 +1303,47 @@ function waitSell()
 	DoAfterSpecial (5, 'continueTrading()', sendto.script)
 end
 
-
-function cargoStart()
+function retrievePlanetFailed()
+  EnableTriggerGroup("RetrievePlanet", false)
+  ColourNote("red","","Error: you must be standing outside your ship on a planet for cargostart to work!")
+end
+function retrievePlanet()
   shipnum = 1
 	cVar = 1
 	amountEarned = 0
+  ColourNote("yellow","","Retrieving current planet...")
+  Send("showplanet")
+  EnableTriggerGroup("RetrievePlanet", true)
+end
+
+function storePlanet(name, line, args)
+  if args[1] then
+    planet = Trim(args[1])
+    ColourNote("yellow","","Current planet found: "..planet)
+  end
+end
+function updateListPosition()
+  EnableTriggerGroup("RetrievePlanet", false)
+  local found = false
+  if planet and planet ~= "" then
+    for i, v in ipairs(cPlanets or {}) do
+      if v.name:lower() == planet:lower() then
+        cVar = i
+        found = true
+        break
+      end
+    end
+  end
+  if found then
+    ColourNote("gray","","Adjusting cargo planet position to match current planet: ","cyan","",cVar,"gray",""," (","cyan","",cPlanets[cVar].name,"gray","",")")
+    ColourNote("yellow","","Beginning cargo run momentarily...")
+    DoAfterSpecial(2, 'cargoStart()', sendto.script)
+  else
+    ColourNote("red","","Error: tried to run cargo from a planet not present on cargo planets list!")
+  end
+end
+
+function cargoStart()
 	startTime = os.time()
 	if not getShip() or not getShip().name or getShip().name == "" then
 	  ColourNote("red","","You must assign a ship name using cargoship <shipname> before starting your session.")
@@ -1469,6 +1517,7 @@ function cargoClear(name, list, args)
   tradingCompleted = false
 	hyperCompleted = false
 	scannedCargo = false
+  planet = ""
 	ColourNote("yellow","","Cargo list cleared.")
 	toggleACOff()
 end
@@ -1668,19 +1717,11 @@ function cargoList()
   if #cPlanets == 0 then
     ColourNote("red","","Cargo route empty, add something first!")
   else
-    ColourNote("silver","","Cargo list contains: ")
+    ColourNote(gray,"","Cargo list contains ",cyan,"",#cPlanets,gray,""," planets: ")
+    ColourNote(gray,"","-------------------------------------------")
+    ColourNote(gray,"","[",darkblue,"","Curr:",gray,"","] [",darkblue,"","Planet:   ",gray,"","] [",darkblue,"","Resource:           ",gray,"","]")
     for i, v in ipairs(cPlanets) do
-      if i == cVar then
-        ColourTell("lime","","--]>")
-      end
-      ColourTell("silver","",v.name.." (","cyan","",v.resource,"silver","",")")
-      if v.contraband:lower() == "yes" or v.contraband:lower() == "y" then
-        ColourTell("silver",""," contraband")
-      end
-      if i == cVar then
-        ColourTell("lime","","<[--")
-      end
-      Note()
+      ColourNote(gray,"","[",cyan,"",string.format("%-5s", ((i == cVar and "*") or "")),gray,"","] [",cyan,"",string.format("%-10s", v.name),gray,"","] [",cyan,"",string.format("%-20s", v.resource),gray,"","]")
     end -- for
   end
 end
