@@ -701,10 +701,10 @@ function setPartname(name, line, wildcards)
 	elseif (wildcards[1] == "circuits") then
 		partNames[2] = wildcards[2]
 		ColourNote("lawngreen","black","Part type '" .. shipParts[2] .. "' coupled with '" .. partNames[2] .. "'")
-	elseif (wildcards[1] == "engines") then
+	elseif (wildcards[1] == "weapons") then
 		partNames[3] = wildcards[2]
 		ColourNote("lawngreen","black","Part type '" .. shipParts[3] .. "' coupled with '" .. partNames[3] .. "'")
-	elseif (wildcards[1] == "weapons") then
+	elseif (wildcards[1] == "engines") then
 		partNames[4] = wildcards[2]
 		ColourNote("lawngreen","black","Part type '" .. shipParts[4] .. "' coupled with '" .. partNames[4] .. "'")
 	else
