@@ -393,6 +393,7 @@ function toCockpit(name, list, args)
   end
   if not navEntered and navToPilot and navToPilot == "" then
     navToPilot = utils.inputbox("Dirs from nav to pilot station?", "Nav To Pilot", "", "Courier", 9)
+    navEntered = true
   end
 	
 	if not shipEnterDirs or not shipLeaveDirs then
