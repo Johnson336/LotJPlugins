@@ -275,7 +275,8 @@ Initial contraband features added by @Domovoi.
   <alias match="^cargoShipClear?$" script="shipCargoClear" enabled="y" group="LotJCargo" ignore_case="y" regexp="y" sequence="100" />
   <alias match="^cargoLoadShips$" script="loadShips" enabled="y" group="LotJCargo" ignore_case="y" regexp="y" sequence="100" />
   <alias match="^cargoUnloadShips$" script="unloadShips" enabled="y" group="LotJCargo" ignore_case="y" regexp="y" sequence="100" />
-
+  <alias match="^cargoCloseBays$" script="toggleCloseBays" enabled="y" group="LotJCargo" ignore_case="y" regexp="y" sequence="100" />
+  <alias match="testdirs *" script="testDirs" enabled="y" group="LotJCargo" ignore_case="y" regexp="n" sequence="100" />
 </aliases>
 <timers>
 	<timer name="EfficiencyTimer" script="displayEfficiency" enabled="n" minute="5" group="AutoCargo" />
@@ -302,6 +303,7 @@ cPlanets = {}
 loadstring(GetVariable("cPlanets") or "")()
 local cVar = GetVariable("cVar") or 0
 local shipnum = GetVariable("shipnum") or 0
+local closeBays = GetVariable("closeBays") == "true"
 local shipProfile = {}
 ships = {}
 loadstring(GetVariable("ships") or "")()
@@ -331,6 +333,41 @@ SetOption("enable_timers", true)
 SetOption("enable_triggers", true)
 SetOption("enable_scripts", true)
 
+function testDirs(name, line, args)
+  runDirs(args[1])
+end
+
+function runDirs(dirs)
+  dirs = splitBy(dirs, ",")
+  dirs = splitBy(dirs, " ")
+  dirs = splitBy(dirs, ";")
+  dirs = splitBy(dirs, "|")
+  for i, v in ipairs(dirs) do
+    if v:lower() ~= "none" then
+      Send(v)
+    end
+  end
+end
+
+function splitBy(str, delim)
+  local ret = {}
+  if type(str) == "string" then
+    return utils.split(str, delim)
+  elseif type(str) == "table" then
+    for i, v in ipairs(str) do
+      for k, j in ipairs(utils.split(v, delim)) do
+        ret[#ret+1] = j
+      end
+    end
+    return ret
+  end
+end
+
+function toggleCloseBays(name, line, args)
+  closeBays = not closeBays
+  ColourNote("yellow","","Automatic closing and opening of hangar bays is "..((closeBays and "ON") or "OFF")..".")
+end
+
 toUnload = {}
 
 function unloadShips(name, line, args)
@@ -347,21 +384,25 @@ function unloadNext(ship)
     Send("openhatch "..ship.name)
     Send("board "..ship.name)
     Send("closehatch")
-    Execute(ship.dirs["hatchtopilot"])
-    Execute("autopilot off;openbay all;autopilot on")
+    runDirs(ship.dirs["hatchtopilot"])
+    Send("autopilot off")
+    Send("openbay all")
+    Send("autopilot on")
     for i, v in ipairs(ship.hangars or {}) do
       if hangarContainsChildren(v) then
-        Execute(v["pilottohangar"])
+        runDirs(v["pilottohangar"])
         for k, j in ipairs(v.ships or {}) do
           toUnload[#toUnload + 1] = j
           Send("unloadship "..j.name)
         end
-        Execute(v["hangartohatch"])
-        Execute(ship.dirs["hatchtopilot"])
+        runDirs(v["hangartohatch"])
+        runDirs(ship.dirs["hatchtopilot"])
       end
     end
-    Execute("autopilot off;closebay all;autopilot on")
-    Execute(ship.dirs["pilottohatch"])
+    Send("autopilot off")
+    Send("closebay all")
+    Send("autopilot on")
+    runDirs(ship.dirs["pilottohatch"])
     Send("openhatch")
     Send("leaveship")
     Send("closehatch "..ship.name)
@@ -401,9 +442,11 @@ function loadNext(ship)
     Send("openhatch "..ship.name)
     Send("enter "..ship.name)
     Send("closehatch")
-    Execute(ship.dirs["hatchtopilot"])
-    Execute("autopilot off;openbay all;autopilot on")
-    Execute(ship.dirs["pilottohatch"])
+    runDirs(ship.dirs["hatchtopilot"])
+    Send("autopilot off")
+    Send("openbay all")
+    Send("autopilot on")
+    runDirs(ship.dirs["pilottohatch"])
     Send("openhatch")
     Send("leaveship")
     Send("closehatch "..ship.name)
@@ -417,9 +460,11 @@ function loadNext(ship)
     Send("openhatch "..ship.name)
     Send("enter "..ship.name)
     Send("closehatch")
-    Execute(ship.dirs["hatchtopilot"])
-    Execute("autopilot off;closebay all;autopilot on")
-    Execute(ship.dirs["pilottohatch"])
+    runDirs(ship.dirs["hatchtopilot"])
+    Send("autopilot off")
+    Send("closebay all")
+    Send("autopilot on")
+    runDirs(ship.dirs["pilottohatch"])
     Send("openhatch")
     Send("leaveship")
     Send("closehatch "..ship.name)
@@ -789,7 +834,7 @@ function shipDBList(name, line, args)
           for k, j in ipairs(v.hangars) do
             ColourNote("gray","","  [","cyan","","Hangar "..k,"gray","","]")
             ColourNote("gray","","    [","cyan","","pilottohangar:'"..((j["pilottohangar"] and j["pilottohangar"]) or "none").."'","gray","","]")
-            ColourNote("gray","","    [","cyan","","hangartohatch:"..((j["hangartohatch"] and j["hangartohatch"]) or "none").."'","gray","","]")
+            ColourNote("gray","","    [","cyan","","hangartohatch:'"..((j["hangartohatch"] and j["hangartohatch"]) or "none").."'","gray","","]")
           end
         found = true
         break
@@ -860,6 +905,7 @@ function shipDBRename(name, line, args)
 end
 
 function OnPluginSaveState()
+  SetVariable("closeBays", tostring(closeBays))
   SetVariable("shipnum", shipnum)
   SetVariable("cVar", cVar)
   SetVariable("cPlanets", ((cPlanets and serialize.save("cPlanets")) or ""))
@@ -878,7 +924,7 @@ function scanNextManifest()
   -- from disableshipmanifest
 
   ColourNote("yellow","","Beginning cargo session momentarily...")
-  DoAfterSpecial(2, 'retrievePlanet()', sendto.script)
+  DoAfterSpecial(2, 'cargoStart()', sendto.script)
   
   else
     if not getShip(scannednum).name or getShip(scannednum).name == "" then -- name isn't set, bug out

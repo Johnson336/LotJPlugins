@@ -74,6 +74,33 @@ local navEntered = false
 
 require "tprint"
 
+
+function runDirs(dirs)
+  dirs = splitBy(dirs, ",")
+  dirs = splitBy(dirs, " ")
+  dirs = splitBy(dirs, ";")
+  dirs = splitBy(dirs, "|")
+  for i, v in ipairs(dirs) do
+    if v:lower() ~= "none" then
+      Send(v)
+    end
+  end
+end
+
+function splitBy(str, delim)
+  local ret = {}
+  if type(str) == "string" then
+    return utils.split(str, delim)
+  elseif type(str) == "table" then
+    for i, v in ipairs(str) do
+      for k, j in ipairs(utils.split(v, delim)) do
+        ret[#ret+1] = j
+      end
+    end
+    return ret
+  end
+end
+
 function toggleCheckSale(name, line, args)
   checkSale = not checkSale
   ColourNote("yellow","","Checking for sale spacecraft upon leaving ship is "..((checkSale and "ON") or "OFF")..".")
@@ -156,22 +183,7 @@ function flyClear()
 end
 
 function endFlight()
-  local dirs = {}
-  if string.find(shipLeaveDirs, " ") then -- entered n n n format
-    dirs = utils.split(shipLeaveDirs, " ")
-  elseif string.find(shipLeaveDirs, ",") then -- entered n,n,n format
-    dirs = utils.split(shipLeaveDirs, ",")
-  elseif string.find(shipLeaveDirs, ";") then -- entered n;n;n format
-    dirs = utils.split(shipLeaveDirs, ";")
-  -- room for expansion here to handle speedwalking syntax 2n3eu etc
-  elseif string.lower(shipLeaveDirs) ~= "none" then
-    ColourNote("red","","Unrecognized directions given to leave ship, aborting script.")
-    toggleFlyOff()
-    return
-  end
-  for i, v in ipairs(dirs) do
-    Execute(v)
-  end
+  runDirs(shipLeaveDirs)
   Send("openhatch")
   Send("leaveship")
   Send("closehatch "..shipName)
@@ -252,7 +264,7 @@ end
 
 function calcEntered()
   if navToPilot and navToPilot ~= "" then
-    Execute(navToPilot)
+    runDirs(navToPilot)
     Send("pilot")
   end
 end
@@ -271,7 +283,7 @@ function calcPlanet(name, list, args)
     return
   end
   if pilotToNav and pilotToNav ~= "" then
-    Execute(pilotToNav)
+    runDirs(pilotToNav)
   end
 	Execute("calc " .. planetName)
 end		
@@ -401,22 +413,7 @@ function toCockpit(name, list, args)
 	  toggleFlyOff()
 	  return
 	end
-  local dirs = {}
-  if string.find(shipEnterDirs, " ") then -- entered n n n format
-    dirs = utils.split(shipEnterDirs, " ")
-  elseif string.find(shipEnterDirs, ",") then -- entered n,n,n format
-    dirs = utils.split(shipEnterDirs, ",")
-  elseif string.find(shipEnterDirs, ";") then -- entered n;n;n format
-    dirs = utils.split(shipEnterDirs, ";")
-  -- room for expansion here to handle speedwalking syntax 2n3eu etc
-  elseif string.lower(shipEnterDirs) ~= "none" then
-    ColourNote("red","","Unrecognized directions given to enter ship, aborting script.")
-    toggleFlyOff()
-    return
-  end
-  for i, v in ipairs(dirs) do
-    Execute(v)
-  end
+  runDirs(shipEnterDirs)
 end
 
 function toggleFlyOn()
