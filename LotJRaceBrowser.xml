@@ -82,24 +82,24 @@ require "pairsByKeys"
 SetOption("enable_triggers", true)
 SetOption("enable_scripts", true)
 
-AUTHOR = GetPluginInfo(GetPluginID(), 2) -- author info
-VERSION = string.format("%1.2f", GetPluginInfo(GetPluginID(), 19)) -- version info
-win = "win_" .. GetPluginID()  -- unique window name
-font = "f"
-default_font_name = GetInfo(20)
-default_font_size = GetInfo(243)
-font_name = GetVariable("font_name") or default_font_name
-font_size = tonumber(GetVariable("font_size")) or default_font_size
-RESIZE_TAG_SIZE = 10
-visible = GetVariable("visible") or "true"
-MIN_WIDTH   = 50
-MIN_HEIGHT  = 50
-MIN_SPLIT   = 75
-redraw_scheduled = false
+local AUTHOR = GetPluginInfo(GetPluginID(), 2) -- author info
+local VERSION = string.format("%1.2f", GetPluginInfo(GetPluginID(), 19)) -- version info
+local win = "win_" .. GetPluginID()  -- unique window name
+local font = "f"
+local default_font_name = GetInfo(20)
+local default_font_size = GetInfo(243)
+local font_name = GetVariable("font_name") or default_font_name
+local font_size = tonumber(GetVariable("font_size")) or default_font_size
+local RESIZE_TAG_SIZE = 10
+local visible = GetVariable("visible") or "true"
+local MIN_WIDTH   = 50
+local MIN_HEIGHT  = 50
+local MIN_SPLIT   = 75
+local redraw_scheduled = false
 
 
 -- default config
-default_config = {  height = 300,
+local default_config = {  height = 300,
             width = 750,
             split = 150, -- location from left for window split
             backcolor = "black",
@@ -108,20 +108,38 @@ default_config = {  height = 300,
 -- replace default with loaded config
 loadstring(GetVariable("config") or "") ()
 
+local SCROLL_BACKGROUND_COLOUR = 0xE8E8E8
+local SCROLL_BAR_COLOUR = 0x111111
+local SCROLL_DETAIL_COLOUR = 0x000000
+local SCROLL_BAR_WIDTH = 15
+
+local titleHeight = 0
+
+local lastRefresh = 0
+
+local filter_main_class = ""
+local filter_classes = {}
+local filter_stats = {}
 
 races = {}
 local newRace = {}
 
-raceSelected = -1
+local raceSelected = -1
 
-raceDisplayedStart = 0
-raceDisplayedEnd = 0
-raceLineHeight = 0
-spacer = 3
+local raceDisplayedStart = 0
+local raceDisplayedEnd = 0
+local raceLineHeight = 0
+local spacer = 3
 
-text = {}
-textStart = 0
-textEnd = 0
+local currentRace = {}
+local currentRaceIndex = 0
+local skinColors = {}
+local extraAttribs = {}
+local raceLevels = {{}}
+
+local text = {}
+local textStart = 0
+local textEnd = 0
 
 loadstring(GetVariable("races") or "") ()
 
@@ -320,12 +338,6 @@ function stopRacelistScan(name, line, args)
   startRaceScan()
 end
 
-local currentRace = {}
-local currentRaceIndex = 0
-local skinColors = {}
-local extraAttribs = {}
-local raceLevels = {{}}
-
 function startRaceScan(name, line, args)
   currentRaceIndex = 0
   ColourNote("yellow", "", "Race Scan started...\n\n")
@@ -370,8 +382,8 @@ function updateSelectedRace()
   if races[raceIndex] ~= nil then
     raceSelected = raceIndex
     updateRaceText()
-    forceRedraw()
   end
+  forceRedraw()
 end
 
 class_matrix = {  ["combat"] = 1, 
@@ -575,13 +587,6 @@ function setupWindow(name, line, args)
 
 
 end
-
-SCROLL_BACKGROUND_COLOUR = 0xE8E8E8
-SCROLL_BAR_COLOUR = 0x111111
-SCROLL_DETAIL_COLOUR = 0x000000
-SCROLL_BAR_WIDTH = 15
-
-titleHeight = 0
 
 
 function drawWindow(name, line, args)
@@ -901,7 +906,6 @@ function ResizeMoveCallback(flags, hotspot_id)
 		lastRefresh = utils.timer()
 	end
 end
-lastRefresh = 0
 ---------------------------------------------------------------------------------
 -- Called after the resize widget is released.
 ---------------------------------------------------------------------------------
@@ -980,10 +984,6 @@ function LeftClickOnly(flags, hotspot_id, win)
 	end
 	return false
 end
-
-filter_main_class = ""
-filter_classes = {}
-filter_stats = {}
 
 function right_click_menu(hotspot_id)
 
@@ -1121,23 +1121,14 @@ function scrollbar2()
    )
 end
 
-function OnPluginInstall () 
-  
-  font_name = GetVariable("font_name") or default_font_name
-  font_size = tonumber(GetVariable("font_size")) or default_font_size
-	
+function OnPluginInstall () 	
   -- get default config
   if not config then
     config = default_config
   end
   
   --- Setup the windows
-  SetUpHotspotsAndDraw(true)
-
-   
-  -- add the fonts                
-  --check(WindowFont (win, font, font_name, font_size, true, false, false, false))
-  
+  SetUpHotspotsAndDraw(true)  
     
 end -- OnPluginInstall
 --================================================================================
