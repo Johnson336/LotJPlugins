@@ -1791,10 +1791,10 @@ function cargoList()
     ColourNote("red","","Cargo route empty, add something first!")
   else
     ColourNote(gray,"","Cargo list contains ",cyan,"",#cPlanets,gray,""," planets: ")
-    ColourNote(gray,"","-------------------------------------------")
-    ColourNote(gray,"","[",darkblue,"","Curr:",gray,"","] [",darkblue,"","Planet:   ",gray,"","] [",darkblue,"","Resource:           ",gray,"","]")
+    ColourNote(gray,"","-----------------------------------------------")
+    ColourNote(gray,"","[",darkblue,"","Curr:",gray,"","] [",darkblue,"","Planet:       ",gray,"","] [",darkblue,"","Resource:           ",gray,"","]")
     for i, v in ipairs(cPlanets) do
-      ColourNote(gray,"","[",cyan,"",string.format("%-5s", ((i == cVar and "*") or "")),gray,"","] [",cyan,"",string.format("%-10s", v.name),gray,"","] [",cyan,"",string.format("%-20s", v.resource),gray,"","]")
+      ColourNote(gray,"","[",cyan,"",string.format("%-5s", ((i == cVar and "*") or "")),gray,"","] [",cyan,"",string.format("%-14s", v.name),gray,"","] [",cyan,"",string.format("%-20s", v.resource),gray,"","]")
     end -- for
   end
 end
