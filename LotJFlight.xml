@@ -35,7 +35,8 @@ v1.42 -
 	<trigger name="LeftShip" match="^You exit the ship\.$" script="reenterCheck" group="Flight" enabled="n" regexp="y" sequence="100" />
   <trigger name="squadronlaunched" match="^(?P<fightertype>.+?) '(?P<fightername>.+?)' launches from a hangar on (?P<hangartype>.+?) '(?P<hangarname>.+?)'\,(.*)$" script="fighterGrab" group="Squadron" enabled="y" regexp="y" sequence="100" />
   <trigger name="squadronview" match="^(L\[(.*)\]\:P\[(.*)\] )?(?P<fightertype>.+?) '(?P<fightername>.+?)'((\s+[\d-]+\s[\d-]+\s[\d-]+|\s+Prox\: \d+))?$" script="fighterShow" group="Squadron" enabled="y" regexp="y" sequence="100" />
-  <trigger match="Checking hyperspace course integrity. Please wait." script="calcEntered" group="Flight" regexp="n" sequence="100" />
+  <trigger match="^Checking hyperspace course integrity\. Please wait\.$" script="calcEntered" group="Flight" regexp="y" sequence="100" />
+  <trigger match="^Please wait until the ship has finished its current maneuver\.$" script="waitHyper" group="Flight" regexp="y" sequence="100" />
 
 </triggers>
 
@@ -49,6 +50,7 @@ v1.42 -
   <alias match="^flychecksale$" script="toggleCheckSale" enabled="y" regexp="y" group="FlightCmd" ignore_case="y" sequence="100" />
 	<alias name="FlyReenterToggle" match="^flyreenter(\s*(.*))?$" script="toggleReenter" enabled="y" regexp="y" group="FlightCmd" ignore_case="y" sequence="100" />
 	<alias name="fighterclear" match="fighterclear" script="fighterClear" enabled="y" regexp="n" group="FlightCmd" ignore_case="y" sequence="100" />
+  <alias match="^flyland(\s*(.*))?$" script="flyLand" enabled="y" regexp="y" group="FlightCmd" ignore_case="y" sequence="100" />
 </aliases>
 <!--   Script    --> 
 <script>
@@ -70,10 +72,56 @@ local hangars = {}
 local reentership = false
 local hypertries = 0
 local checkSale = false
+local dirsEntered = false
 local navEntered = false
+local hyperCompleted = false
+landPref = {}
+loadstring(GetVariable("landPref") or "")()
+
+local darkblue = RGBColourToName(GetNormalColour(5))
+local gray = RGBColourToName(GetBoldColour(1))
+local cyan = RGBColourToName(GetBoldColour(7))
+
 
 require "tprint"
+require "pairsByKeys"
+require "serialize"
 
+
+function flyLand(name, line, args)
+  args = utils.split(Trim(args[1]), ",")
+  if args and args[1]:lower() == "list" then -- print list
+    ColourNote(gray,"","LotJFlight landing preference list:")
+    if not landPref then
+      ColourNote(gray,"","  List empty.")
+    else
+      ColourNote(gray,"","  [",darkblue,"","Planet:        ",gray,"","] [",darkblue,"","Landing:            ",gray,"","]")
+      for k, v in pairsByKeys(landPref) do
+        ColourNote(gray,"","  [",cyan,"",string.format("%-15s",k),gray,"","] [",cyan,"",string.format("%-20s",v),gray,"","]")
+      end
+    end
+  elseif args and args[1]:lower() == "clear" then -- clear list
+    landPref = {}
+    ColourNote("yellow","","LotJFlight: Landing preference list cleared.")
+  elseif args and #args < 2 then -- single argument, check for entry to erase
+    local found = false
+    for k, v in pairsByKeys(landPref) do
+      if k:lower() == args[1]:lower() then -- found entry, delete it
+        ColourNote("yellow","","LotJFlight: Planet '"..k.."' deleted from landing preference list.")
+        landPref[k] = nil
+        found = true
+      end
+    end
+    if not found then
+      ColourNote("red","","LotJFlight: Planet '"..args[1].."' not found in landing preference list.")
+      return
+    end
+  else -- 2 arguments in planet,landing format
+    landPref[args[1]] = args[2]
+    ColourNote("yellow","","LotJFlight: Landing preference '"..args[2].."' designated for planet '"..args[1].."'.")
+  end
+
+end
 
 function runDirs(dirs)
   dirs = splitBy(dirs, ",")
@@ -103,7 +151,7 @@ end
 
 function toggleCheckSale(name, line, args)
   checkSale = not checkSale
-  ColourNote("yellow","","Checking for sale spacecraft upon leaving ship is "..((checkSale and "ON") or "OFF")..".")
+  ColourNote("yellow","","LotJFlight: Checking for sale spacecraft upon leaving ship is "..((checkSale and "ON") or "OFF")..".")
 end
 
 function fighterGrab(name, line, args)
@@ -137,27 +185,20 @@ function fighterClear()
 end
   
 function reenterCheck()
-  if reentership then
+  if hyperCompleted and reentership then
     enterShip()
   end
 end
 
 function toggleReenter(name, line, args)
   if not args or args[1] == "" then -- entered nothing
-    if reentership then
-      reentership = false
-      ColourNote("yellow","","Will not re-enter ship upon arrival.")
-    else
-      reentership = true
-      ColourNote("yellow","","Will re-enter ship upon arrival.")
-    end
+    reentership = not reentership
   elseif string.lower(args[1]) == "on" then
     reentership = true
-    ColourNote("yellow","","Will re-enter ship upon arrival.")
   elseif string.lower(args[1]) == "off" then
     reentership = false
-    ColourNote("yellow","","Will not re-enter ship upon arrival.")
   end
+  ColourNote("yellow","","LotJFlight: Will "..((reentership and "") or "not ").."re-enter ship upon arrival.")
 end
 
 function flyClear()
@@ -173,17 +214,20 @@ function flyClear()
 	landingSites = {}
 	landingSiteNum = 0
 	landgrabbing = false
-	landPreference = -1
 	reentership = false
   checkSale = false
+  dirsEntered = false
   navEntered = false
+  hyperCompleted = false
 	hypertries = 0
 	Note("Fly variables cleared.")
 	toggleFlyOff()
 end
 
 function endFlight()
-  runDirs(shipLeaveDirs)
+  if shipLeaveDirs and shipLeaveDirs ~= "" then
+    runDirs(shipLeaveDirs)
+  end
   Send("openhatch")
   Send("leaveship")
   Send("closehatch "..shipName)
@@ -199,12 +243,16 @@ end
 coords = {-50000, 0, 50000}
 
 function waitHyper()
-  hypertries = hypertries + 1
-  if hypertries >= 10 then
-    hypertries = 0
-    Send("course "..coords[math.random(3)].." "..coords[math.random(3)].." "..coords[math.random(3)])
+  if not hyperCompleted then
+    hypertries = hypertries + 1
+    if hypertries >= 10 then
+      hypertries = 0
+      Send("course "..coords[math.random(3)].." "..coords[math.random(3)].." "..coords[math.random(3)])
+    end
+    DoAfter(10, "hyper")
+  else -- we already completed hyper, try landing instead
+    DoAfterSpecial(10, 'doLand()', sendto.script)
   end
-  DoAfter(10, "hyper")
 end
 
 function landing()
@@ -213,20 +261,39 @@ function landing()
 end	
 
 function endLandGrab()
+  landingSiteNum = 0
 	if (landgrabbing == false) then
 		landgrabbing = true
 		Note("Grabbing landing sites...")
-		landingSiteNum = 0
 	else
 		landgrabbing = false
 		EnableTriggerGroup("landGrab", false)
-		--Note("Land grab finished.")
-		landingSiteNum = 0
-		if (tonumber(landPreference) > 0) then
-			landArg(landPreference)
-		else
-			landNext()
-		end
+    local landing = landPref[planetName:lower()]
+    if landing and tonumber(landing) then -- pref is a number
+      if tonumber(landing) > 0 then -- landing number given
+        landArg(tonumber(landing))
+      else  -- 0 is auto landing
+        landNext()
+      end
+    elseif landing then -- pref is a word
+      if landing:lower() == "auto" or landing:lower() == "0" then -- auto landing
+        landNext()
+      else -- preference is string match
+        local found = false
+        for i=0, #landingSites, 1 do
+          if landingSites[i] and string.find(landingSites[i]:lower(), landing:lower(), 0, true) then -- pref found
+            found = true
+            landArg(i)
+            break
+          end
+        end
+        if not found then
+          ColourNote("red","","Landing preference '"..landing.."' not found in stored preference list.")
+        end
+      end
+    else -- no landing pref, use automatic
+      landNext()
+    end
 	end
 end
 
@@ -253,11 +320,13 @@ function startLandGrab(name, list, args)
 end
 
 function doLand()
+  hyperCompleted = true
 	Send("land '" .. planetName .. "'")
 end
 
 
 function coursePlanet()
+  hyperCompleted = true
 	Send("speed 100")
 	Send("course '" .. planetName .. "'")
 end
@@ -289,18 +358,14 @@ function calcPlanet(name, list, args)
 end		
 
 function flightStatus(name, list, args)
-	Note("Flight status: " .. ((autoFly==true and "Enabled") or "Disabled"))
-	Note("  Flying '" .. shipName .. "' (" .. hatchCode .. ")")
-	if (autoFly == true) then
-		if (lastPlanet ~= "") then
-			Note("  Flying from: " .. lastPlanet)
-		end
-		Note("  Destination planet: " .. planetName)
-	end
-	if reentership then
-	  Note("  Will re-enter ship when flight is completed.")
-	end
-  ColourNote("yellow","","Checking for sale spacecraft upon leaving ship is "..((checkSale and "ON") or "OFF")..".")
+  ColourNote(gray,"","LotJFlight status: ",cyan,"",((autoFly and "Enabled") or "Disabled"))
+  ColourNote(gray,"","[",cyan,"","Ship name: "..shipName,gray,"","] [",cyan,"","Hatch: "..hatchCode,gray,"","]")
+  ColourNote(gray,"","[",cyan,"","Flying from: "..((lastPlanet~="" and lastPlanet) or "Unknown"),gray,"","]")
+  ColourNote(gray,"","[",cyan,"","Flying to: "..((planetName~="" and planetName) or "Unknown"),gray,"","]")
+  local landing = landPref[planetName:lower()]
+  ColourNote(gray,"","[",cyan,"","Landing preference: "..((landing and landing) or "none stored, using automatic"),gray,"","]")
+  ColourNote(gray,"","[",cyan,"","Will "..((reentership and "") or "not ").."re-enter ship upon arrival",gray,"","]")
+  ColourNote(gray,"","[",cyan,"","Checking for sale spacecraft upon leaving ship is "..((checkSale and "ON") or "OFF"),gray,"","]")
 end
 
 function finishFlight(name, list, args)
@@ -316,27 +381,24 @@ function finishFlight(name, list, args)
       return
     end
 	end
-  if not navEntered and pilotToNav and pilotToNav == "" then
+  if not navEntered and (pilotToNav and pilotToNav == "") then
     pilotToNav = utils.inputbox("Dirs from pilot to nav station?", "Pilot To Nav", "", "Courier", 9)
   end
-  if not navEntered and navToPilot and navToPilot == "" then
+  if not navEntered and (navToPilot and navToPilot == "") then
     navToPilot = utils.inputbox("Dirs from nav to pilot station?", "Nav To Pilot", "", "Courier", 9)
     navEntered = true
   end
-	if (shipLeaveDirs == ""or not shipLeaveDirs) then
-		shipLeaveDirs = utils.inputbox("Dirs to leave ship?", "Exit", "", "Courier", 9)
-    if not shipLeaveDirs then
-      ColourNote("red","","Cancel detected, aborting.")
-      return
-    end
+	if not dirsEntered and (shipEnterDirs and shipEnterDirs == "") then
+		shipEnterDirs = utils.inputbox("Dirs to cockpit?\nFormat options:\nSpaces: E U N\nCommas: E,U,N\nSemi-colons: E;U;N\n1-Room Ship: none", "Cockpit", "", "Courier", 9)
 	end
-	if (landPreference == -1 or not landPreference) then
-    local num = utils.inputbox("Preferred landing site at destination planet? (Numbered from top-down, 0 for automatic landing)", "Landing site", "0", "Courier", 9)
-    if not num then
-      ColourNote("red","","Cancel detected, aborting.")
-      return
-    end
-		landPreference = tonumber(num)
+	if not dirsEntered and (shipLeaveDirs and shipLeaveDirs == "") then
+		shipLeaveDirs = utils.inputbox("Dirs to leave ship?\nFormat options:\nSpaces: S D W\nCommas: S,D,W\nSemi-colons: S;D;W\n1-Room Ship: none", "Exit", "", "Courier", 9)
+    dirsEntered = true
+	end
+	if landPref[planetName:lower()] then
+    ColourNote("yellow","","Using saved landing preference '"..landPref[planetName:lower()].."'.")
+  else
+    ColourNote("red","","No landing preference saved, using automatic landing.")
 	end
 end
 
@@ -352,19 +414,17 @@ function beginFlight(name, list, args)
 	end
 	enterShip()
 	toCockpit()
+  hyperCompleted = false
 	Send("pilot")
 	Send("autopilot off")
 	Send("launch confirm")
 	Send("shields on")
 	Note("Flying to: '" .. planetName .. "'")
 	toggleFlyOn()
-	if (landPreference == -1) then
-    local num = utils.inputbox("Preferred landing site at destination planet? (Numbered from top-down, 0 for automatic landing)", "Landing site", "0", "Courier", 9)
-		if not num then
-      ColourNote("red","","Cancel detected, aborting.")
-      return
-    end
-    landPreference = tonumber(num)
+	if landPref[planetName:lower()] then
+    ColourNote("yellow","","Using saved landing preference '"..landPref[planetName:lower()].."'.")
+  else
+    ColourNote("red","","No landing preference saved, using automatic landing.")
 	end
 end
 
@@ -394,26 +454,23 @@ function enterShip(name, list, args)
 end
 
 function toCockpit(name, list, args)
-	if (shipEnterDirs == "" or not shipEnterDirs) then
+	if not dirsEntered and (shipEnterDirs and shipEnterDirs == "") then
 		shipEnterDirs = utils.inputbox("Dirs to cockpit?\nFormat options:\nSpaces: E U N\nCommas: E,U,N\nSemi-colons: E;U;N\n1-Room Ship: none", "Cockpit", "", "Courier", 9)
 	end
-	if (shipLeaveDirs == "" or not shipLeaveDirs) then
+	if not dirsEntered and (shipLeaveDirs and shipLeaveDirs == "") then
 		shipLeaveDirs = utils.inputbox("Dirs to leave ship?\nFormat options:\nSpaces: S D W\nCommas: S,D,W\nSemi-colons: S;D;W\n1-Room Ship: none", "Exit", "", "Courier", 9)
+    dirsEntered = true
 	end
-  if not navEntered and pilotToNav and pilotToNav == "" then
+  if not navEntered and (pilotToNav and pilotToNav == "") then
     pilotToNav = utils.inputbox("Dirs from pilot to nav station?", "Pilot To Nav", "", "Courier", 9)
   end
-  if not navEntered and navToPilot and navToPilot == "" then
+  if not navEntered and (navToPilot and navToPilot == "") then
     navToPilot = utils.inputbox("Dirs from nav to pilot station?", "Nav To Pilot", "", "Courier", 9)
     navEntered = true
   end
-	
-	if not shipEnterDirs or not shipLeaveDirs then
-	  ColourNote("red","","Cancelled dialog box, aborting script.")
-	  toggleFlyOff()
-	  return
-	end
-  runDirs(shipEnterDirs)
+  if shipEnterDirs and shipEnterDirs ~= "" then
+    runDirs(shipEnterDirs)
+  end
 end
 
 function toggleFlyOn()
@@ -456,7 +513,15 @@ function flightHelp()
 	Note("Flyreenter          - Re-enter your ship at the end of a flight")
   Note("FlyCheckSale        - Check for sale spacecraft at the end of a flight")
 	Note("FlyHelp             - Display this help menu")
+  Note("FlyLand list        - Display saved landing preferences")
+  Note("FlyLand clear       - Clear saved landing preferences")
+  Note("FlyLand <planet>    - Delete saved landing preference")
+  Note("FlyLand <planet>,<landing> - Store landing preference for given planet")
 	Note("\n")
+end
+
+function OnPluginSaveState()
+  SetVariable("landPref", ((landPref and serialize.save("landPref")) or "")) -- don't set until variable exists
 end
 
 require "checkplugin"
