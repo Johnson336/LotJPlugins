@@ -832,9 +832,9 @@ function shipDBList(name, line, args)
             ColourNote(gray,"","    [",cyan,"","pilottohangar:'"..((j["pilottohangar"] and j["pilottohangar"]) or "none").."'",gray,"","]")
             ColourNote(gray,"","    [",cyan,"","hangartohatch:'"..((j["hangartohatch"] and j["hangartohatch"]) or "none").."'",gray,"","]")
           end
+        end
         found = true
         break
-        end
       end
     end
   
