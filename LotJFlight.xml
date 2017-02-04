@@ -103,6 +103,11 @@ function flyLand(name, line, args)
   elseif args and args[1]:lower() == "clear" then -- clear list
     landPref = {}
     ColourNote("yellow","","LotJFlight: Landing preference list cleared.")
+  elseif args and args[1] == "" then -- entered nothing, display options
+    ColourNote("red","","Usage: flyLand list               - display list of landing preferences")
+    ColourNote("red","","       flyLand clear              - clear list of landing preferences")
+    ColourNote("red","","       flyLand <planet>           - delete specific landing preference")
+    ColourNote("red","","       flyLand <planet>,<landing> - save landing preference for given planet")
   elseif args and #args < 2 then -- single argument, check for entry to erase
     local found = false
     for k, v in pairsByKeys(landPref) do
