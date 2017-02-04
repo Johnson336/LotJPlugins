@@ -358,7 +358,7 @@ function drawWindow(name, line, args)
 		local x = scaleXCoord(sys.x)  -- scale X coordinate
 		local y = scaleYCoord(sys.y) -- scale Y coordinate
 		
-		WindowText (win, font, ((sys.planet~="" and sys.planet) or sys.name),   -- text
+		WindowText (win, font, ((sys.planet and sys.planet) or sys.name),   -- text
                 sys.left, sys.top, sys.right, sys.bottom,        -- rectangle
                 ColourNameToRGB ("white"), -- colour
                 false)              -- not Unicode
@@ -602,7 +602,7 @@ function scaleYCoord(coord)
 end
 function onClick(flags, hotspot_id)
 	local sys = systems[tonumber(hotspot_id)]
-	if (sys.planet ~= "") then
+	if (sys.planet) then
 		Execute("calculate " .. sys.planet)
 	else
 		Execute("calculate '" .. sys.x .. " " .. sys.y .. "'")
@@ -770,7 +770,7 @@ end
 function LeftClickOnly(flags, hotspot_id, win)
 	if bit.band (flags, miniwin.hotspot_got_lh_mouse) ~= 0 then
     local sys = systems[tonumber(hotspot_id)]
-    if (sys.planet ~= "") then
+    if (sys.planet) then
       Execute("calculate " .. sys.planet)
     else
       Execute("calculate '" .. sys.x .. " " .. sys.y .. "'")
