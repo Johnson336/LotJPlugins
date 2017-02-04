@@ -3,7 +3,7 @@
 <!--  Saved on Thursday, July 05, 2012, 1:04 AM   --> 
 <!-- MuClient version 4.73 --> 
 <muclient>
-<plugin name="LotJStarMap" author="@Johnson" id="dd5080a41939faabc233da8f" language="Lua" purpose="Dynamically display a system map with player location overlay" save_state="y" requires="4.73" version="2.28">
+<plugin name="LotJStarMap" author="@Johnson" id="dd5080a41939faabc233da8f" language="Lua" purpose="Dynamically display a system map with player location overlay" save_state="y" requires="4.73" version="2.29">
 <description trim="y">
 <![CDATA[
 This plugin will gather information about the current galaxy's star systems 
@@ -62,7 +62,7 @@ require "serialize"
 dofile(GetPluginInfo(GetPluginID(), 20) .. "LotJMSDPHelper.lua")
 local win = "galaxy_map_" .. GetPluginID()  -- unique window name
 systems = {}
-local system = { name = "", x = 99999, y = 99999, planet = "", left = 0, top = 0, right = 0, bottom = 0 }
+local system = {}
 loadstring(GetVariable("systems") or "") ()
 local font = "f"
 local maxX = 0
@@ -143,7 +143,7 @@ function storeSystem(name, list, args)
 		system.x = tonumber(args[2])
 		system.y = tonumber(args[3])
 		systems[#systems + 1] = system
-    system = { name = "", x = 99999, y = 99999, planet = "", left = 0, top = 0, right = 0, bottom = 0 }
+    system = {}
 	end
 end
 function toggleOff(name, list, args)
@@ -198,9 +198,9 @@ end
 function setupConflicts()
   -- setup our text boundaries since we just now figured out our max and min values for scaling
   for i, v in ipairs(systems) do
-  	v.left = scaleXCoord(v.x) - WindowTextWidth(win, font, ((v.planet~="" and v.planet) or v.name))/2 + 5
+  	v.left = scaleXCoord(v.x) - WindowTextWidth(win, font, ((v.planet and v.planet) or v.name))/2 + 5
 		v.top = scaleYCoord(v.y) + 5
-		v.right = v.left + WindowTextWidth(win, font, ((v.planet~="" and v.planet) or v.name)) -- font width
+		v.right = v.left + WindowTextWidth(win, font, ((v.planet and v.planet) or v.name)) -- font width
 		v.bottom = v.top + WindowFontInfo(win, font, 1) -- font height
   end
   -- find our scaled max and mins
@@ -218,12 +218,12 @@ function resolveConflicts()
   -- resolve window boundary conflicts
   for i, v in ipairs(systems) do
     if v.right > smaxX then
-      v.left = smaxX - WindowTextWidth(win, font, ((v.planet~="" and v.planet) or v.name))
+      v.left = smaxX - WindowTextWidth(win, font, ((v.planet and v.planet) or v.name))
       v.right = smaxX
     end
     if v.left < sminX then
       v.left = sminX
-      v.right = v.left + WindowTextWidth(win, font, ((v.planet~="" and v.planet) or v.name))
+      v.right = v.left + WindowTextWidth(win, font, ((v.planet and v.planet) or v.name))
     end
     if v.bottom > sminY then
       v.top = sminY - WindowFontInfo(win, font, 1) - 5
@@ -373,9 +373,9 @@ function drawWindow(name, line, args)
                  sys.left, sys.top, sys.right, sys.bottom,
                  "drawPaths", -- mousehover
                  "hidePaths",        -- mousecancelhover
-                 "",         -- mousedown
+                 "LeftClickOnly",         -- mousedown
                  "CancelMouseDown",   -- mousecanceldown
-                 "LeftClickOnly",           -- mouseup
+                 "",           -- mouseup
                  sys.name.. " (" .. sys.x .. "," .. sys.y .. ")",  -- tooltip text
                  1, 0)
     end
@@ -451,7 +451,7 @@ function drawCoords()
     --Tell(" endX: "..string.format("%.0f",endX or 0).." endY: "..string.format("%.0f\n",endY or 0))
   else  -- not x,y coords
     for k, v in pairs(systems) do
-      if currentSystem ~= "" and (string.lower(v.name) == string.lower(currentSystem)) then -- scroll planet list and see if our current system matches one of the system names
+      if currentSystem ~= "" and (v.name and string.lower(v.name) == string.lower(currentSystem)) then -- scroll planet list and see if our current system matches one of the system names
         --Note("passed drawcoords 2")
         realx = scaleXCoord(v.x)
         realy = scaleYCoord(v.y)
@@ -461,7 +461,7 @@ function drawCoords()
         --Tell("realx: "..string.format("%.0f",realx).." realy: "..string.format("%.0f",realy))
         --Tell(" startx: "..string.format("%.0f",startx or 0).." starty: "..string.format("%.0f",starty or 0))
         --Tell(" endX: "..string.format("%.0f",endX or 0).." endY: "..string.format("%.0f\n",endY or 0))
-      elseif currentPlanet ~= "" and (string.lower(v.planet) == string.lower(currentPlanet)) then -- scroll planet list and see if our current planet matches one of the planet names
+      elseif currentPlanet ~= "" and (v.planet and string.lower(v.planet) == string.lower(currentPlanet)) then -- scroll planet list and see if our current planet matches one of the planet names
         --Note("passed drawcoords 3")
         realx = scaleXCoord(v.x)
         realy = scaleYCoord(v.y)
@@ -509,7 +509,7 @@ function haveDestination()
   end
   -- if we make it this far, it means we got a planet or system name from lotjcalc, scroll through and find out who it belongs to
   for k, v in pairs(systems) do -- check to see if lotjcalc's system belongs to one of the known systems or planets
-    if ((string.lower(v.name) == string.lower(storedsystem)) or (string.lower(v.planet) == string.lower(storedsystem))) then
+    if (v.name and string.lower(v.name) == string.lower(storedsystem)) or (v.planet and string.lower(v.planet) == string.lower(storedsystem)) then
       endX = scaleXCoord(v.x)
       endY = scaleYCoord(v.y)
       --Note("passed havedest 3")
@@ -899,12 +899,12 @@ function right_click_menu (hotspot_id)
 	menustring = menustring.."Add System|>Remove System|"
 	
 	for i, v in ipairs(systems) do
-		menustring = menustring..((v.planet~=nil and v.planet.." - ") or "")..v.name.."|"
+		menustring = menustring..((v.planet and v.planet.." - ") or "")..v.name.."|"
 	end
 	menustring = menustring.."<|-|>Change System Color|"
 	
 	for i, v in ipairs(systems) do
-		menustring = menustring..((v.planet~=nil and v.planet.." - ") or "")..v.name.."|"
+		menustring = menustring..((v.planet and v.planet.." - ") or "")..v.name.."|"
 	end
 	menustring = menustring.."<|-|"
 	
