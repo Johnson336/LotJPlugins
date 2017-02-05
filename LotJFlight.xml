@@ -190,7 +190,7 @@ function fighterClear()
 end
   
 function reenterCheck()
-  if hyperCompleted and reentership then
+  if reentership then
     enterShip()
   end
 end
