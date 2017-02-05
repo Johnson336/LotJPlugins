@@ -248,16 +248,14 @@ end
 coords = {-50000, 0, 50000}
 
 function waitHyper()
-  if not hyperCompleted then
+  --if not hyperCompleted then
     hypertries = hypertries + 1
     if hypertries >= 10 then
       hypertries = 0
       Send("course "..coords[math.random(3)].." "..coords[math.random(3)].." "..coords[math.random(3)])
     end
     DoAfter(10, "hyper")
-  else -- we already completed hyper, try landing instead
-    DoAfterSpecial(10, 'doLand()', sendto.script)
-  end
+  --end
 end
 
 function landing()
