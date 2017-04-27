@@ -1,0 +1,208 @@
+<?xml version="1.0" encoding="iso-8859-1" ?> 
+<!DOCTYPE muclient>   
+<muclient>
+<plugin name="LotJReplay" author="@Johnson" id="67a7333565991c3cf9c3b6dd" language="Lua" purpose="Record and replay LotJ sessions" save_state="y" requires="4.40" version="1.00">
+<description trim="y">
+<![CDATA[ 
+This plugin allows you to record replays of gameplay for real-time playback.
+  ]]> 
+  </description>
+  </plugin>
+<!--   Get our standard constants   --> 
+	<include name="constants.lua" /> 
+<!--   Triggers    --> 
+<triggers>
+
+</triggers>
+
+<aliases>
+
+<!-- record stuff -->
+<!-- record, record w/ buffer, stop -->
+  <alias match="recordstart" script="recordStart" enabled="y" regexp="n" ignore_case="y" sequence="100" />
+  <alias match="recordbufferstart" script="recordBufferStart" enabled="y" regexp="n" ignore_case="y" sequence="100" />
+  <alias match="recordstop" script="recordStop" enabled="y" regexp="n" ignore_case="y" sequence="100" />
+  <alias match="replaystart" script="replayStart" enabled="y" regexp="n" ignore_case="y" sequence="100" />
+  <alias match="replaystop" script="replayStop" enabled="y" regexp="y" ignore_case="y" sequence="100" />
+  <alias match="replayspeedup" script="increaseReplaySpeed" enabled="y" regexp="y" ignore_case="y" sequence="100" />
+  <alias match="replayspeeddown" script="decreaseReplaySpeed" enabled="y" regexp="y" ignore_case="y" sequence="100" />
+  <alias match="replayskip *" script="replaySkip" enabled="y" regexp="n" ignore_case="y" sequence="100" />
+
+<!-- replay stuff -->
+<!-- rewind, play, pause, fast forward, load -->
+
+</aliases>
+<timers>
+  <timer name="replay" script="replayTick" enabled="n" minute="0" second="0.1" />
+</timers>
+<!--   Script    --> 
+<script>
+<![CDATA[
+
+dofile(GetPluginInfo(GetPluginID(), 20) .. "lotj_colors.lua")
+
+local AUTHOR = GetPluginInfo(GetPluginID(), 2) -- author info
+local VERSION = string.format("%1.2f", GetPluginInfo(GetPluginID(), 19)) -- version info
+
+local win = "win_"..GetPluginID()
+local mode = "normal"
+local width = 400
+local height = 50
+
+local recording = false
+local replaying = false
+local replayspeed = 1
+local filename = ""
+local timeRecordStarted = 0
+
+local f = ""
+local replaytime = 0
+local replayline = ""
+local timeStarted = 0
+
+local replayskip = 10
+
+-- this function sets the amount of time needed before a section of dead space is skipped
+-- and immedietly fast forwarded
+function replaySkip(name, line, args)
+  if not tonumber(args[1]) then
+    ColourNote("red","","Usage: replayskip <number of seconds>")
+    return
+  end
+  replayskip = args[1]
+  ColourNote("yellow","","LotJReplay will fast foward dead intervals of "..replayskip.." second"..((tonumber(replayskip) == 1 and "") or "s").." or greater.")
+end
+
+function increaseReplaySpeed(name, line, args)
+  replayspeed = replayspeed + .1
+  ColourNote("yellow","","LotJReplay speed is now "..string.format("%-03d", replayspeed*100).."%.")
+end
+
+function decreaseReplaySpeed(name, line, args)
+  replayspeed = replayspeed - .1
+  ColourNote("yellow","","LotJReplay speed is now "..string.format("%-03d", replayspeed*100).."%.")
+end
+
+function replayStart(name, line, args)
+  filename = utils.filepicker ("Choose recording to play...", "recording.txt", "txt", { txt = "Text recording file" }, false)
+  if not filename then
+    ColourNote("red","","Cancel detected, aborting.")
+    return
+  end
+  f = assert(io.input(filename)) -- open playback file
+  timeStarted = GetInfo(232)
+  EnableTimer("replay", true)
+  ColourNote("yellow","","LotJReplay playing from recording "..filename..".")
+  replaying = true
+end
+
+function replayTick()
+  if replaytime > 0 then -- we have a stored line to check
+    replayLine()
+  else
+    replayline = f:read("*l") -- get a line from replay file
+    if replayline then
+      replayline = utils.split(replayline, "|", 1)
+      replaytime = tonumber(replayline[1])
+      replayline = replayline[2]
+      replayLine()
+    else
+      replayStop()
+    end
+  end
+end
+
+function replayLine()
+  if replaytime < (GetInfo(232)-timeStarted)*replayspeed then
+    replayline = ColoursToStyles(replayline)
+    ColourTell("darkgray","",">")
+    for _, style in ipairs(replayline) do
+      ColourTell(RGBColourToName(style.textcolour), RGBColourToName(style.backcolour), style.text)
+    end
+    Tell('\n')
+    replaytime = 0
+    replayTick() -- continue ticks until we run out of lines
+  end
+end
+
+function replayStop(name, line, args)
+  if replaying then
+    assert(f:close()) -- close open replay file
+    EnableTimer("replay", false)
+    replaying = false
+    replaytime = 0
+    replayline = ""
+    ColourNote("yellow","","LotJReplay playback ended.")
+  end
+end
+
+function recordStart(name, line, args)
+  filename = utils.filepicker ("Choose filename to save recording...", "recording.txt", "txt", { txt = "Text recording file" }, true )
+  if not filename then
+    ColourNote("red","","Cancel detected, aborting.")
+    return
+  end
+  timeRecordStarted = GetInfo(232) -- time since world was opened, our starting point
+  ColourNote("yellow","","LotJReplay saving new lines to replay file "..filename..".")
+  recording = true
+end
+function recordBufferStart(name, line, args)
+  filename = utils.filepicker ("Choose filename to save recording...", "recording.txt", "txt", { txt = "Text recording file" }, true )
+  if not filename then
+    ColourNote("red","","Cancel detected, aborting.")
+    return
+  end
+  timeRecordStarted = GetLineInfo(1, 12) -- starting point of oldest line in buffer
+  storeBufferLines()
+  ColourNote("yellow","","LotJReplay saving buffer and new lines to replay file "..filename..".")
+  recording = true
+end
+function recordStop(name, line, args)
+  ColourNote("yellow","","LotJReplay stopped.")
+  recording = false
+end
+
+function OnPluginLineReceived()
+  storeLine()
+end
+
+
+function OnPluginSent (sText)
+  storeLine(sText)
+end -- function
+
+function storeBufferLines()
+  for i=1,GetLinesInBufferCount(),1 do
+    local text = GetLineInfo(i, 1)
+    local styles = GetStyleInfo(i)
+    local time = GetLineInfo(i, 12)-timeRecordStarted
+    text = StylesToColoursOneLine(styles)
+    local f = assert(io.open(filename, "a+"))
+    f:write(time.."|"..text.."\n")
+    f:close()
+  end
+end
+
+function storeLine(sText)
+  if not recording then
+    return
+  end
+  local lineNum = GetLinesInBufferCount()
+  local text = sText or GetLineInfo(lineNum, 1)
+  local styles = GetStyleInfo(lineNum)
+  local time = ((sText==nil and GetLineInfo(lineNum, 12)) or GetInfo(232))-timeRecordStarted
+  --Note("Raw text: "..text)
+  if not sText then
+    text = StylesToColoursOneLine(styles) -- convert styles to color codes
+  end
+  local f = assert(io.open (filename, "a+")) -- open recording file, overwriting existing
+  f:write(time.."|"..text.."\n") -- write to it
+  f:close()  -- close that file now
+end
+
+
+  ]]> 
+  </script>
+  </muclient>
+  
+  
