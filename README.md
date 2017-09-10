@@ -1,6 +1,6 @@
-#Johnson's LotJPlugins
+# Johnson's LotJPlugins
 
-##Overview
+## Overview
 
 This is a repository of plugins that I use with LotJ in an attempt to make certain 
  aspects of the game less tedious, easier to see visually, or to provide an 
@@ -24,9 +24,9 @@ Questions, comments, complaints, suggestions, bug reports can be directed
  of the GitHub repository, or on the LotJ forums.
  
  
-##Installation
+## Installation
 
-###Dropbox https://www.dropbox.com/sh/iqwhx27wte04pd4/WrDTVI4yPi    
+### Dropbox https://www.dropbox.com/sh/iqwhx27wte04pd4/WrDTVI4yPi    
 
 1. Click __download__ button at top right of main page and extract the LotJPlugins.zip file into your MUSHclient\Worlds\LotJ directory.
 2. Delete any previous versions of plugins you may be using to ensure no conflicts arise.
@@ -35,9 +35,9 @@ Questions, comments, complaints, suggestions, bug reports can be directed
 5. Click __Show Info__ on each plugin to see a brief description of what each does and information on the provided in-game help system for each.
 6. Disconnect from the game world, then reconnect to allow changes to take effect. (This step only really applies to the MSDP handler)
    
-###GitHub https://github.com/Johnson336/LotJPlugins
+### GitHub https://github.com/Johnson336/LotJPlugins
 
-#####__WARNING__ Do NOT right click files and choose "Save link as" as this will attempt to save the entire web page and will result in a distorted .xml file and will throw errors if you try to install it! You have been warned!
+##### __WARNING__ Do NOT right click files and choose "Save link as" as this will attempt to save the entire web page and will result in a distorted .xml file and will throw errors if you try to install it! You have been warned!
 1. In the top right of the __<>Code__ tab, click the __Clone or download__ button, followed by __Download ZIP__ button to download the entire directory as a zip file.
 2. Alternatively, click whichever plugin you wish to use and copy/paste the code into a text editor, saving each .xml file individually.   
 3. Delete any previous versions of plugins you may be using to ensure no conflicts arise.
@@ -47,21 +47,28 @@ Questions, comments, complaints, suggestions, bug reports can be directed
 7. Disconnect from the game world, then reconnect to allow changes to take effect.
 
 
-##ChangeLog
+## ChangeLog
 
-###LotJRaceBrowser.xml
+### LotJRecord.xml
 
-####v1.00
+#### v1.00
+* Released early version of this plugin. It allows you to record and replay game events while preserving time scale and original coloring, giving you exactly the experience of the situation recorded.
+* As mentioned this is an early release so there aren't a lot of features, mainly the core mechanic of recording and replaying.
+* More features may be added if there is interest in that happening.
+
+### LotJRaceBrowser.xml
+
+#### v1.00
 * Released first version of this plugin. It loads race information from the game and displays it in a window to make browsing and comparing races more convenient.
 * Right click in the window to apply sorting filters.
 
-###LotJMSDPHandler.xml
+### LotJMSDPHandler.xml
 
-####v0.55
+#### v0.55
 * Reworked from the ground up how MSDP variables are parsed from the mud to store lists and arrays correctly.
 * If you retrieve a variable in list or array form, it will be returned in a comma-separated list of key,value pairs.
  
-####v0.52
+#### v0.52
 * Added LotJMSDPHelper.lua script file to hopefully ease usage of MSDP variables in community plugins.
     * To use MSDP variables in your plugin add the following code:
 ```
@@ -69,48 +76,48 @@ dofile(GetPluginInfo(GetPluginID(), 20) .. "LotJMSDPHelper.lua")
 myVariable = getmsdp("VARIABLE NAME")
 ```
 
-###LotJVisualSpace.xml
+### LotJVisualSpace.xml
 
-####v0.95
+#### v0.95
 * Added two new windows to the `'vsconfig'` menu:
     * Current ammo capacity meter
     * Ship location stats window
 		
-####v0.93
+#### v0.93
 * added redundancy to `getmsdp()` variable calls.
 
-####v0.90
+#### v0.90
 * 3D coordinate window works, check the option in the `'vsconfig'` window to enable displays ship position as well as relative local space bodies.
 * Scan local space with `'radar'`
 
-####v0.82
+#### v0.82
 * Experimenting with 3D coordinate transforms and attempting to display localized space bodies represented in a 2D window.
 
-###LotJStarMap.xml
+### LotJStarMap.xml
 
-####v2.28
+#### v2.28
 * Added right click menu to give several new options including adding/removing systems, changing colors and fonts, or restoring defaults.
 * Adjusted how distances are displayed when hovering a system, should be easier to read.
 
-####v2.16
+#### v2.16
 * Added a bit of redundancy to `getmsdp()` variable calls.
 
-####v2.15 
+#### v2.15 
 * Added resizing capability. Also added automatic settings and planet information saving.
 * New command: `'showmap'` displays currently loaded planet settings without the need to scan every time.
 * `'hypmap'` retains original scanning functionality
 * Added support for ship coordinate display. Also added hyperjump route display.
 
-###LotJFlight.xml
+### LotJFlight.xml
 * Added squadron home ship labeling. Saves the ship that launched a fighter and displays that information when the fighter is seen via look, proximity, radar, or fleetradar in the format: 
 
 ```
 TIE-Fighter 'TwentySeven'  Prox: 0->[MotherShip]
 ```
    
-###LotJMemory.xml 
+### LotJMemory.xml 
 
-####v1.0
+#### v1.0
 * Released this plugin to save description information of people you look at. Each character has a unique memory which must be loaded by typing 'score' when you log in. Memory can be viewed in short format via 'memcheck' or in long format via 'memcheck full'. You can search for a specific description or dub/greet via 'memcheck <name>'.
 * Example: 
 ```
@@ -118,27 +125,27 @@ TIE-Fighter 'TwentySeven'  Prox: 0->[MotherShip]
 You last saw Hummale04 on 04/02/13(7 days ago). They were A strong, good looking white skinned Human male.
 ```
 
-###LotJCalc.xml
+### LotJCalc.xml
 
-####v1.06
+#### v1.06
 * Added local space highlighting for easy in-sector calculating. Also added variable hook for StarMap to access.
   
-###LotJLocate.xml
+### LotJLocate.xml
 
-####v1.0
+#### v1.0
 * First release of this plugin, created at the request of Zeromus.
   
-###Smaug_prog_parse.xml
+### Smaug_prog_parse.xml
 
-####v1.0
+#### v1.0
 * Added automatic indenting with customizable indent size.
 
-###LotJBuildShip.xml
+### LotJBuildShip.xml
 
-####v1.34
+#### v1.34
 * Added ability for buildadd command to accept a comma-delimiter for adding multiple items with one command.
   
-###LotJStudy.xml
-####v1.04
+### LotJStudy.xml
+#### v1.04
 * Adjusted command parsing to be more flexible in how it handles input.
 * Added ability for studyadd command to accept a comma-delimiter for adding multiple items with one command.
