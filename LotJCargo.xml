@@ -2,7 +2,7 @@
 <!DOCTYPE muclient> 
 <!--  Saved on Wednesday, July 25, 2012, 7:12 PM   -->  
 <muclient>
-<plugin name="LotJCargo" author="@Johnson" id="b4f195e776cff20d17a1abd2" language="Lua" purpose="Cargo Running Made Easy" save_state="y" requires="4.40" version="1.50">
+<plugin name="LotJCargo" author="@Johnson" id="b4f195e776cff20d17a1abd2" language="Lua" purpose="Cargo Running Made Easy" save_state="y" requires="4.40" version="1.51">
 <description trim="y">
 <![CDATA[ 
 
@@ -213,7 +213,7 @@ Initial contraband features added by @Domovoi.
 
   <!-- planet retrieval triggers -->
   <trigger match="^(.*)$" group="RetrievePlanet" regexp="y" keep_evaluating="y" omit_from_log="y" omit_from_output="y" sequence="100" />
-  <trigger match="^Usage\: showplanet \<planet\>$" script="retrievePlanetFailed" regexp="y" enabled="y" group="RetrievePlanet" sequence="100" />
+  <trigger match="^Usage\: showplanet \<planet\>$" script="retrievePlanetFailed" regexp="y" enabled="n" group="RetrievePlanet" sequence="100" />
   <trigger match="--Planet Data: -------------------------------\nPlanet: (.*)\Z" script="storePlanet" regexp="y" enabled="n" multi_line="y" lines_to_match="2" omit_from_log="y" omit_from_output="y" group="RetrievePlanet" sequence="100" />
   <trigger match="^Use \'SHOWPLANET \<planet\> RESOURCES\' for current resources\.$" script="updateListPosition" regexp="y" enabled="n" group="RetrievePlanet" sequence="100" />
   
@@ -362,6 +362,9 @@ end
 function toggleCloseBays(name, line, args)
   closeBays = not closeBays
   ColourNote("yellow","","Automatic closing and opening of hangar bays is "..((closeBays and "ON") or "OFF")..".")
+  if not closeBays then
+    ColourNote("red","","Disclaimer: It is potentially unsafe to leave hangars open, ensure you are willing to accept the risk!")
+  end
 end
 
 toUnload = {}
@@ -1318,7 +1321,7 @@ function errorSelling()
 end
 
 function sellOnePod()
-  for i, v in ipairs(getShip().cargo) do
+  for i, v in ipairs(getShip().cargo or {}) do
     if v.held > 0 and string.lower(v.name) ~= string.lower(getResource()) then -- pod is carrying something we don't want
       if getContraband():lower() == "yes" or getContraband():lower() == "y" then
       -- we're using sellcontraband
@@ -1339,7 +1342,7 @@ end
 -- buys a single pod's worth of cargo
 function buyOnePod()
   if getResource() ~= "" and getResource() ~= "none" then -- our resource list indicates we want to buy something
-    for i, v in ipairs(getShip().cargo) do
+    for i, v in ipairs(getShip().cargo or {}) do
       local needed = 0
       if (v.name == "(Empty)" or string.lower(v.name) == string.lower(getResource())) then -- our container is either empty or contains the resource we need
         needed = v.cap - v.held -- we need to buy remaining amount
@@ -1426,6 +1429,7 @@ function cargoStart()
 	  ColourNote("red","","You must assign your cargo route using cargosetup or cargoplanets <planet1>,<resource1>,<trafficking>,<planet2>,<resource2>,<trafficking>...")
 	  return
 	end
+  clearCargoManifest()
 	if ((not checkAllCargoExists() or not checkAllScanned()) and checkForResources()) then -- make it possible to run script without any cargo by entering 'none' into every resource
 	  ColourNote("yellow","","Retrieving ship's cargo manifest for you...")
 	  beginManifest()
