@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="iso-8859-1" ?> 
 <!DOCTYPE muclient> 
 <muclient>
-<plugin name="LotJRaceBrowser" author="@Johnson" id="a4e8153e52b1b6d490ed4b10" language="Lua" purpose="Browse LotJ Races" save_state="y" requires="4.84" version="1.04">
+<plugin name="LotJRaceBrowser" author="@Johnson" id="a4e8153e52b1b6d490ed4b10" language="Lua" purpose="Browse LotJ Races" save_state="y" requires="4.84" version="1.05">
 <description trim="y">
 <![CDATA[ 
 
@@ -207,16 +207,22 @@ function updateRaceText()
       addText( {"white","Frc: ","red",race.frc,"white"," Lck: ","red",race.lck,"white"," Era Restrict: ",((race.erarestrict==0 and "lime") or "red"),race.erarestrict}, font, "center")
       
       addText( {"white",filler.."Levels"..filler}, font, "center")
-      addText( {"white","               COM PIL ENG HUN SMU DIP LEA ESP SLI MED SCI"}, font, "center")
+      local levelTitle = "               COM PIL ENG HUN SMU DIP LEA ESP SLI MED SCI"
+      addText( {"white",levelTitle}, font, "center")
+      -- spacing stuff for class filter highlighting
+      local levelTitleWidth = WindowTextWidth(win, font, "  "..levelTitle)
+      local levelClassWidth = WindowTextWidth(win, font, "                ")
+      local spaceWidth = WindowTextWidth(win, font, " ")
+      local levelHeadingWidth = WindowTextWidth(win, font, " COM")
       
       local bound = { left = config.split+2, top = titleHeight, right = config.width-SCROLL_BAR_WIDTH, bot = config.height-2 } -- valid bounding box for drawing
       
       -- add highlight box for class filters
       for _, v in pairs(filter_classes) do
         local index = class_matrix[v] or 0
-        local line = { left = (bound.left+((bound.right-bound.left)/2))-113+(32*(index-1)),
+        local line = { left = (bound.left+((bound.right-bound.left)/2))-(levelTitleWidth/2)+levelClassWidth+(levelHeadingWidth*(index-1))-1,
                        top = bound.top+((#text-1)*textLineHeight),
-                       right = (bound.left+((bound.right-bound.left)/2))-86+(32*(index-1)),
+                       right = (bound.left+((bound.right-bound.left)/2))-(levelTitleWidth/2)+levelClassWidth+(levelHeadingWidth+(levelHeadingWidth*(index-1)))-spaceWidth,
                        bot = bound.top+((#text+11)*textLineHeight) }
         addPoly( string.format("%i,%i,%i,%i,%i,%i,%i,%i", line.left, line.top, line.right, line.top, line.right, line.bot, line.left, line.bot), ColourNameToRGB("white"), 1+0x2000, 1, ColourNameToRGB("white"), 1, true, false )
       end
