@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="iso-8859-1" ?> 
 <!DOCTYPE muclient> 
 <muclient>
-<plugin name="LotJRaceBrowser" author="@Johnson" id="a4e8153e52b1b6d490ed4b10" language="Lua" purpose="Browse LotJ Races" save_state="y" requires="4.84" version="1.00">
+<plugin name="LotJRaceBrowser" author="@Johnson" id="a4e8153e52b1b6d490ed4b10" language="Lua" purpose="Browse LotJ Races" save_state="y" requires="4.84" version="1.03">
 <description trim="y">
 <![CDATA[ 
 
@@ -141,6 +141,10 @@ local text = {}
 local textStart = 0
 local textEnd = 0
 
+local lines = {}
+
+local polys = {}
+
 loadstring(GetVariable("races") or "") ()
 
 
@@ -184,6 +188,8 @@ function updateRaceText()
     end
     if race ~= nil then
       text = {} -- clear the text
+      lines = {}
+      polys = {}
       local left = config.split+2
       local top = titleHeight
       local right = config.width-SCROLL_BAR_WIDTH
@@ -202,10 +208,12 @@ function updateRaceText()
       
       addText( {"white",filler.."Levels"..filler}, font, "center")
       addText( {"white","               COM PIL ENG HUN SMU DIP LEA ESP SLI MED SCI"}, font, "center")
+      
+      local bound = { left = config.split+2, top = titleHeight, right = config.width-SCROLL_BAR_WIDTH, bot = config.height-2 } -- valid bounding box for drawing
+      
+      
       for a, b in pairsByKeys(race.levels) do
         local t = {}
-        --t[#t+1]=((b.class==race.mainclass and "cyan") or "white")
-        --t[#t+1]=string.format("%14s", b.class)..": "
         t[#t+1]=((a==race.mainclass and "cyan") or "white")
         t[#t+1]=string.format("%14s",a)..": "
         for i, j in ipairs(b.levels) do
@@ -213,6 +221,22 @@ function updateRaceText()
           t[#t+1]=" "..j.."  "
         end
         addText( t, font, "center")
+        -- add highlight box for main class filter
+        if a==filter_main_class then
+          local alltext = ""
+          for x, y in ipairs(t) do
+            if math.fmod(x-1, 2)==1 then -- text
+              alltext = alltext..y
+            end
+          end
+          local textWidth = WindowTextWidth(win, font, alltext)
+          local line = { left = ((bound.left+((bound.right-bound.left)/2))-(textWidth/2)), top = bound.top+((#text-1)*textLineHeight), right = ((bound.left+((bound.right-bound.left)/2))+(textWidth/2)), bot = bound.top+(#text*textLineHeight) }
+          --addLine( line.left, line.top, line.right, line.top, ColourNameToRGB("white"), 0+0x0100, 1 )
+          --addLine( line.left, line.bot, line.right, line.bot, ColourNameToRGB("white"), 0+0x0100, 1 )
+          --addLine( line.left, line.top, line.left, line.bot, ColourNameToRGB("white"), 0+0x0100, 1 )
+          --addLine( line.right, line.top, line.right, line.bot, ColourNameToRGB("white"), 0+0x0100, 1 )
+          addPoly( string.format("%i,%i,%i,%i,%i,%i,%i,%i", line.left, line.top, line.right, line.top, line.right, line.bot, line.left, line.bot), ColourNameToRGB("white"), 1+0x2000, 1, ColourNameToRGB("white"), 1, true, false )
+        end
       end
       if #race.attribs > 0 then
         addText( {"white",filler.."Extra Arributes"..filler}, font, "center")
@@ -231,6 +255,39 @@ end
 function addText(addtext, font, align, pos)
   local line = { t = copytable.deep(addtext), f = font, a = align, p = pos }
   text[#text + 1] = line
+end
+
+function addLine(x1, y1, x2, y2, pencolour, penstyle, penwidth)
+  --[[  pencolour is RGB colour for this line
+        penstyle is 0 -- solid
+                    1 -- dash: -------
+                    2 -- dot:  .......
+                    3 -- dashdot: _._._._.
+                    4 -- dashdotdot: _.._.._
+                    5 -- null (no pen)
+                    6 -- insideframe: a solid pen, dawn inside the shape
+                 
+    -- also you can add in the style:
+    
+      0x0000 - round ends (0 = the default)
+      0x0100 - square ends (256)
+      0x0200 - flat ends (512)
+      0x0000 - round joins (0 = the default)
+      0x1000 - bevel joins (4096)
+      0x2000 - miter joins (8192)
+      
+        penwidth - width of the pen in pixels. for styles 1 to 4 only a width of 1 is valid.
+                   for a particular shape, specify style 5 (no pen) if you only want to fill 
+                   the shape, and not stroke it as well.
+      
+    ]]--
+    local line = { x1 = x1, y1 = y1, x2 = x2, y2 = y2, pc = pencolour, ps = penstyle, pw = penwidth }
+    lines[#lines + 1] = line
+end
+
+function addPoly(points, pencolour, penstyle, penwidth, brushcolour, brushstyle, close, winding)
+  local line = { p = points, pc = pencolour, ps = penstyle, pw = penwidth, bc = brushcolour, bs = brushstyle, cl = close, w = winding }
+  polys[#polys + 1] = line
 end
 
 function drawText()
@@ -276,6 +333,18 @@ function drawText()
   end
   end
 
+end
+
+function drawLines()
+  for i, v in ipairs(lines) do
+    WindowLine(win, v.x1, v.y1, v.x2, v.y2, v.pc, v.ps, v.pw)
+  end
+end
+
+function drawPolys()
+  for i, v in ipairs(polys) do
+    WindowPolygon(win, v.p, v.pc, v.ps, v.pw, v.bc, v.bs, v.cl, v.w)
+  end
 end
 
 function findBestClass(levels)
@@ -602,6 +671,8 @@ function drawWindow(name, line, args)
   printBrowseList()
     
   drawText()
+  drawLines()
+  drawPolys()
   
   -- draw scrollbars
   drawScrollbars()
