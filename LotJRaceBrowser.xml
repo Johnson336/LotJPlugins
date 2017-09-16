@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="iso-8859-1" ?> 
 <!DOCTYPE muclient> 
 <muclient>
-<plugin name="LotJRaceBrowser" author="@Johnson" id="a4e8153e52b1b6d490ed4b10" language="Lua" purpose="Browse LotJ Races" save_state="y" requires="4.84" version="1.03">
+<plugin name="LotJRaceBrowser" author="@Johnson" id="a4e8153e52b1b6d490ed4b10" language="Lua" purpose="Browse LotJ Races" save_state="y" requires="4.84" version="1.04">
 <description trim="y">
 <![CDATA[ 
 
@@ -211,7 +211,16 @@ function updateRaceText()
       
       local bound = { left = config.split+2, top = titleHeight, right = config.width-SCROLL_BAR_WIDTH, bot = config.height-2 } -- valid bounding box for drawing
       
-      
+      -- add highlight box for class filters
+      for _, v in pairs(filter_classes) do
+        local index = class_matrix[v] or 0
+        local line = { left = (bound.left+((bound.right-bound.left)/2))-113+(32*(index-1)),
+                       top = bound.top+((#text-1)*textLineHeight),
+                       right = (bound.left+((bound.right-bound.left)/2))-86+(32*(index-1)),
+                       bot = bound.top+((#text+11)*textLineHeight) }
+        addPoly( string.format("%i,%i,%i,%i,%i,%i,%i,%i", line.left, line.top, line.right, line.top, line.right, line.bot, line.left, line.bot), ColourNameToRGB("white"), 1+0x2000, 1, ColourNameToRGB("white"), 1, true, false )
+      end
+            
       for a, b in pairsByKeys(race.levels) do
         local t = {}
         t[#t+1]=((a==race.mainclass and "cyan") or "white")
@@ -432,7 +441,6 @@ end
 function sortByAlpha()
   table.sort(races, function (k1, k2) return k1.name < k2.name end )
   clearFilters()
-  updateSelectedRace()
 end
 
 function sortByFilter(class, filter, stats)
@@ -444,6 +452,7 @@ function clearFilters()
   filter_main_class = ""
   filter_classes = {}
   filter_stats = {}
+  updateSelectedRace()
 end
   
 
