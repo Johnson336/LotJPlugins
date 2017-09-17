@@ -221,9 +221,9 @@ function updateRaceText()
       for _, v in pairs(filter_classes) do
         local index = class_matrix[v] or 0
         local line = { left = (bound.left+((bound.right-bound.left)/2))-(levelTitleWidth/2)+levelClassWidth+(levelHeadingWidth*(index-1))-1,
-                       top = bound.top+((#text-1)*textLineHeight),
+                       top = bound.top+((#text-textStart)*textLineHeight),
                        right = (bound.left+((bound.right-bound.left)/2))-(levelTitleWidth/2)+levelClassWidth+(levelHeadingWidth+(levelHeadingWidth*(index-1)))-spaceWidth,
-                       bot = bound.top+((#text+11)*textLineHeight) }
+                       bot = bound.top+(((#text-textStart)+12)*textLineHeight) }
         addPoly( string.format("%i,%i,%i,%i,%i,%i,%i,%i", line.left, line.top, line.right, line.top, line.right, line.bot, line.left, line.bot), ColourNameToRGB("white"), 1+0x2000, 1, ColourNameToRGB("white"), 1, true, false )
       end
             
@@ -245,7 +245,7 @@ function updateRaceText()
             end
           end
           local textWidth = WindowTextWidth(win, font, alltext)
-          local line = { left = ((bound.left+((bound.right-bound.left)/2))-(textWidth/2)), top = bound.top+((#text-1)*textLineHeight), right = ((bound.left+((bound.right-bound.left)/2))+(textWidth/2)), bot = bound.top+(#text*textLineHeight) }
+          local line = { left = ((bound.left+((bound.right-bound.left)/2))-(textWidth/2)), top = bound.top+((#text-textStart)*textLineHeight), right = ((bound.left+((bound.right-bound.left)/2))+(textWidth/2)), bot = bound.top+(((#text-textStart)+1)*textLineHeight) }
           --addLine( line.left, line.top, line.right, line.top, ColourNameToRGB("white"), 0+0x0100, 1 )
           --addLine( line.left, line.bot, line.right, line.bot, ColourNameToRGB("white"), 0+0x0100, 1 )
           --addLine( line.left, line.top, line.left, line.bot, ColourNameToRGB("white"), 0+0x0100, 1 )
