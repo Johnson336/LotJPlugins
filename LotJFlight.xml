@@ -2,7 +2,7 @@
 <!DOCTYPE muclient> 
 <!--  Saved on Wednesday, July 25, 2012, 7:14 PM   -->  
 <muclient>
-<plugin name="LotJFlight" author="@Johnson" id="680bf1a4e5e600854747c379" language="Lua" purpose="Flight Made Easy" save_state="y" requires="4.40" version="1.48">
+<plugin name="LotJFlight" author="@Johnson" id="680bf1a4e5e600854747c379" language="Lua" purpose="Flight Made Easy" save_state="y" requires="4.40" version="1.49">
 <description trim="y">
 <![CDATA[ 
 'FlyHelp'      - To see the list of commands associated with this plugin.
@@ -252,6 +252,7 @@ function waitHyper()
     hypertries = hypertries + 1
     if hypertries >= 10 then
       hypertries = 0
+      math.randomseed(os.time())
       Send("course "..coords[math.random(3)].." "..coords[math.random(3)].." "..coords[math.random(3)])
     end
     DoAfter(10, "hyper")
@@ -287,11 +288,11 @@ function endLandGrab()
           if landingSites[i] and string.find(landingSites[i]:lower(), landing:lower(), 0, true) then -- pref found
             found = true
             landArg(i)
-            break
+            return
           end
         end
         if not found then
-          ColourNote("red","","Landing preference '"..landing.."' not found in stored preference list.")
+          ColourNote("red","","Landing preference '"..landing.."' not found in planet's landing pad list.")
         end
       end
     else -- no landing pref, use automatic
