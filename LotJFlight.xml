@@ -87,6 +87,7 @@ require "tprint"
 require "pairsByKeys"
 require "serialize"
 
+math.randomseed(os.time())
 
 function flyLand(name, line, args)
   args = utils.split(Trim(args[1]), ",")
@@ -252,7 +253,6 @@ function waitHyper()
     hypertries = hypertries + 1
     if hypertries >= 10 then
       hypertries = 0
-      math.randomseed(os.time())
       Send("course "..coords[math.random(3)].." "..coords[math.random(3)].." "..coords[math.random(3)])
     end
     DoAfter(10, "hyper")
