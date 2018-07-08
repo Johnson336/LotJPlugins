@@ -3,7 +3,7 @@
 <!--  Saved on Thursday, February 21, 2013, 8:52 PM   --> 
 <!-- MuClient version 4.73 --> 
 <muclient>
-<plugin name="LotJVisualSpace" author="@Johnson" id="a920ac5df84885eac6be8d61" language="Lua" purpose="Display character and ship information visually" save_state="y" requires="4.73" version="0.95">
+<plugin name="LotJVisualSpace" author="@Johnson" id="a920ac5df84885eac6be8d61" language="Lua" purpose="Display character and ship information visually" save_state="y" requires="4.73" version="0.96">
 <description trim="y">
 
 Type 'vsconfig' to display Visual Space Config window where you can check and uncheck which windows you want to display.
@@ -323,7 +323,7 @@ function makeWindow(ww)
 	-- draw border
 	WindowRectOp (ww.id, 5, 0, 0, 0, 0, 5, 15 + 0x1000)
 	--drag handler
-	movewindow.add_drag_handler (ww.id, 0, 0, 0, WindowFontInfo(ww.id, font, 1))
+	movewindow.add_drag_handler (ww.id, 0, 0, 0, WindowFontInfo(ww.id, font, 1)+5)
 	
 	-- msdp assignment
 	local stat = tonumber(getmsdp(ww.stat1)) or 0
@@ -1725,14 +1725,22 @@ function SetUpHotspotsAndDraw(firstTime)
 			windows = newWindows
 		end
 	
+
 		
 		  -- install the window movement handlers, get back the window position
- 		windowinfo =       movewindow.install (win, 6)  -- default to 6 (on top right)
+ 	--[[windowinfo =       movewindow.install (win, 6)  -- default to 6 (on top right)
   	configwindowinfo = movewindow.install (configwin, miniwin.pos_top_right, miniwin.create_absolute_location, false, nil, false, false) -- default to 6 (on top right)
   	speedwindowinfo =  movewindow.install (speedwin, 6) -- default to 6 (on top right)
   	jumpwindowinfo =   movewindow.install (jumpwin, 6) -- default to 6 (on top right)
   	statwindowinfo =   movewindow.install (statwin, 6) -- default to 6 (on top right)
-		shipwindowinfo =   movewindow.install (shipwin, 6) -- default to 6 (on top right)
+	shipwindowinfo =   movewindow.install (shipwin, 6) -- default to 6 (on top right)
+	]]--
+	windowinfo = movewindow.install(win, miniwin.pos_top_right, miniwin.create_absolute_location, false, nil, {mouseup=MouseUp, mousedown=LeftClickOnly, dragmove=LeftClickOnly, dragrelease=LeftClickOnly},{x=0, y=0})
+	configwindowinfo = movewindow.install(configwin, miniwin.pos_top_right, miniwin.create_absolute_location, false, nil, {mouseup=MouseUp, mousedown=LeftClickOnly, dragmove=LeftClickOnly, dragrelease=LeftClickOnly},{x=0, y=0})
+	speedwindowinfo = movewindow.install(speedwin, miniwin.pos_top_right, miniwin.create_absolute_location, false, nil, {mouseup=MouseUp, mousedown=LeftClickOnly, dragmove=LeftClickOnly, dragrelease=LeftClickOnly},{x=0, y=0})
+	jumpwindowinfo = movewindow.install(jumpwin, miniwin.pos_top_right, miniwin.create_absolute_location, false, nil, {mouseup=MouseUp, mousedown=LeftClickOnly, dragmove=LeftClickOnly, dragrelease=LeftClickOnly},{x=0, y=0})
+	statwindowinfo = movewindow.install(statwin, miniwin.pos_top_right, miniwin.create_absolute_location, false, nil, {mouseup=MouseUp, mousedown=LeftClickOnly, dragmove=LeftClickOnly, dragrelease=LeftClickOnly},{x=0, y=0})
+	shipwindowinfo = movewindow.install(shipwin, miniwin.pos_top_right, miniwin.create_absolute_location, false, nil, {mouseup=MouseUp, mousedown=LeftClickOnly, dragmove=LeftClickOnly, dragrelease=LeftClickOnly},{x=0, y=0})
 			
 		-- make windows so I can grab the font info
 		WindowCreate (win, 0, 0, width, height, miniwin.pos_center_all, 0, ColourNameToRGB("black"))  -- create window
@@ -1750,12 +1758,12 @@ function SetUpHotspotsAndDraw(firstTime)
 		movewindow.add_drag_handler (statwin, 0, 0, 0, WindowFontInfo (statwin, font, 1))
 		movewindow.add_drag_handler (shipwin, 0, 0, 0, WindowFontInfo (shipwin, font, 1))
 		
-		effectiveWidth = math.min(width, GetInfo(281)-windowinfo.window_left)
-		WindowAddHotspot(win, win.."resize", effectiveWidth-RESIZE_TAG_SIZE, height-RESIZE_TAG_SIZE, effectiveWidth, height, "MouseOver", "CancelMouseOver", "MouseDownMain", "CancelMouseDownMain", "MouseUpMain", "", 6, 0)
+		--effectiveWidth = math.min(width, GetInfo(281)-windowinfo.window_left)
+		WindowAddHotspot(win, win.."resize", width-RESIZE_TAG_SIZE, height-RESIZE_TAG_SIZE, width, height, "MouseOver", "CancelMouseOver", "MouseDownMain", "CancelMouseDownMain", "MouseUpMain", "", 6, 0)
 		WindowDragHandler(win, win.."resize", "ResizeMoveCallbackMain", "ResizeReleaseCallbackMain", 0)
 		
   		-- catch for scroll wheel movement
-		WindowAddHotspot(win, "gridarea", RESIZE_TAG_SIZE, RESIZE_TAG_SIZE, effectiveWidth-RESIZE_TAG_SIZE, height-RESIZE_TAG_SIZE, "", "", "MouseDownMain", "CancelMouseDownMain", "MouseUpMain", "", 0, 0)
+		WindowAddHotspot(win, "gridarea", RESIZE_TAG_SIZE, RESIZE_TAG_SIZE, width-RESIZE_TAG_SIZE, height-RESIZE_TAG_SIZE, "", "", "MouseDownMain", "CancelMouseDownMain", "MouseUpMain", "", 0, 0)
 		-- mouse wheel handler for scrolling up/down
 		WindowScrollwheelHandler(win, "gridarea", "wheel_move")
 		WindowDragHandler(win, "gridarea", "MainDragCallback", "MainReleaseCallback", 0)
@@ -1763,12 +1771,14 @@ function SetUpHotspotsAndDraw(firstTime)
 		
 		-- setup every window in our table
 		for k, v in pairs(windows) do
-			window_info[v.id] = movewindow.install (v.id, 6) -- default to 6 (on top right)
+			--window_info[v.id] = movewindow.install (v.id, 6) -- default to 6 (on top right)
+			window_info[v.id] = movewindow.install(v.id, miniwin.pos_top_right, miniwin.create_absolute_location, false, nil, {mouseup=MouseUp, mousedown=LeftClickOnly, dragmove=LeftClickOnly, dragrelease=LeftClickOnly},{x=0, y=0})
+
 			WindowCreate (v.id, 0, 0, v.width, v.height, miniwin.pos_center_all, 0, ColourNameToRGB("black")) -- create windows
 			--v.info = movewindow.install (v.id, 6) -- default to 6 (on top right)
 			movewindow.add_drag_handler (v.id, 0, 0, 0, WindowFontInfo (v.id, font, 1))
-			v.effectiveWidth = math.min(v.width, GetInfo(281)-window_info[v.id].window_left)
-			WindowAddHotspot (v.id, v.id.."resize", v.effectiveWidth-RESIZE_TAG_SIZE, v.height-RESIZE_TAG_SIZE, v.effectiveWidth, v.height, "MouseOver", "CancelMouseOver", "MouseDown", "CancelMouseDown", "MouseUp", "", 6, 0)
+			--v.effectiveWidth = math.min(v.width, GetInfo(281)-window_info[v.id].window_left)
+			WindowAddHotspot (v.id, v.id.."resize", v.width-RESIZE_TAG_SIZE, v.height-RESIZE_TAG_SIZE, v.width, v.height, "MouseOver", "CancelMouseOver", "MouseDown", "CancelMouseDown", "MouseUp", "", 6, 0)
 			WindowDragHandler(v.id, v.id.."resize", "ResizeMoveCallback", "ResizeReleaseCallback", 0)
 			check(WindowFont (v.id, font, "Arial", 10, true, false, false, false))
 		end -- end for
@@ -1778,15 +1788,15 @@ function SetUpHotspotsAndDraw(firstTime)
 		-- just move them back into place
 		
 		for k, v in pairs(windows) do
-			v.effectiveWidth = math.min(v.width, GetInfo(281)-window_info[v.id].window_left)
-			WindowResize(v.id, v.effectiveWidth, v.height, background_colour)
-			WindowMoveHotspot(v.id, v.id.."resize", v.effectiveWidth-RESIZE_TAG_SIZE, v.height-RESIZE_TAG_SIZE, v.effectiveWidth, v.height)
+			--v.effectiveWidth = math.min(v.width, GetInfo(281)-window_info[v.id].window_left)
+			WindowResize(v.id, v.width, v.height, background_colour)
+			WindowMoveHotspot(v.id, v.id.."resize", v.width-RESIZE_TAG_SIZE, v.height-RESIZE_TAG_SIZE, v.width, v.height)
 		end
 		
-		effectiveWidth = math.min(width, GetInfo(281)-windowinfo.window_left)
-		WindowResize(win, effectiveWidth, height, background_colour)
-		WindowMoveHotspot(win, win.."resize", effectiveWidth-RESIZE_TAG_SIZE, height-RESIZE_TAG_SIZE, effectiveWidth, height)
-		WindowMoveHotspot(win, "gridarea", RESIZE_TAG_SIZE, RESIZE_TAG_SIZE, effectiveWidth-RESIZE_TAG_SIZE, height-RESIZE_TAG_SIZE)
+		--effectiveWidth = math.min(width, GetInfo(281)-windowinfo.window_left)
+		WindowResize(win, width, height, background_colour)
+		WindowMoveHotspot(win, win.."resize", width-RESIZE_TAG_SIZE, height-RESIZE_TAG_SIZE, width, height)
+		WindowMoveHotspot(win, "gridarea", RESIZE_TAG_SIZE, RESIZE_TAG_SIZE, width-RESIZE_TAG_SIZE, height-RESIZE_TAG_SIZE)
 		
 		redraw_scheduled = true
 		drawWindows()
@@ -1925,26 +1935,31 @@ end
 -- Called as main window is dragged around.
 ----------------------------------------------------------------------
 function ResizeMoveCallbackMain(flags, hotspot_id)
-   posx, posy = WindowInfo (win, 17), WindowInfo (win, 18)
-   width = width + posx - startx
-   startx = posx
-   if (width < MIN_WIDTH) then
-      width = MIN_WIDTH
-      startx = windowinfo.window_left+width
-   elseif (windowinfo.window_left+width > GetInfo(281)) then
-      width = GetInfo(281)-windowinfo.window_left
-      startx = GetInfo(281)
-   end
+	local windows = WindowList()
+  posx, posy = WindowInfo (win, 17), WindowInfo (win, 18)
+	
+	width = width + posx - startx
+  startx = posx
+	
+	
+	
+  if (width < MIN_WIDTH) then
+     width = MIN_WIDTH
+     startx = windowinfo.window_left+width
+  elseif (windowinfo.window_left+width > GetInfo(281)) then
+     width = GetInfo(281)-windowinfo.window_left
+     startx = GetInfo(281)
+  end
    
-   height = height + posy - starty
-   starty = posy
-   if (height < MIN_HEIGHT) then
-   	height = MIN_HEIGHT
-   	starty = windowinfo.window_top+height
-   elseif (windowinfo.window_top+height > GetInfo(280)) then
-   	height = GetInfo(280)-windowinfo.window_top
-   	starty = GetInfo(280)
-   end
+  height = height + posy - starty
+  starty = posy
+  if (height < MIN_HEIGHT) then
+  	height = MIN_HEIGHT
+  	starty = windowinfo.window_top+height
+  elseif (windowinfo.window_top+height > GetInfo(280)) then
+  	height = GetInfo(280)-windowinfo.window_top
+  	starty = GetInfo(280)
+  end
    
 	if (utils.timer() - lastRefresh > 0.0333) then
 		SetUpHotspotsAndDraw(false)
