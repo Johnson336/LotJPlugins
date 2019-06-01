@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="iso-8859-1" ?> 
 <!DOCTYPE muclient> 
 <muclient>
-<plugin name="LotJRaceBrowser" author="@Johnson" id="a4e8153e52b1b6d490ed4b10" language="Lua" purpose="Browse LotJ Races" save_state="y" requires="4.84" version="1.05">
+<plugin name="LotJRaceBrowser" author="@Johnson" id="a4e8153e52b1b6d490ed4b10" language="Lua" purpose="Browse LotJ Races" save_state="y" requires="4.84" version="1.06">
 <description trim="y">
 <![CDATA[ 
 
@@ -33,9 +33,9 @@ right clicking anywhere in the window and choosing filters to apply.
 
   <trigger name="RacelistScanStart" match="^\(L\)egend\: Race Number \(Era Restriction or 0 for none\)\> Race Name $" script="enableRaceListScan" regexp="y" enabled="n"  omit_from_output="y" omit_from_log="y" sequence="100" />
   <trigger name="RacelistScanStop" match="^$" script="stopRacelistScan" regexp="y" enabled="n"  omit_from_output="y" omit_from_log="y" sequence="100" />
-
-  <trigger lines_to_match="6"
-   match="\(R\)ace\: (.*)\nStr Plus\:([\s\d,-]+)Dex Plus\:([\s\d,-]+)Wis Plus\:([\s\d,-]+)Int Plus\:([\s\d,-]+)\nCon Plus\:([\s\d,-]+)Cha Plus\:([\s\d,-]+)Lck Plus\:([\s\d,-]+)\nHit Pts\:([\s\d]+)AC Mod\:([\s\d,-]+)Frc Plus\:([\s\d,-]+)\nPrice\:([\s\d]+)Deposit\:([\s\d]+)App Only\:(.*)\Z"
+  
+  <trigger lines_to_match="5"
+   match="^\(R\)ace\: (.*)\n   Str Plus\:([\s\d,-]+)Dex Plus\:([\s\d,-]+)Wis Plus\:([\s\d,-]+)Int Plus\:([\s\d,-]+)\n   Con Plus\:([\s\d,-]+)Cha Plus\:([\s\d,-]+)Lck Plus\:([\s\d,-]+)\n   Hit Pts:([\s\d,-]+)AC Mod:([\s\d,-]+)Frc Plus:([\s\d,-]+)\n   Price\:([\s\d,-]+)Deposit\:([\s\d,-]+)App Only\:(.*)\Z"
    script="addRaceScanFirst"
    multi_line="y"
    regexp="y"
@@ -51,9 +51,9 @@ right clicking anywhere in the window and choosing filters to apply.
   <trigger match="^\((\d+)\)([\w\s]+)$" script="addSkinColors" regexp="y" group="SkinColors" enabled="n"  omit_from_output="y" omit_from_log="y" sequence="100" />
   <trigger match="^$" script="stopSkinColors" regexp="y" group="SkinColors" enabled="n"  omit_from_output="y" omit_from_log="y" sequence="100" />
   <trigger match="^(.*) \- (.*)$" script="addExtraAttrib" regexp="y" group="ExtraAttribs" enabled="n"  omit_from_output="y" omit_from_log="y" sequence="100" />
-  <trigger match="^$" script="stopExtraAttribs" regexp="y" group="ExtraAttribs" enabled="n"  omit_from_output="y" omit_from_log="y" sequence="100" />
-  <trigger match="^(.*)    (.*)$" script="addRaceLevels" regexp="y" group="RaceLevels" enabled="n"  omit_from_output="y" omit_from_log="y" sequence="100" />
-  <trigger match="^$" script="stopRaceLevels" regexp="y" group="RaceLevels" enabled="n"  omit_from_output="y" omit_from_log="y" sequence="100" />
+  <trigger match="^$" script="stopExtraAttribs" regexp="y" group="ExtraAttribs" enabled="n"  omit_from_output="n" omit_from_log="y" sequence="100" />
+  <trigger match="^(.*)   (.*)$" script="addRaceLevels" regexp="y" group="RaceLevels" enabled="n"  omit_from_output="y" omit_from_log="y" sequence="100" />
+  <!--trigger match="^science(.*)$" script="stopRaceLevels" regexp="y" group="RaceLevels" enabled="n"  omit_from_output="y" omit_from_log="y" sequence="101" -->
   <trigger name="gagAll" match="^(.*)$" regexp="y" keep_evaluating="y" omit_from_output="y" omit_from_log="y" enabled="n" sequence="100" />
 </triggers>
 
@@ -207,7 +207,7 @@ function updateRaceText()
       addText( {"white","Frc: ","red",race.frc,"white"," Lck: ","red",race.lck,"white"," Era Restrict: ",((race.erarestrict==0 and "lime") or "red"),race.erarestrict}, font, "center")
       
       addText( {"white",filler.."Levels"..filler}, font, "center")
-      local levelTitle = "               COM PIL ENG HUN SMU DIP LEA ESP SLI MED SCI"
+      local levelTitle = "               COM PIL ENG HUN SMU LEA ESP SLI MED SCI"
       addText( {"white",levelTitle}, font, "center")
       -- spacing stuff for class filter highlighting
       local levelTitleWidth = WindowTextWidth(win, font, "  "..levelTitle)
@@ -223,7 +223,7 @@ function updateRaceText()
         local line = { left = (bound.left+((bound.right-bound.left)/2))-(levelTitleWidth/2)+levelClassWidth+(levelHeadingWidth*(index-1))-1,
                        top = bound.top+((#text-textStart)*textLineHeight),
                        right = (bound.left+((bound.right-bound.left)/2))-(levelTitleWidth/2)+levelClassWidth+(levelHeadingWidth+(levelHeadingWidth*(index-1)))-spaceWidth,
-                       bot = bound.top+(((#text-textStart)+12)*textLineHeight) }
+                       bot = bound.top+(((#text-textStart)+#matrix_class+1)*textLineHeight) }
         addPoly( string.format("%i,%i,%i,%i,%i,%i,%i,%i", line.left, line.top, line.right, line.top, line.right, line.bot, line.left, line.bot), ColourNameToRGB("white"), 1+0x2000, 1, ColourNameToRGB("white"), 1, true, false )
       end
             
@@ -232,8 +232,9 @@ function updateRaceText()
         t[#t+1]=((a==race.mainclass and "cyan") or "white")
         t[#t+1]=string.format("%14s",a)..": "
         for i, j in ipairs(b.levels) do
-          t[#t+1]=((j=="5" and "red") or ((j=="4" and "yellow") or ((j=="3" and "cyan") or ((j=="2" and "lime") or "blue")))) 
-          t[#t+1]=" "..j.."  "
+          t[#t+1]=((tonumber(j)>130 and "red") or ((tonumber(j)>100 and "yellow") or ((tonumber(j)>70 and "cyan") or ((tonumber(j)>30 and "lime") or "blue"))))
+          --((j=="5" and "red") or ((j=="4" and "yellow") or ((j=="3" and "cyan") or ((j=="2" and "lime") or "blue")))) 
+          t[#t+1]=j.." "
         end
         addText( t, font, "center")
         -- add highlight box for main class filter
@@ -475,14 +476,13 @@ class_matrix = {  ["combat"] = 1,
                         ["engineering"] = 3, 
                         ["bounty hunting"] = 4, 
                         ["smuggling"] = 5, 
-                        ["diplomacy"] = 6, 
-                        ["leadership"] = 7, 
-                        ["espionage"] = 8, 
-                        ["slicer"] = 9, 
-                        ["medical"] = 10, 
-                        ["science"] = 11 }
+                        ["leadership"] = 6, 
+                        ["espionage"] = 7, 
+                        ["slicer"] = 8, 
+                        ["medical"] = 9, 
+                        ["science"] = 10 }
                         
-matrix_class = { "combat", "piloting", "engineering", "bounty hunting", "smuggling", "diplomacy", "leadership", "espionage", "slicer", "medical", "science" }
+matrix_class = { "combat", "piloting", "engineering", "bounty hunting", "smuggling", "leadership", "espionage", "slicer", "medical", "science" }
 matrix_stats = { "price", "deposit", "str", "dex", "con", "int", "wis", "cha", "frc", "lck", "ac", "hp", "apponly", "erarestrict" }
 
 function getSubclassLevelsByClass(r, c, s, st)
@@ -490,10 +490,10 @@ function getSubclassLevelsByClass(r, c, s, st)
   if type(s)=="table" then
     for i, v in ipairs(s) do
       if c=="" then -- we didn't specify a class, take the average
-        for a=1, 11 do
+        for a=1, #matrix_class do
           num = num + r.levels[matrix_class[a]].levels[class_matrix[v]]
         end
-        num = num / 11
+        num = num / #matrix_class
       else
         num = num + r.levels[c].levels[class_matrix[v]]
       end
@@ -562,6 +562,7 @@ end
 function addRaceScanSecond(name, line, args)
   currentRace.language = Trim(args[1])
   EnableTriggerGroup("raceScanSecond", false)
+  DeleteLines(1)
   startSkinColors()
 end
 
@@ -620,9 +621,11 @@ function addRaceLevels(name, line, args)
   levels.levels = utils.split(Trim(args[2]), " ")
   --raceLevels[#raceLevels + 1] = levels
   raceLevels[Trim(args[1])] = levels
+  if Trim(args[1])=="science" then stopRaceLevels(name, line, args) end
 end
 
 function stopRaceLevels(name, line, args)
+  Note("stopped race levels")
   EnableTriggerGroup("RaceLevels", false)
   currentRace.levels = copytable.deep(raceLevels)
   races[currentRaceIndex] = currentRace
@@ -630,6 +633,7 @@ function stopRaceLevels(name, line, args)
 end
 
 function stopRaceScan(name, line, args)
+  Note("stopped race scan")
   EnableTriggerGroup("raceScanFirst", false)
   EnableTriggerGroup("SkinColors", false)
   EnableTriggerGroup("ExtraAttribs", false)
