@@ -1339,7 +1339,7 @@ function cargoStart()
 	  return
 	end
 	if ((not checkAllCargoExists() or not checkAllScanned()) and checkForResources()) then -- make it possible to run script without any cargo by entering 'none' into every resource
-          clearCargoManifest()
+    clearCargoManifest()
 	  ColourNote("yellow","","Retrieving ship's cargo manifest for you...")
 	  beginManifest()
 	  return
