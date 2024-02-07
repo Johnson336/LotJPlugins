@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="iso-8859-1" ?> 
 <!DOCTYPE muclient> 
 <muclient>
-<plugin name="LotJRaceBrowser" author="@Johnson" id="a4e8153e52b1b6d490ed4b10" language="Lua" purpose="Browse LotJ Races" save_state="y" requires="4.84" version="1.06">
+<plugin name="LotJRaceBrowser" author="@Johnson" id="a4e8153e52b1b6d490ed4b10" language="Lua" purpose="Browse LotJ Races" save_state="y" requires="4.84" version="1.07">
 <description trim="y">
 <![CDATA[ 
 
@@ -26,18 +26,49 @@ right clicking anywhere in the window and choosing filters to apply.
 <!--   Triggers    --> 
 <triggers>
 
-  <trigger match="^([\s\d]+)\((\d)\)\> (.*) (\d+)\((\d)\)\> (.*) (\d+)\((\d)\)\> (.*) (\d+)\((\d)\)\> (.*)$" script="raceListScanAdd" regexp="y" enabled="n" group="RacelistScan"  omit_from_output="y" omit_from_log="y" sequence="100" />
-  <trigger match="^([\s\d]+)\((\d)\)\> (.*) (\d+)\((\d)\)\> (.*) (\d+)\((\d)\)\> (.*)$" script="raceListScanAdd" regexp="y" enabled="n" group="RacelistScan"  omit_from_output="y" omit_from_log="y" sequence="100" />
-  <trigger match="^([\s\d]+)\((\d)\)\> (.*) (\d+)\((\d)\)\> (.*)$" script="raceListScanAdd" regexp="y" enabled="n" group="RacelistScan"  omit_from_output="y" omit_from_log="y" sequence="100" />
-  <trigger match="^([\s\d]+)\((\d)\)\> (.*)$" script="raceListScanAdd" regexp="y" enabled="n" group="RacelistScan"  omit_from_output="y" omit_from_log="y" sequence="100" />
+  <!--
+  [   0/   0]:  Besalisk       Bith           Bothan         Gran          
+              Human          Hutt           Ithorian       Mon_calamari  
+              Muun           Neimoidian     Quermian       Rodian        
+              Twi'lek        Utai           Vurk           Zabrak        
+[  50/   0]:  Cerean        
+[ 250/   0]:  Jawa          
+[ 250/ 250]:  Pau'an
+  -->
 
-  <trigger name="RacelistScanStart" match="^\(L\)egend\: Race Number \(Era Restriction or 0 for none\)\> Race Name $" script="enableRaceListScan" regexp="y" enabled="n"  omit_from_output="y" omit_from_log="y" sequence="100" />
-  <trigger name="RacelistScanStop" match="^$" script="stopRacelistScan" regexp="y" enabled="n"  omit_from_output="y" omit_from_log="y" sequence="100" />
+  <trigger match="^(\[(((?P<price>[\s\d]+)\/(?P<dep>[\s\d]+))|App Only )\]\:)? (?P<racesFound>.*)$" script="raceListScanAdd" regexp="y" enabled="n" group="RacelistScan" omit_from_output="y" omit_from_log="y" sequence="100" />
+  <!--trigger match="^([\s\d]+)\((\d)\)\> (.*) (\d+)\((\d)\)\> (.*) (\d+)\((\d)\)\> (.*) (\d+)\((\d)\)\> (.*)$" script="raceListScanAdd" regexp="y" enabled="n" group="RacelistScan"  omit_from_output="y" omit_from_log="y" sequence="100" -->
+  <!--trigger match="^([\s\d]+)\((\d)\)\> (.*) (\d+)\((\d)\)\> (.*) (\d+)\((\d)\)\> (.*)$" script="raceListScanAdd" regexp="y" enabled="n" group="RacelistScan"  omit_from_output="y" omit_from_log="y" sequence="100" -->
+  <!--trigger match="^([\s\d]+)\((\d)\)\> (.*) (\d+)\((\d)\)\> (.*)$" script="raceListScanAdd" regexp="y" enabled="n" group="RacelistScan"  omit_from_output="y" omit_from_log="y" sequence="100" -->
+  <!--trigger match="^([\s\d]+)\((\d)\)\> (.*)$" script="raceListScanAdd" regexp="y" enabled="n" group="RacelistScan"  omit_from_output="y" omit_from_log="y" sequence="100" -->
+
+  <trigger name="RacelistScanStart" match="^Points/Dep.   Races\n-------------------------------------------------------------------------\Z" 
+    multi_line="y" 
+    lines_to_match="2" 
+    script="enableRaceListScan" 
+    regexp="y" 
+    enabled="n" 
+    omit_from_output="y" 
+    omit_from_log="y" 
+    sequence="100" />
+  <trigger name="RacelistScanStop" match="^-------------------------------------------------------------------------\n\(S\)yntax\: showrace \<race\>\Z" 
+      multi_line="y" 
+      lines_to_match="2" 
+      script="stopRacelistScan" 
+      regexp="y" 
+      enabled="n" 
+      omit_from_output="y" 
+      omit_from_log="y" 
+      sequence="100" />
+  <!--
+    match="^\(R\)ace\: (.*)\nStr Plus\:([\s\d,-]+)Dex Plus\:([\s\d,-]+)Wis Plus\:([\s\d,-]+)Int Plus\:([\s\d,-]+)\nCon Plus\:([\s\d,-]+)Cha Plus\:([\s\d,-]+)Lck Plus\:([\s\d,-]+)\nHit Pts\:([\s\d,-]+)AC Mod\:([\s\d,-]+)Frc Plus\:([\s\d,-]+)\nPrice\:([\s\d,-]+)Deposit\:([\s\d,-]+)App Only\:(.*)\Z"
+    -->
   
-  <trigger lines_to_match="5"
-   match="^\(R\)ace\: (.*)\n   Str Plus\:([\s\d,-]+)Dex Plus\:([\s\d,-]+)Wis Plus\:([\s\d,-]+)Int Plus\:([\s\d,-]+)\n   Con Plus\:([\s\d,-]+)Cha Plus\:([\s\d,-]+)Lck Plus\:([\s\d,-]+)\n   Hit Pts:([\s\d,-]+)AC Mod:([\s\d,-]+)Frc Plus:([\s\d,-]+)\n   Price\:([\s\d,-]+)Deposit\:([\s\d,-]+)App Only\:(.*)\Z"
+  <trigger 
+    match="^\(R\)ace: (.*)\n   Str Plus: (.*)Dex Plus: (.*)Wis Plus: (.*)Int Plus: (.*)\n   Con Plus: (.*)Cha Plus: (.*)Lck Plus: (.*)\n   Hit Pts: (.*)AC Mod: (.*)Frc Plus: (.*)\n   Price: (.*)Deposit: (.*)App Only: (.*)\Z"
    script="addRaceScanFirst"
    multi_line="y"
+   lines_to_match="5"
    regexp="y"
    enabled="n"
    group="raceScanFirst" omit_from_output="y" omit_from_log="y" 
@@ -45,15 +76,16 @@ right clicking anywhere in the window and choosing filters to apply.
   
   <trigger match="^Players of this race must pick (.*) as their main\.$" script="addRaceMainClass" regexp="y" enabled="n" group="raceScanSecond"  omit_from_output="y" omit_from_log="y" sequence="100" />
   
-  <trigger lines_to_match="2" match="\(D\)efault Language\: (.*)\n\(P\)ossible Skincolors\: \Z" script="addRaceScanSecond" multi_line="y" regexp="y" enabled="n" group="raceScanSecond" omit_from_output="y" omit_from_log="y" sequence="100" />
+  <trigger match="^\(D\)efault Language: (.*)$" script="addRaceScanLanguage" regexp="y" enabled="n" group="raceScanLanguage" omit_from_output="y" omit_from_log="y" sequence="100" />
+  <trigger match="^\(P\)ossible (skin|plating) colors: $" script="addRaceScanColors" regexp="y" enabled="n" group="raceScanColors" omit_from_output="y" omit_from_log="y" sequence="100" />
   
-  <trigger match="^\((\d+)\)([\w\s]+)\((\d+)\)([\w\s]+)$" script="addSkinColors" regexp="y" group="SkinColors" enabled="n"  omit_from_output="y" omit_from_log="y" sequence="100" />
-  <trigger match="^\((\d+)\)([\w\s]+)$" script="addSkinColors" regexp="y" group="SkinColors" enabled="n"  omit_from_output="y" omit_from_log="y" sequence="100" />
-  <trigger match="^$" script="stopSkinColors" regexp="y" group="SkinColors" enabled="n"  omit_from_output="y" omit_from_log="y" sequence="100" />
-  <trigger match="^(.*) \- (.*)$" script="addExtraAttrib" regexp="y" group="ExtraAttribs" enabled="n"  omit_from_output="y" omit_from_log="y" sequence="100" />
-  <trigger match="^$" script="stopExtraAttribs" regexp="y" group="ExtraAttribs" enabled="n"  omit_from_output="n" omit_from_log="y" sequence="100" />
-  <trigger match="^(.*)   (.*)$" script="addRaceLevels" regexp="y" group="RaceLevels" enabled="n"  omit_from_output="y" omit_from_log="y" sequence="100" />
-  <!--trigger match="^science(.*)$" script="stopRaceLevels" regexp="y" group="RaceLevels" enabled="n"  omit_from_output="y" omit_from_log="y" sequence="101" -->
+  <!--trigger match="^\((\d+)\)([\w\s]+)\((\d+)\)([\w\s]+)$" script="addSkinColors" regexp="y" group="SkinColors" enabled="n"  omit_from_output="y" omit_from_log="y" sequence="100" -->
+  <trigger match="^(.*)$" script="addSkinColors" regexp="y" group="SkinColors" enabled="n" omit_from_output="y" omit_from_log="y" sequence="100" />
+  <trigger match="^$" script="stopSkinColors" regexp="y" group="SkinColors" enabled="n" omit_from_output="y" omit_from_log="y" sequence="100" />
+  <trigger match="^(.*) \- (.*)$" script="addExtraAttrib" regexp="y" group="ExtraAttribs" enabled="n" omit_from_output="y" omit_from_log="y" sequence="100" />
+  <trigger match="^$" script="stopExtraAttribs" regexp="y" group="ExtraAttribs" enabled="n" omit_from_output="n" omit_from_log="y" sequence="100" />
+  <trigger match="^(.*)   (.*)$" script="addRaceLevels" regexp="y" group="RaceLevels" enabled="n" omit_from_output="y" omit_from_log="y" sequence="100" />
+  <trigger match="^science(.*)$" script="stopRaceLevels" regexp="y" group="RaceLevels" enabled="n"  omit_from_output="y" omit_from_log="y" sequence="101" />
   <trigger name="gagAll" match="^(.*)$" regexp="y" keep_evaluating="y" omit_from_output="y" omit_from_log="y" enabled="n" sequence="100" />
 </triggers>
 
@@ -180,8 +212,9 @@ end
 function updateRaceText()
   if raceSelected > -1 then -- we chose something
     local race = races[raceSelected]
-    if race.price == nil or race.deposit==nil or race.language==nil or race.ac==nil or race.hp==nil or race.apponly==nil or race.str==nil or race.dex==nil or race.con==nil or race.int==nil or race.wis==nil or race.cha==nil or race.frc==nil or race.lck==nil or race.erarestrict==nil then
-      -- tried to access while still scanning or invalid scan data
+    if race.price == nil or race.dep==nil or race.language==nil or race.ac==nil or race.hp==nil or race.apponly==nil or race.str==nil or race.dex==nil or race.con==nil or race.int==nil or race.wis==nil or race.cha==nil or race.frc==nil or race.lck==nil then
+    -- tried to access while still scanning or invalid scan data
+      text = {}
       addText( {"red","Either your race data is invalid or scan is still underway..."}, font, "center")
       textEnd = math.min(#text, textStart+textFit-2)
       return
@@ -200,7 +233,7 @@ function updateRaceText()
       addText( {"cyan",race.name}, font, "center")
       
       addText( {"white", filler.."Stats"..filler}, font, "center")
-      addText( {"white","Price: ",((race.price==0 and "lime") or "red"),race.price,"white"," Deposit: ",((race.deposit==0 and "lime") or "red"),race.deposit,"white"," Language: ","red",race.language}, font, "center")
+      addText( {"white","Price: ",((race.price==0 and "lime") or "red"),race.price,"white"," Deposit: ",((race.dep==0 and "lime") or "red"),race.dep,"white"," Language: ","red",race.language}, font, "center")
       addText( {"white","AC: ","red",race.ac,"white"," Base HP: ","red",race.hp,"white"," App Only: ",((race.apponly=="Yes" and "red") or "lime"),race.apponly}, font, "center")
       addText( {"white","Str: ","red",race.str,"white"," Dex: ","red",race.dex,"white"," Con: ","red",race.con}, font, "center")
       addText( {"white","Int: ","red",race.int,"white"," Wis: ","red",race.wis,"white"," Cha: ","red",race.cha}, font, "center")
@@ -377,18 +410,30 @@ function addLevels(list)
   return total
 end
 
+local raceCostGroup = {}
+
 function raceListScanAdd(name, line, args)
   local race = {}
-  for i, v in pairs(args) do
-    if math.fmod(i-1, 3)==0 then -- index
-      race.index = tonumber(v)
-      --Note("found race index: "..v)
-    elseif math.fmod(i-1, 3)==1 then -- era restrict
-      race.erarestrict = tonumber(v)
-      --Note("found era restrict: "..v)
-    elseif math.fmod(i-1, 3)==2 then -- race name
-      race.name = Trim(v)
-      --Note("found race name: "..v)
+  --if (args.price ~= '' and args.dep ~= '') then
+  --  raceCostGroup.price = tonumber(args.price)
+  --  raceCostGroup.dep = tonumber(args.dep)
+  --  raceCostGroup.apponly = "No"
+  --end
+  --if (args[1]=="[App Only ]:") then
+  --  raceCostGroup.price = 0
+  --  raceCostGroup.dep = 0
+  --  raceCostGroup.apponly = "Yes"
+  --end
+  --Note("price: " ..((args.price and args.price) or raceCostGroup.price).." dep: "..((args.dep and args.dep) or raceCostGroup.dep).." app:"..((args.apponly and args.apponly) or raceCostGroup.apponly))
+  local racesSplit = utils.split(Trim(args.racesFound), " ")
+  for i, v in ipairs(racesSplit) do
+    if (v~='') then
+      race.index = #races
+      race.name = v
+      --race.price = raceCostGroup.price
+      --race.dep = raceCostGroup.dep
+      --race.apponly = raceCostGroup.apponly
+      --Note("found race name: "..v.." Price: "..race.price.." Dep: "..race.dep.." App: "..race.apponly)
       races[#races + 1] = race
       race = {}
     end
@@ -400,7 +445,7 @@ function startRacelistScan(name, line, args)
   races = {}
   SendNoEcho("showrace")
   EnableTrigger("RacelistScanStart", true)
-  EnableTrigger("gagAll", true)
+  --EnableTrigger("gagAll", true)
   ColourNote("yellow", "", "Racelist Scan started...")
 
 end
@@ -439,7 +484,7 @@ function scanNextRace(name, line, args)
     currentRace = races[currentRaceIndex]
     DeleteLines(2)
     ColourNote("silver","","Scan "..string.format("%2.2f",((currentRaceIndex/#races)*100)).."% completed.")
-    SendNoEcho("showrace "..currentRace.index)
+    SendNoEcho("showrace \""..currentRace.name.."\"")
     EnableTriggerGroup("raceScanFirst", true)
   end
   scheduleRedraw()
@@ -483,7 +528,7 @@ class_matrix = {  ["combat"] = 1,
                         ["science"] = 10 }
                         
 matrix_class = { "combat", "piloting", "engineering", "bounty hunting", "smuggling", "leadership", "espionage", "slicer", "medical", "science" }
-matrix_stats = { "price", "deposit", "str", "dex", "con", "int", "wis", "cha", "frc", "lck", "ac", "hp", "apponly", "erarestrict" }
+matrix_stats = { "price", "dep", "str", "dex", "con", "int", "wis", "cha", "frc", "lck", "ac", "hp", "apponly", "erarestrict" }
 
 function getSubclassLevelsByClass(r, c, s, st)
   local num = 0
@@ -511,7 +556,7 @@ end
 
 function getRaceStat(r, s)
   if r[s] ~= nil then
-    if s=="price" or s=="deposit" then -- normalize price and deposit to be in line with stats
+    if s=="price" or s=="dep" then -- normalize price and deposit to be in line with stats
       return -r[s]/1000
     elseif s=="apponly" then -- convert apponly into a number
       return ((r[s]=="Yes" and 10) or 0)
@@ -525,8 +570,8 @@ function getRaceStat(r, s)
   end
 end
 
-function addRaceScanFirst(name, line, args)
--- "\(R\)ace\: (.*)\nStr Plus\: ([\s\d,-]+) Dex Plus\: ([\s\d,-]+) Wis Plus\: ([\s\d,-]+) Int Plus\: ([\s\d,-]+) \nCon Plus\: ([\s\d,-]+) Cha Plus\: ([\s\d,-]+) Lck Plus\: ([\s\d,-]+) \nHit Pts\: ([\s\d,-]+)AC Mod\: ([\s\d,-]+) Frc Plus\: ([\s\d,-]+) \nPrice\: ([\s\d,-]+)Deposit\: ([\s\d,-]+)App Only\: (.*)\n\(D\)efault Language\: (.*)\n\(P\)ossible Skincolors\:\Z"
+  function addRaceScanFirst(name, line, args)
+
   if currentRace.name ~= args[1] then
     ColourNote("red","","Mismatched race names detected ("..currentRace.name.."~="..args[1]..") aborting...")
     stopRaceScan()
@@ -543,28 +588,31 @@ function addRaceScanFirst(name, line, args)
   currentRace.ac =  tonumber(args[10])
   currentRace.frc = tonumber(args[11])
   currentRace.price = tonumber(args[12])
-  currentRace.deposit = tonumber(args[13])
+  currentRace.dep = tonumber(args[13])
   currentRace.apponly = Trim(args[14])
-  --currentRace.language = Trim(args[15])
-  --races[currentRaceIndex] = currentRace
   EnableTriggerGroup("raceScanFirst", false)
   DeleteLines(1)
-  startRaceScanSecond()
+  startRaceScanLanguage()
 end
 
 function addRaceMainClass(name, line, args)
   currentRace.mainclass = args[1]
 end
 
-function startRaceScanSecond(name, line, args)
-  EnableTriggerGroup("raceScanSecond", true)
+function startRaceScanLanguage(name, line, args)
+  EnableTriggerGroup("raceScanLanguage", true)
 end
-function addRaceScanSecond(name, line, args)
+function addRaceScanLanguage(name, line, args)
   currentRace.language = Trim(args[1])
-  EnableTriggerGroup("raceScanSecond", false)
+  EnableTriggerGroup("raceScanLanguage", false)
+  EnableTriggerGroup("raceScanColors", true)
   DeleteLines(1)
-  startSkinColors()
 end
+
+  function addRaceScanColors(name, line, args)
+    EnableTriggerGroup("raceScanColors", false)
+    startSkinColors()
+  end
 
 function startSkinColors(name, line, args)
   skinColors = {}
@@ -573,13 +621,11 @@ end
 
 function addSkinColors(name, line, args)
   local color = {}
-  for i, v in pairs(args) do
-    if math.fmod(i-1, 2)==0 then -- index
-      color.index = tonumber(v)
-      --Note("found race index: "..v)
-    elseif math.fmod(i-1, 2)==1 then -- name
-      color.name = Trim(v)
-      --Note("found era restrict: "..v)
+  local colorsFound = utils.split(args[0], " ")
+  for i, v in ipairs(colorsFound) do
+    if (v~='') then
+      color.index = #skinColors
+      color.name = v
       skinColors[#skinColors + 1] = color
       color = {}
     end
@@ -625,7 +671,6 @@ function addRaceLevels(name, line, args)
 end
 
 function stopRaceLevels(name, line, args)
-  Note("stopped race levels")
   EnableTriggerGroup("RaceLevels", false)
   currentRace.levels = copytable.deep(raceLevels)
   races[currentRaceIndex] = currentRace
@@ -633,7 +678,6 @@ function stopRaceLevels(name, line, args)
 end
 
 function stopRaceScan(name, line, args)
-  Note("stopped race scan")
   EnableTriggerGroup("raceScanFirst", false)
   EnableTriggerGroup("SkinColors", false)
   EnableTriggerGroup("ExtraAttribs", false)
