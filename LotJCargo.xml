@@ -169,29 +169,29 @@ Initial contraband features added by @Domovoi.
 <!--   Triggers    --> 
 <triggers>
 	<!-- Planet and System Capture Triggers -->
-	<trigger name="cargoSystemCapture" script="storeSystem" match="^(.*)\( (.*)\, (.*) \)$" enabled="n" regexp="y" group="SystemCap" omit_from_log="y" omit_from_output="y" sequence="100" />
+	<trigger name="cargoSystemCapture" script="storeSystem" match="^(.*)\( (.*)\, (.*) \)$" enabled="n" regexp="y" group="SystemCap" omit_from_log="n" omit_from_output="n" sequence="100" />
 	<trigger name="cargoStarsFailed" script="toggleSystemCapOff" match="^You must hold a datapad to do this\.$" enabled="n" regexp="y" group="SystemCap" sequence="100" />
-	<trigger name="cargoSystemCapDone" script="scanNext" match="^Show what to whom\?$" regexp="y" enabled="n" group="SystemCap" omit_from_log="y" omit_from_output="y" sequence="100" />
-	<trigger name="cargoBodyCapTitle" script="cleanUp" match="*Starsystem*Governed By*Popular Support" enabled="n" group="BodyCap" omit_from_log="y" omit_from_output="y" sequence="100" />
-	<trigger name="cargoBodyCapture" script="storeBody" match="^(.*)\.\d$" regexp="y" enabled="n" group="BodyCap" omit_from_log="y" omit_from_output="y" sequence="100" />
-	<trigger name="cargoBodyCapDone" script="scanNext" match="^Use SHOWPLANET for more information\.$" regexp="y" enabled="n" group="BodyCap" omit_from_log="y" omit_from_output="y" sequence="100" />
+	<trigger name="cargoSystemCapDone" script="scanNext" match="^Displayed (.*) starsystems.$" regexp="y" enabled="n" group="SystemCap" omit_from_log="n" omit_from_output="n" sequence="100" />
+	<!--trigger name="cargoBodyCapTitle" script="cleanUp" match="Planet*Starsystem*Governed By*Notices" enabled="n" group="BodyCap" omit_from_log="n" omit_from_output="n" sequence="100" -->
+	<trigger name="cargoBodyCapture" script="storeBody" match="^(.*) (.*)$" regexp="y" enabled="n" group="BodyCap" keep_evaluating="true" omit_from_log="n" omit_from_output="n" sequence="100" />
+  <trigger name="cargoBodyCapDone" script="scanNext" match="^Use SHOWPLANET( \<planet\>)? for more information.$" regexp="y" enabled="n" group="BodyCap" omit_from_log="n" omit_from_output="n" sequence="100" />
 
 	<!-- Resource Capture Triggers -->
-	<trigger enabled="n" group="ResourceStart" match="^You use the datapad to lookup the information\.$" name="ShowplanetSuccess" script="showplanetSuccess" regexp="y" omit_from_log="y" omit_from_output="y" sequence="100" />
-	<trigger enabled="n" group="ResourceStart" match="^No such planet\.$" name="ShowplanetFailure" script="showplanetFailure" regexp="y" omit_from_log="y" omit_from_output="y" sequence="100" /> 
-	<trigger enabled="n" group="ResourceCap" match="^Planet\: (.*)$" name="storeTempPlanet" script="storeTempPlanet" regexp="y" omit_from_log="y" omit_from_output="y" sequence="100" />
-	<trigger enabled="n" group="ResourceCap" match="^Starsystem\: (.*)$" name="SystemCap" script="storeTempSystem" regexp="y" omit_from_log="y" omit_from_output="y" sequence="100" />
-	<trigger enabled="n" group="ResourceCap" match="^Coordinates\: (.*) (.*) (.*)$" name="CoordCap" script="storeCoords" regexp="y" omit_from_log="y" omit_from_output="y" sequence="100" />
-	<trigger enabled="n" group="ResourceCap" match="^(.*) \( Price per unit\: (.*) ?\)$" name="ResourceCap" script="storeResource" regexp="y" omit_from_log="y" omit_from_output="y" sequence="100" />
-	<trigger enabled="n" group="ResourceCap" match="^Tax Rate\: (.*)\%        \(Tax Income\: (.*)\)$" name="TaxCap" script="storeTax" regexp="y" omit_from_log="y" omit_from_output="y" sequence="100" />
-	<trigger enabled="n" group="GagAll" match="^(.*)$" name="GagAll" regexp="y" keep_evaluating="y" omit_from_log="y" omit_from_output="y" sequence="100" />
-	<trigger enabled="n" group="ResourceCap" match="^Use \'SHOWPLANET \<planet\> RESOURCES\' for current resources\.$" name="ResourceCoordEnd" regexp="y" omit_from_log="y" omit_from_output="y" script="resourceEnd" sequence="100" />
-	<trigger enabled="n" group="ResourceCap" match="^Show what to whom\?$" regexp="y" name="resourceCapEnd" script="resourceEnd" omit_from_log="y" omit_from_output="y" sequence="100" />
+	<trigger enabled="n" group="ResourceStart" match="^You use the datapad to lookup the information\.$" name="ShowplanetSuccess" script="showplanetSuccess" regexp="y" omit_from_log="n" omit_from_output="n" sequence="100" />
+	<trigger enabled="n" group="ResourceStart" match="^No such planet\.$" name="ShowplanetFailure" script="showplanetFailure" regexp="y" omit_from_log="n" omit_from_output="n" sequence="100" /> 
+	<trigger enabled="n" group="ResourceCap" match="^Planet\: (.*)$" name="storeTempPlanet" script="storeTempPlanet" regexp="y" omit_from_log="n" omit_from_output="n" sequence="100" />
+	<trigger enabled="n" group="ResourceCap" match="^Starsystem\: (.*)$" name="SystemCap" script="storeTempSystem" regexp="y" omit_from_log="n" omit_from_output="n" sequence="100" />
+	<trigger enabled="n" group="ResourceCap" match="^Coordinates\: (.*) (.*) (.*)$" name="CoordCap" script="storeCoords" regexp="y" omit_from_log="n" omit_from_output="n" sequence="100" />
+	<trigger enabled="n" group="ResourceCap" match="^(.*) \( Price per unit\: (.*) ?\)$" name="ResourceCap" script="storeResource" regexp="y" omit_from_log="n" omit_from_output="n" sequence="100" />
+	<trigger enabled="n" group="ResourceCap" match="^Tax Rate\: (.*)\%        \(Tax Income\: (.*)\)$" name="TaxCap" script="storeTax" regexp="y" omit_from_log="n" omit_from_output="n" sequence="100" />
+	<trigger enabled="n" group="GagAll" match="^(.*)$" name="GagAll" regexp="y" keep_evaluating="y" omit_from_log="n" omit_from_output="n" sequence="100" />
+  <trigger enabled="n" group="ResourceCap" match="^Use \'SHOWPLANET \<planet\> RESOURCES\' for current resources\.$" name="ResourceCoordEnd" regexp="y" omit_from_log="n" omit_from_output="n" script="resourceEnd" sequence="100" />
+	<trigger enabled="n" group="ResourceCap" match="^Show what to whom\?$" regexp="y" name="resourceCapEnd" script="resourceEnd" omit_from_log="n" omit_from_output="n" sequence="100" />
 
   <!-- planet retrieval triggers -->
-  <trigger match="^(.*)$" group="RetrievePlanet" regexp="y" keep_evaluating="y" omit_from_log="y" omit_from_output="y" sequence="100" />
+  <trigger match="^(.*)$" group="RetrievePlanet" regexp="y" keep_evaluating="y" omit_from_log="n" omit_from_output="n" sequence="100" />
   <trigger match="^Usage\: showplanet \<planet\>$" script="retrievePlanetFailed" regexp="y" enabled="n" group="RetrievePlanet" sequence="100" />
-  <trigger match="--Planet Data: -------------------------------\nPlanet: (.*)\Z" script="storePlanet" regexp="y" enabled="n" multi_line="y" lines_to_match="2" omit_from_log="y" omit_from_output="y" group="RetrievePlanet" sequence="100" />
+  <trigger match="--Planet Data: -------------------------------\nPlanet: (.*)\Z" script="storePlanet" regexp="y" enabled="n" multi_line="y" lines_to_match="2" omit_from_log="n" omit_from_output="n" group="RetrievePlanet" sequence="100" />
   <trigger match="^Use \'SHOWPLANET \<planet\> RESOURCES\' for current resources\.$" script="updateListPosition" regexp="y" enabled="n" group="RetrievePlanet" sequence="100" />
   
 	<!-- Automatic cargo triggers -->
@@ -1602,11 +1602,11 @@ function distance(a, b)
 end
 function showplanetSuccess(name, list, args)
 	EnableTriggerGroup("ResourceCap", true)
-	EnableTriggerGroup("GagAll", true)
+	--EnableTriggerGroup("GagAll", true)
 end
 function showplanetFailure(name, list, args)
 	EnableTriggerGroup("ResourceCap", false)
-	EnableTriggerGroup("GagAll", false)
+	--EnableTriggerGroup("GagAll", false)
 	EnableTriggerGroup("ResourceStart", false)
 	ColourNote("red","","Invalid planet, unable to continue.")
 end
@@ -1630,6 +1630,7 @@ end
 function cleanUp()
 	DeleteLines(1)
 end
+
 function scanNext(name, list, args)
 	toggleSystemCapOff()
 	toggleBodyCapOff()
@@ -1639,7 +1640,6 @@ function scanNext(name, list, args)
 		ColourNote("silver","","Starting resource scan... this may take a few moments.")
 		scanned = "systems"
 		SendNoEcho("stars")
-		SendNoEcho("show")
 		toggleSystemCapOn()
 	elseif (scanned == "systems") then
 		scanned = "planet"
@@ -1668,7 +1668,7 @@ function scanNext(name, list, args)
 		EnableTriggerGroup("ResourceStart", false)
 		SendNoEcho("config +prompt")
 		ColourNote("silver","","Finished scanning galaxy resources. Found ",cyan,"",#systems,"silver",""," systems with ",cyan,"",numBodies,"silver",""," planets.")
-		--listSystems()
+		listSystems()
 	end
 end
 function cargoList()
@@ -1687,8 +1687,8 @@ function storeBody(name, list, args)
 	local storage = { name = "", type = "", tax = 0, x = 0, y = 0, z = 0, resources = {} }
 	for k, v in pairs(systems) do
 		local sysName = v.name
-		if (string.find(args[1], sysName)) then -- if the system name was found in the grab text
-			local bodyName = Trim(string.sub(args[1], 1, string.find(args[1], sysName)-1))  -- cut body name out of the grab text
+		if (string.find(args[0], sysName)) then -- if the system name was found in the grab text
+			local bodyName = Trim(string.sub(args[0], 1, string.find(args[0], sysName)-1))  -- cut body name out of the grab text
 			storage.name = bodyName															-- using system name as a point of reference
 			storage.type = scanned
 			v.bodies[#v.bodies+1] = storage
