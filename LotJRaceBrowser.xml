@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="iso-8859-1" ?> 
 <!DOCTYPE muclient> 
 <muclient>
-<plugin name="LotJRaceBrowser" author="@Johnson" id="a4e8153e52b1b6d490ed4b10" language="Lua" purpose="Browse LotJ Races" save_state="y" requires="4.84" version="1.07">
+<plugin name="LotJRaceBrowser" author="@Johnson" id="a4e8153e52b1b6d490ed4b10" language="Lua" purpose="Browse LotJ Races" save_state="y" requires="4.84" version="1.08">
 <description trim="y">
 <![CDATA[ 
 
@@ -71,7 +71,9 @@ right clicking anywhere in the window and choosing filters to apply.
    lines_to_match="5"
    regexp="y"
    enabled="n"
-   group="raceScanFirst" omit_from_output="y" omit_from_log="y" 
+   group="raceScanFirst" 
+   omit_from_output="y" 
+   omit_from_log="y" 
    sequence="100" />
   
   <trigger match="^Players of this race must pick (.*) as their main\.$" script="addRaceMainClass" regexp="y" enabled="n" group="raceScanSecond"  omit_from_output="y" omit_from_log="y" sequence="100" />
@@ -186,7 +188,7 @@ function printBrowseList()
   local font_height = WindowFontInfo(win, font, 1)
   if #races > 0 then
     for i = raceDisplayedStart, raceDisplayedEnd do
-      WindowText (win, font, races[i].name, 5, posy, 0, 0, ColourNameToRGB(((i==raceSelected and "red") or ((races[i].str~=nil and "white") or "darkgray"))))
+      WindowText (win, font, races[i].name..((races[i].weight and " - "..string.format("%.2f", races[i].weight)) or ""), 5, posy, 0, 0, ColourNameToRGB(((i==raceSelected and "red") or ((races[i].str~=nil and "white") or "darkgray"))))
       posy = posy + font_height + spacer
     end
   end
@@ -496,7 +498,11 @@ function sortByAlpha()
 end
 
 function sortByFilter(class, filter, stats)
-  table.sort(races, function (k1, k2) return getSubclassLevelsByClass(k1, class, filter, stats) > getSubclassLevelsByClass(k2, class, filter, stats) end )
+  --table.sort(races, function (k1, k2) return getSubclassLevelsByClass(k1, class, filter, stats) > getSubclassLevelsByClass(k2, class, filter, stats) end )
+  for a=1, #races do
+    findRaceWeightValue(races[a], class, filter, stats)
+  end
+  table.sort(races, function (k1, k2) return k1.weight > k2.weight end )
   updateSelectedRace()
 end
 
@@ -528,36 +534,46 @@ class_matrix = {  ["combat"] = 1,
                         ["science"] = 10 }
                         
 matrix_class = { "combat", "piloting", "engineering", "bounty hunting", "smuggling", "leadership", "espionage", "slicer", "medical", "science" }
-matrix_stats = { "price", "dep", "str", "dex", "con", "int", "wis", "cha", "frc", "lck", "ac", "hp", "apponly", "erarestrict" }
+  matrix_stats = { "price", "dep", "str", "dex", "con", "int", "wis", "cha", "frc", "lck", "ac", "hp", "apponly", "erarestrict" }
 
-function getSubclassLevelsByClass(r, c, s, st)
+function findRaceWeightValue(race, main, class_filter, stat_filter)
   local num = 0
-  if type(s)=="table" then
-    for i, v in ipairs(s) do
-      if c=="" then -- we didn't specify a class, take the average
-        for a=1, #matrix_class do
-          num = num + r.levels[matrix_class[a]].levels[class_matrix[v]]
+  if main~="" then -- picked a main class
+    if #class_filter == 0 then -- no class filters, find average of all levels
+      local sum = 0
+      for a=1, #matrix_class do
+        sum = sum + race.levels[main].levels[a]
+      end
+      num = num + sum / #matrix_class
+    else -- we have class filters, add them up 
+      local sum = 0
+      for _, v in pairs(class_filter) do
+        sum = sum + race.levels[main].levels[class_matrix[v]]
+      end
+      num = num + sum / #class_filter
+    end
+  else -- didn't pick a main class
+    if #class_filter > 0 then -- we have class filters, add them up
+      for _, class in pairs(matrix_class) do
+        local sum = 0
+        for _, filter in pairs(class_filter) do 
+          sum = sum + race.levels[class].levels[class_matrix[filter]]
         end
-        num = num / #matrix_class
-      else
-        num = num + r.levels[c].levels[class_matrix[v]]
+        num = num + sum / #matrix_class / #class_filter
       end
     end
   end
-  if st~=nil then
-    if type(st)=="table" then
-      for i, v in ipairs(st) do
-        num = num + getRaceStat(r, v)
-      end
-    end
+  for _, v in pairs(stat_filter) do
+    num = num + getRaceStat(race, v)
   end
-  return num
+  race.weight = num
 end
+
 
 function getRaceStat(r, s)
   if r[s] ~= nil then
     if s=="price" or s=="dep" then -- normalize price and deposit to be in line with stats
-      return -r[s]/1000
+      return -r[s]/100
     elseif s=="apponly" then -- convert apponly into a number
       return ((r[s]=="Yes" and 10) or 0)
     elseif s=="ac" then -- convert ac to positive and normalize
