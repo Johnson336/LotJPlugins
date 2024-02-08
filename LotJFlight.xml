@@ -2,7 +2,7 @@
 <!DOCTYPE muclient> 
 <!--  Saved on Wednesday, July 25, 2012, 7:14 PM   -->  
 <muclient>
-<plugin name="LotJFlight" author="@Johnson" id="680bf1a4e5e600854747c379" language="Lua" purpose="Flight Made Easy" save_state="y" requires="4.40" version="1.49">
+<plugin name="LotJFlight" author="@Johnson" id="680bf1a4e5e600854747c379" language="Lua" purpose="Flight Made Easy" save_state="y" requires="4.40" version="1.50">
 <description trim="y">
 <![CDATA[ 
 'FlyHelp'      - To see the list of commands associated with this plugin.
@@ -22,7 +22,7 @@ v1.42 -
 <!--   Triggers    --> 
 <triggers>
 	<trigger name="LaunchComp" match="^Launch complete\.$" script="calcPlanet" group="Flight" enabled="n" regexp="y" sequence="100" />
-	<trigger name="CalcDone" match="^\[Status\]\: Hyperspace Calculations have been completed\.$" script="calcDone" group="Flight" enabled="n" regexp="y" sequence="100" />
+	<trigger name="CalcDone" match="^\[Status\]\: Hyperspace calculations have been completed\.$" script="calcDone" group="Flight" enabled="n" regexp="y" sequence="100" />
 	<trigger name="HyperComp" match="^Hyperjump complete\.$" script="coursePlanet" group="Flight" enabled="n" regexp="y" sequence="100" />
 	<trigger name="OrbitObtained" match="^You begin orbiting (.*)\.$" script="doLand" group="Flight" enabled="n" regexp="y" sequence="100" />
 	<trigger name="LandGrabStart" match="^Possible choices for (.*)\:$" script="startLandGrab" group="Flight" enabled="n" regexp="y" sequence="100" />
@@ -312,7 +312,13 @@ function landArg(siteNum)
 		toggleFlyOff()
 		return
 	end
-	Send("land '" .. planetName .. "' " .. landingSites[siteNum])
+  -- make sure the landing site has a space in it
+  if (string.match(landingSites[siteNum], " ")) then
+    -- if it's got a space in the name, use only the first word to land
+	  Send("land '" .. planetName .. "' " .. utils.split(landingSites[siteNum], " ")[1])
+  else
+    Send("land '" .. planetName .."' " .. landingSites[siteNum])
+  end
 end
 
 function landGrab(name, list, args)
