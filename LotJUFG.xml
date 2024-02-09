@@ -1,0 +1,109 @@
+
+<?xml version="1.0" encoding="iso-8859-1" ?> 
+<!DOCTYPE muclient> 
+<muclient>
+<plugin name="LotJUFG" author="@Johnson" id="ca1bc2e31f67858af08c949a" language="Lua" purpose="Small Script to display UFG Time" save_state="y" requires="4.40" version="1.0">
+<description trim="y">
+<![CDATA[  ]]> 
+  </description>
+  </plugin>
+<!--   Get our standard constants   --> 
+  <include name="constants.lua" /> 
+<!--   Triggers    --> 
+<triggers>
+  
+  <trigger name="UFGShow" script="showUFGTime" match="^\(OOC\) (?P<planet>.*) can not be captured. Next window in (?P<days>.*)\:(?P<hours>.*)\:(?P<mins>.*)\:(?P<secs>.*)$" enabled="y" regexp="y" group="LotJUFG" sequence="100" />
+  
+</triggers>
+<!--   Aliases    --> 
+<aliases>
+  <alias name="UFGformat" script="setUFGFormat" match="^ufgformat( .*)?$" group="LotJUFG" enabled="y" regexp="y" sequence="100" />
+
+</aliases>
+<!--   Script    --> 
+<script>
+  <![CDATA[
+    local defaultFormat = "%A, %b %Y - %H:%M:%S"
+    local format = GetVariable("ufgFormat") or defaultFormat
+
+    local formatHelp = {
+    "%a - Abbreviated weekday name (eg. Wed)",
+    "%A - Full weekday name (eg. Wednesday)",
+    "%b - Abbreviated month name (eg. Sep)",
+    "%B - Full month name (eg. September)",
+    "%c - Date and time representation appropriate for locale (eg. 23/04/07 10:20:41)",
+    "         (Standard date and time string ) - see below for using os.setlocale to get the correct locale.",
+    "%d - Day of month as decimal number (01 - 31)",
+    "%H - Hour in 24-hour format (00 - 23)",
+    "%I - Hour in 12-hour format (01 - 12)",
+    "%j - Day of year as decimal number (001 - 366)",
+    "%m - Month as decimal number (01 - 12)",
+    "%M - Minute as decimal number (00 - 59)",
+    "%p - Current locale’s A.M./P.M. indicator for 12-hour clock (eg. AM/PM)",
+    "%S - Second as decimal number (00 - 59)",
+    "%U - Week of year as decimal number, with Sunday as first day of week 1 (00 - 53)",
+    "%w - Weekday as decimal number (0 - 6; Sunday is 0)",
+    "%W - Week of year as decimal number, with Monday as first day of week 1 (00 - 53)",
+    "%x - Date representation for current locale (Standard date string)",
+    "%X - Time representation for current locale (Standard time string)",
+    "%y - Year without century, as decimal number (00 - 99)  (eg. 07)",
+    "%Y - Year with century, as decimal number (eg. 2007)",
+    "%Z - Time-zone name or abbreviation; no characters if time zone is unknown",
+    "%% - Percent sign"
+    }
+
+function setUFGFormat(name, line, args)
+
+
+    --[[
+            %a - Abbreviated weekday name (eg. Wed)
+            %A - Full weekday name (eg. Wednesday)
+            %b - Abbreviated month name (eg. Sep)
+            %B - Full month name (eg. September)
+            %c - Date and time representation appropriate for locale (eg. 23/04/07 10:20:41)
+                    (Standard date and time string ) - see below for using os.setlocale to get the correct locale.
+            %d - Day of month as decimal number (01 - 31)
+            %H - Hour in 24-hour format (00 - 23)
+            %I - Hour in 12-hour format (01 - 12)
+            %j - Day of year as decimal number (001 - 366)
+            %m - Month as decimal number (01 - 12)
+            %M - Minute as decimal number (00 - 59)
+            %p - Current locale’s A.M./P.M. indicator for 12-hour clock (eg. AM/PM)
+            %S - Second as decimal number (00 - 59)
+            %U - Week of year as decimal number, with Sunday as first day of week 1 (00 - 53)
+            %w - Weekday as decimal number (0 - 6; Sunday is 0)
+            %W - Week of year as decimal number, with Monday as first day of week 1 (00 - 53)
+            %x - Date representation for current locale (Standard date string)
+            %X - Time representation for current locale (Standard time string)
+            %y - Year without century, as decimal number (00 - 99)  (eg. 07)
+            %Y - Year with century, as decimal number (eg. 2007)
+            %Z - Time-zone name or abbreviation; no characters if time zone is unknown
+            %% - Percent sign
+    ]]--
+
+  if (args[1]~="") then
+    SetVariable("ufgFormat", args[1])
+  elseif (args[1]=="default") then
+    SetVariable("ufgFormat", defaultFormat)
+  else
+    for _,v in ipairs(formatHelp) do
+      ColourNote("red","",v)
+    end
+  end
+  ColourNote("white","", "UFG date format set to: ", "red","",GetVariable("ufgFormat") or defaultFormat)
+  format = GetVariable("ufgFormat")
+end
+
+function showUFGTime(name, line, args)
+	--DeleteLines(1)
+	local nowTime = os.time()
+	local capTime = { days = args[2], hours = args[3], mins = args[4], secs = args[5] }
+
+	local captureTime = nowTime
+		+ (capTime.days * (60 * 60 * 24) + (capTime.hours * (60 * 60) + (capTime.mins * 60 + capTime.secs)))
+	ColourNote("cyan", "", args[1], "white", "", " is UFG at local time: ", "cyan", "", os.date(format, captureTime))
+end
+  
+  ]]> 
+  </script>
+  </muclient>
