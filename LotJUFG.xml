@@ -23,7 +23,7 @@
 <!--   Script    --> 
 <script>
   <![CDATA[
-    local defaultFormat = "%A, %b %Y - %H:%M:%S"
+    local defaultFormat = "%A, %b %d %Y - %H:%M:%S"
     local format = GetVariable("ufgFormat") or defaultFormat
 
     local formatHelp = {
@@ -53,33 +53,6 @@
     }
 
 function setUFGFormat(name, line, args)
-
-
-    --[[
-            %a - Abbreviated weekday name (eg. Wed)
-            %A - Full weekday name (eg. Wednesday)
-            %b - Abbreviated month name (eg. Sep)
-            %B - Full month name (eg. September)
-            %c - Date and time representation appropriate for locale (eg. 23/04/07 10:20:41)
-                    (Standard date and time string ) - see below for using os.setlocale to get the correct locale.
-            %d - Day of month as decimal number (01 - 31)
-            %H - Hour in 24-hour format (00 - 23)
-            %I - Hour in 12-hour format (01 - 12)
-            %j - Day of year as decimal number (001 - 366)
-            %m - Month as decimal number (01 - 12)
-            %M - Minute as decimal number (00 - 59)
-            %p - Current locale’s A.M./P.M. indicator for 12-hour clock (eg. AM/PM)
-            %S - Second as decimal number (00 - 59)
-            %U - Week of year as decimal number, with Sunday as first day of week 1 (00 - 53)
-            %w - Weekday as decimal number (0 - 6; Sunday is 0)
-            %W - Week of year as decimal number, with Monday as first day of week 1 (00 - 53)
-            %x - Date representation for current locale (Standard date string)
-            %X - Time representation for current locale (Standard time string)
-            %y - Year without century, as decimal number (00 - 99)  (eg. 07)
-            %Y - Year with century, as decimal number (eg. 2007)
-            %Z - Time-zone name or abbreviation; no characters if time zone is unknown
-            %% - Percent sign
-    ]]--
 
   if (args[1]~="") then
     SetVariable("ufgFormat", args[1])
