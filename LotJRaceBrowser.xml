@@ -575,7 +575,7 @@ function getRaceStat(r, s)
     if s=="price" or s=="dep" then -- normalize price and deposit to be in line with stats
       return -r[s]/100
     elseif s=="apponly" then -- convert apponly into a number
-      return ((r[s]=="Yes" and 10) or 0)
+      return ((r[s]=="Yes" and -100) or 0)
     elseif s=="ac" then -- convert ac to positive and normalize
       return -r[s]/25
     elseif s=="hp" then -- normalize hp
@@ -773,6 +773,7 @@ function drawWindow(name, line, args)
   -- heading line
  	WindowText (win, font, "LotJ Race Browser v"..VERSION, 3, 3, 0, 0, ColourNameToRGB  "white")
   drawRefreshButton()
+  drawAlphaButton()
   drawResizer(win, config.width, config.height)
   WindowShow (win,  true)
   --BroadcastPlugin(999, "repaint")
@@ -795,6 +796,15 @@ function drawRefreshButton()
   WindowPolygon(win, points, ColourNameToRGB("white"), 0, 1, ColourNameToRGB("white"), 0, true, false)
   
 
+end
+
+function drawAlphaButton()
+  local versionWidth = WindowTextWidth(win, font, "LotJ Race Browser v"..VERSION)
+  local sortXOffset = 50
+  local sortButtonSize = WindowTextWidth(win, font, "aA")
+  WindowText(win, font, "aA", versionWidth + sortXOffset, 3, 0, 0, ColourNameToRGB("white"))
+  WindowAddHotspot(win, "alphaSortButton", versionWidth + sortXOffset, 3, versionWidth + sortXOffset + sortButtonSize, titleHeight, "", "", "sortByAlpha", "", "", "Sort races alphabetically", 1, 0)
+  WindowRectOp(win, miniwin.rect_draw_edge, versionWidth + sortXOffset-2, 1, versionWidth + sortXOffset + sortButtonSize+2, titleHeight, miniwin.rect_edge_etched, miniwin.rect_edge_at_all)
 end
 
 function drawScrollbars(name, line, args)
