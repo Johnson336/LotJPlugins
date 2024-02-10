@@ -17,7 +17,7 @@
 </triggers>
 <!--   Aliases    --> 
 <aliases>
-  <alias name="UFGformat" script="setUFGFormat" match="^ufgformat( .*)?$" group="LotJUFG" enabled="y" regexp="y" sequence="100" />
+  <alias name="UFGformat" script="setUFGFormat" match="^ufgformat(\s?(.*)?)$" group="LotJUFG" enabled="y" regexp="y" sequence="100" />
 
 </aliases>
 <!--   Script    --> 
@@ -55,9 +55,12 @@
 function setUFGFormat(name, line, args)
 
   if (args[1]~="") then
-    SetVariable("ufgFormat", args[1])
-  elseif (args[1]=="default") then
-    SetVariable("ufgFormat", defaultFormat)
+    if (string.match(args[1], "default")) then
+      ColourNote("red","","Restoring default LotJUFG date format.")
+      SetVariable("ufgFormat", defaultFormat)
+    else
+      SetVariable("ufgFormat", args[1])
+    end
   else
     for _,v in ipairs(formatHelp) do
       ColourNote("red","",v)
