@@ -196,10 +196,10 @@ Initial contraband features added by @Domovoi.
   
 	<!-- Automatic cargo triggers -->
 	<trigger name="tradeCargo" script="leftShip" match="^You exit the ship\.$" enabled="n" regexp="y" group="AutoCargo" sequence="100" />
-	<trigger name="soldcargo" script="soldCargo" match="^You sell (?P<quantity>.*) units of (?P<resource>.*)\.$" enabled="n" regexp="y" group="AutoCargo" sequence="100" />
+  <trigger name="soldcargo" script="soldCargo" match="^You sell (?P<quantity>.*) units of (?P<resource>.*) for (?P<credits>.*) credits\.$" enabled="n" regexp="y" group="AutoCargo" sequence="100" />
 	<trigger name="earnedmoney" script="gainMoney" match="^You earned (.*) credits from the sale and pay (.*) in taxes\.$" enabled="n" regexp="y" group="AutoCargo" sequence="100" />
 	<trigger name="waitSell" script="waitSell" match="^The planet\'s funds can\'t support such a sale\!$" enabled="n" regexp="y" group="AutoCargo" sequence="100" />
-	<trigger name="boughtcargo" script="boughtCargo" match="^You purchased (?P<quantity>.*) units of (?P<resource>.*)\.$" enabled="n" regexp="y" group="AutoCargo" sequence="100" />
+  <trigger name="boughtcargo" script="boughtCargo" match="^You purchased (?P<quantity>.*) units of (?P<resource>.*) for (?P<credits>.*) credits\.$" enabled="n" regexp="y" group="AutoCargo" sequence="100" />
 	<trigger name="lostmoney" script="loseMoney" match="^It cost you (.*) credits total\, (.*) credits in tax\.$" enabled="n" regexp="y" group="AutoCargo" sequence="100" />
 	<trigger name="jumpCompleteTrigger" match="^Hyperjump complete\.$" script="jumpComplete" group="AutoCargo" enabled="n" regexp="y" sequence="100" />
 	<trigger name="badsale" script="errorSelling" match="^You\'re not carrying any of the resource onboard\!$" group="AutoCargo" enabled="n" regexp="y" sequence="100" />
@@ -1022,6 +1022,7 @@ function soldCargo(name, list, args)
     if args.credits ~= nil then
       amountEarned = amountEarned + tonumber(args.credits)
     end
+  
   end
   if not buyRemaining() then
     continueTrading()
@@ -1210,7 +1211,9 @@ function beginNextTradingStage()
   end
 end
 function continueTrading()
-  if not sellOnePod() then -- if we are unable to sell anything, that means we need to move on
+  -- updated to use sellOneType instead of sellOnePod here due to removal of planetary funds
+  --if not sellOnePod() then -- if we are unable to sell anything, that means we need to move on
+  if not sellOneType() then -- if we are unable to sell a single type, that means we move on to buying this round
     if not buyRemaining() then
       beginNextTradingStage()
     end
@@ -1233,6 +1236,67 @@ end
 function errorSelling()
   ColourNote("red","","Attempted to sell bad resource, aborting cargo script to prevent credit loss. Please check your settings and rerun the script.")
   toggleACOff()
+end
+
+function processTransaction(qty, type, debug)
+  if (qty > 0) then -- we are buying
+    -- buy enough to fill any empty space in current ship
+    if string.match("y", getContraband():lower()) then
+      if debug then
+        Note("buycontraband \""..getShip().name.."\" \""..type.."\" "..qty)
+      else
+        Send("buycontraband \""..getShip().name.."\" \""..type.."\" "..qty)
+      end
+    else
+      if debug then
+        Note("buycargo \""..getShip().name.."\" \""..type.."\" "..qty)
+      else
+        Send("buycargo \""..getShip().name.."\" \""..type.."\" "..qty)
+      end
+    end
+  else -- we are selling
+    -- sell the contents of the pod)
+    qty = math.abs(qty)
+    if string.match("y", getContraband():lower()) then
+      -- we're using sellcontraband
+      if debug then
+        Note("sellcontraband \""..getShip().name.."\" \""..type.."\" "..qty)
+      else
+        Send("sellcontraband \""..getShip().name.."\" \""..type.."\" "..qty)
+      end
+      lastsoldamount = qty
+      lastsoldresource = type
+    else
+      if debug then
+        Note("sellcargo \""..getShip().name.."\" \""..type.."\" "..qty)
+      else
+        Send("sellcargo \""..getShip().name.."\" \""..type.."\" "..qty)
+      end
+      lastsoldamount = qty
+      lastsoldresource = type
+    end
+  end
+end
+function sellOneType()
+-- sell full amount of a single type of cargo all at once
+  local sellQty = 0
+  local sellType = ""
+  for i, v in ipairs(getShip().cargo or {}) do
+    if v.held > 0 and v.name:lower() ~= getResource():lower() then -- pod is carrying something we don't want 
+      if sellType == "" then -- record the first occurrence of a non-matching cargo
+        sellType = v.name:lower()
+        sellQty = v.held
+      elseif (v.name:lower() == sellType) then -- we already stored a non-matching type, and this matches, add qty
+        sellQty = sellQty + v.held
+      end
+      -- more than one non-matching type, discarded for later processing rounds
+    end
+  end
+  if sellQty > 0 then
+    processTransaction(-sellQty, sellType, false)
+    return true
+  end
+  return false
 end
 function sellOnePod()
   for i, v in ipairs(getShip().cargo or {}) do
@@ -1277,11 +1341,7 @@ function buyRemaining()
   if getResource() ~= "" and getResource() ~= "none" then -- we need to buy something
     local needed = getCargoCapacity() - getCargoCarrying()
     if needed > 0 then
-      if getContraband():lower() == "yes" or getContraband():lower() == "y" then
-        Send("buycontraband \""..getShip().name.."\" \""..getResource().."\" "..needed)
-      else
-        Send("buycargo \""..getShip().name.."\" \""..getResource().."\" "..needed)
-      end
+      processTransaction(needed, getResource(), false)
       return true -- we bought something
     end
   end
