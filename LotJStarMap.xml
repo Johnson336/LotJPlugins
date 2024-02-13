@@ -41,7 +41,7 @@ change the display font and restore the window to defaults.
 	<trigger name="completedjump" match="^Hyperjump complete\.$" script="clearJump" group="LotJStarMap" enabled="y" regexp="y" sequence="100" />
 	<trigger name="calculatingjump" match="^Checking hyperspace course integrity\. Please wait\.$" script="jumpChecking" group="LotJStarMap" enabled="y" regexp="y" sequence="100" />
   <trigger name="lowfueljump" match="^Warning \- Not enough fuel to complete the jump to hyperspace\!$" script="jumpError" group="LotJStarMap" enabled="y" regexp="y" sequence="100" />
-  <trigger name="calculatedjump" match="^\[Status\]\: Hyperspace Calculations have been completed\.$" script="jumpChecked" group="LotJStarMap" enabled="y" regexp="y" sequence="100" />
+  <trigger name="calculatedjump" match="^\[Status\]\: Hyperspace calculations have been completed\.$" script="jumpChecked" group="LotJStarMap" enabled="y" regexp="y" sequence="100" />
 	<trigger name="abortedjump" match="^Hyperjump aborting\! Shutting down the Hyperdrive\.$" script="jumpAborted" group="LotJStarMap" enabled="y" regexp="y" sequence="100" />
   <trigger name="enterhyper" match="^The stars become streaks of light as you enter hyperspace\.$" script="enterHyper" group="LotJStarMap" enabled="y" regexp="y" sequence="100" />
   </triggers>
