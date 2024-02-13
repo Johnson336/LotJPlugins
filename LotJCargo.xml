@@ -2,7 +2,7 @@
 <!DOCTYPE muclient> 
 <!--  Saved on Wednesday, July 25, 2012, 7:12 PM   -->  
 <muclient>
-<plugin name="LotJCargo" author="@Johnson" id="b4f195e776cff20d17a1abd2" language="Lua" purpose="Cargo Running Made Easy" save_state="y" requires="4.40" version="1.53">
+<plugin name="LotJCargo" author="@Johnson" id="b4f195e776cff20d17a1abd2" language="Lua" purpose="Cargo Running Made Easy" save_state="y" requires="4.40" version="1.54">
 <description trim="y">
 <![CDATA[ 
 Usage:
@@ -1283,7 +1283,7 @@ function sellOneType()
   local sellType = ""
   for i, v in ipairs(getShip().cargo or {}) do
     if v.held > 0 and v.name:lower() ~= getResource():lower() then -- pod is carrying something we don't want 
-      if sellType == "" then -- record the first occurrence of a non-matching cargo
+      if sellType == "" and v.name ~= "(Empty)" then -- record the first occurrence of a non-matching cargo (that isn't an empty pod)
         sellType = v.name:lower()
         sellQty = v.held
       elseif (v.name:lower() == sellType) then -- we already stored a non-matching type, and this matches, add qty
