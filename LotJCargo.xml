@@ -2,7 +2,7 @@
 <!DOCTYPE muclient> 
 <!--  Saved on Wednesday, July 25, 2012, 7:12 PM   -->  
 <muclient>
-<plugin name="LotJCargo" author="@Johnson" id="b4f195e776cff20d17a1abd2" language="Lua" purpose="Cargo Running Made Easy" save_state="y" requires="4.40" version="1.54">
+<plugin name="LotJCargo" author="@Johnson" id="b4f195e776cff20d17a1abd2" language="Lua" purpose="Cargo Running Made Easy" save_state="y" requires="4.40" version="1.55">
 <description trim="y">
 <![CDATA[ 
 Usage:
