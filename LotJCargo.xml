@@ -2,7 +2,7 @@
 <!DOCTYPE muclient> 
 <!--  Saved on Wednesday, July 25, 2012, 7:12 PM   -->  
 <muclient>
-<plugin name="LotJCargo" author="@Johnson" id="b4f195e776cff20d17a1abd2" language="Lua" purpose="Cargo Running Made Easy" save_state="y" requires="4.40" version="1.56">
+<plugin name="LotJCargo" author="@Johnson" id="b4f195e776cff20d17a1abd2" language="Lua" purpose="Cargo Running Made Easy" save_state="y" requires="4.40" version="1.57">
 <description trim="y">
 <![CDATA[ 
 Usage:
@@ -1827,15 +1827,10 @@ function cargoAuto(name, list, args)
    end
 end
 
-function cargoBestRoute(name, list, args)					-- find the most profitable route in the entire galaxy
-	foundPlanet = false
-	--bestRouteValue = 0
-	--bestPlanet1 = {}
-	--bestPlanet2 = {}
-	--bestGoResource = {}
-	--bestRetResource = {}
-	local bestPlanets = {}
-	local max,step = 0,0
+local routeValues = {}
+
+function calculateRouteValues()
+  routeValues = {}
 	for system1key, system1value in pairs(systems) do
 		for system2key, system2value in pairs(systems) do
 			if (system1value ~= system2value) then
@@ -1850,27 +1845,13 @@ function cargoBestRoute(name, list, args)					-- find the most profitable route 
 										for resourceret1key, resourceret1value in pairs(body1value.resources) do
 											for resourceret2key, resourceret2value in pairs(body2value.resources) do
 												if ((resourceret1value.name == resourceret2value.name) and (resourcego1value.name ~= resourceret1value.name)) then
-													if (((args[2] ~= "") and (string.lower(body1value.name) == string.lower(args[2]))) or args[2]=="") then
-														foundPlanet = true
-														local curGoValue = calculateRouteValue(system1value, system2value, resourcego2value.price, resourcego1value.price, tax2, tax1)
-														local curRetValue = calculateRouteValue(system1value, system2value, resourceret1value.price, resourceret2value.price, tax1, tax2)
-														local curTotalValue = curGoValue + curRetValue
-														
-														
-														--if (#bestPlanets == 0 or curTotalValue > bestPlanets[#bestPlanets].value) then
-															local route = { value = curTotalValue, planet1 = body1value, planet2 = body2value, resource1 = resourcego1value, resource2 = resourceret1value }
-															bestPlanets[#bestPlanets + 1] = route
-														--end
-														
-														--if (curTotalValue > bestRouteValue) then
-														--	bestRouteValue = curTotalValue
-														--	bestPlanet1 = body1value
-														--	bestPlanet2 = body2value
-														--	bestGoResource = resourcego1value
-														--	bestRetResource = resourceret1value
-														--ColourNote("silver","","New best found! Start: ",cyan,"",body1value.name,"silver",""," (",cyan,"",resourcego1value.name,"silver","",") End: ",cyan,"",body2value.name,"silver",""," (",cyan,"",resourceret1value.name,"silver","",") Value: ",cyan,"",string.format("%.0f",bestRouteValue*1000))
-														--end
-													end
+                          local curGoProfit, curGoTime = calculateRouteValue(system1value, system2value, resourcego2value.price, resourcego1value.price, tax2, tax1)
+                          local curRetProfit, curRetTime = calculateRouteValue(system1value, system2value, resourceret1value.price, resourceret2value.price, tax1, tax2)
+                          local curTotalProfit = curGoProfit + curRetProfit
+                          local curTotalTime = curGoTime + curRetTime
+                          local curTotalValue = curTotalProfit / curTotalTime
+                          local route = { value = curTotalValue, profit = curTotalProfit, time = curTotalTime, planet1 = body1value, planet2 = body2value, resource1 = resourcego1value, resource2 = resourceret1value }
+                          routeValues[#routeValues + 1] = route
 												end
 											end
 										end
@@ -1883,27 +1864,53 @@ function cargoBestRoute(name, list, args)					-- find the most profitable route 
 			end
 		end
 	end
+	table.sort(routeValues, function (k1, k2) return k1.value > k2.value end )
+  
+end
 
-	table.sort(bestPlanets, function (k1, k2) return k1.value > k2.value end )
-	
-	if (foundPlanet == false) then
-		ColourNote("red","","Planet '" .. Trim(args[1]) .. "' either not found or does not possess cargo resources.")
-		return
-	end
-	if (args[2] ~= "") then
-		--ColourNote("silver","","Best route from ",cyan,"",bestPlanet1.name,"silver","",":")
-		ColourNote("silver","","Top 10 best routes from ",cyan,"",Trim(args[1]),"silver","",":")
-		max,step = 10,1
-	else
+function cargoBestRoute(name, list, args)					-- find the most profitable route in the entire galaxy
+	foundPlanet = false
+
+  local matches = {}
+  local best = {}
+  local match = false
+  local step = 1
+  local l1, l2, l3, l4 = 0, 0, 0, 0
+  if (args[1] == "") then 
 		ColourNote("silver","","Top 10 best routes in the entire galaxy:")
-		max,step = 20,2
-	end
-	--ColourNote("silver","","Start: ","red","",bestPlanet1.name,"silver",""," (","red","",bestGoResource.name,"silver","",") End: ","red","",bestPlanet2.name,"silver",""," (","red","",bestRetResource.name,"silver","",") Value: ","red","",string.format("%.0f",bestRouteValue*1000))
-	--tprint(bestPlanets)
-	for i=1, max, step do
-	best = bestPlanets[i]
-	ColourNote("silver","","Start: ","red","",best.planet1.name,"silver",""," (","red","",best.resource1.name,"silver","",") End: ","red","",best.planet2.name,"silver",""," (","red","",best.resource2.name,"silver","",") Value: ","red","",string.format("%.0f",best.value*1000))
-	end
+    step = 2
+  else
+		ColourNote("silver","","Top 10 best routes matching ",cyan,"",Trim(args[1]),"silver","",":")
+  end
+  for i=1, #routeValues, step do
+    best = routeValues[i]
+    if (args[1] == "") or (string.match(best.planet1.name:lower(), Trim(args[1]):lower()) or string.match(best.resource1.name:lower(), Trim(args[1]):lower())) then -- matched this route, print it
+      foundPlanet = true
+      matches[#matches + 1] = copytable.deep(routeValues[i])
+      l1 = ((best.planet1.name:len() > l1 and best.planet1.name:len()) or l1)
+      l2 = ((best.resource1.name:len() > l2 and best.resource1.name:len()) or l2)
+      l3 = ((best.planet2.name:len() > l3 and best.planet2.name:len()) or l3)
+      l4 = ((best.resource2.name:len() > l4 and best.resource2.name:len()) or l4)
+      if #matches >= 10 then 
+        break 
+      end
+    end
+  end
+  if not foundPlanet then -- entered a bad planet name or resource
+    ColourNote("red","","None.")
+  else
+    for _, v in ipairs(matches) do
+      ColourNote(
+      "silver","","Start: ", "red","",string.format("%-"..l1.."s",v.planet1.name),
+      "silver",""," (","red","",string.format("%-"..l2.."s",v.resource1.name),
+      "silver","",") End: ","red","",string.format("%-"..l3.."s",v.planet2.name),
+      "silver",""," (", "red","",string.format("%-"..l4.."s",v.resource2.name),
+      "silver","",") Profit: ","red","",string.format("%.2f",v.profit), 
+      "silver",""," Time: ","red","",string.format("%dmin, %.2ds", math.floor(v.time/60), (v.time-(math.floor(v.time/60)*60))),
+      "silver",""," Value: ","red","",string.format("%.1f", v.value*1000)
+      )
+    end
+  end
 	
 end
 
@@ -1911,11 +1918,12 @@ function calculateRouteValue(sys1, sys2, resourcecost1, resourcecost2, tax1, tax
 	local distance = distance(sys1, sys2)
 	local time = (((((distance * 10) / 95) * 1000) / 50) * 2)
 	-- extra time it takes to get from A to B not including hyperspace. Launch time/calculation time/land time
-	local constant = 270
+  -- 270 = launch time/calc time/land time, 80 = cargo buy/sell time
+	local constant = 270 + 80
 	time = time + constant
 	local profit = ((resourcecost1 * ((100-tax1)/100)) - (resourcecost2 * ((100-tax2)/100)))
 	--Note("sys1: "..sys1.name.." sys2: "..sys2.name.." res1: "..resourcecost1.." res2: "..resourcecost2.." distance: "..distance.." profit: "..profit.." value: "..profit/distance)
-	return profit/time
+	return profit, time
 end
 
 function distance(a, b)
@@ -1998,6 +2006,7 @@ function scanNext(name, list, args)
 		SendNoEcho("config +prompt")
 		ColourNote("silver","","Finished scanning galaxy resources. Found ",cyan,"",#systems,"silver",""," systems with ",cyan,"",numBodies,"silver",""," planets.")
     calculate_price_comparison()
+    calculateRouteValues()
 		listSystems()
 	end
 end
