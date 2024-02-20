@@ -243,7 +243,9 @@ function endFlight()
   end
   landingSites = {}
   lastPlanet = planetName
-  toggleFlyOff()
+  if reentership then -- if we are reentering ship, delay toggle off
+    DoAfterSpecial(10, 'toggleFlyOff()', sendto.script)
+  end
 end
 
 coords = {-50000, 0, 50000}
