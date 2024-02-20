@@ -726,6 +726,7 @@ function showWindow(name, line, args)
   visible = "true"
   scheduleRedraw()
   WindowShow(win, true)
+  SetUpHotspotsAndDraw(false)
 end
 function hideWindow(name, line, args)
   visible = "false"
