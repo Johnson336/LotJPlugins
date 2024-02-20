@@ -447,7 +447,7 @@ function startRacelistScan(name, line, args)
   races = {}
   SendNoEcho("showrace")
   EnableTrigger("RacelistScanStart", true)
-  --EnableTrigger("gagAll", true)
+  EnableTrigger("gagAll", true)
   ColourNote("yellow", "", "Racelist Scan started...")
 
 end
@@ -484,7 +484,7 @@ function scanNextRace(name, line, args)
     --tprint(races)
   else
     currentRace = races[currentRaceIndex]
-    DeleteLines(2)
+    --DeleteLines(2)
     ColourNote("silver","","Scan "..string.format("%2.2f",((currentRaceIndex/#races)*100)).."% completed.")
     SendNoEcho("showrace \""..currentRace.name.."\"")
     EnableTriggerGroup("raceScanFirst", true)
@@ -622,7 +622,7 @@ function addRaceScanLanguage(name, line, args)
   currentRace.language = Trim(args[1])
   EnableTriggerGroup("raceScanLanguage", false)
   EnableTriggerGroup("raceScanColors", true)
-  DeleteLines(1)
+  --DeleteLines(1)
 end
 
   function addRaceScanColors(name, line, args)
@@ -725,6 +725,7 @@ end
 function showWindow(name, line, args)
   visible = "true"
   scheduleRedraw()
+  WindowShow(win, true)
 end
 function hideWindow(name, line, args)
   visible = "false"
@@ -956,14 +957,14 @@ function destroyWindow(name, list, args)
 end
 
 function scheduleRedraw()
-	if redraw_scheduled == false then
+	if not redraw_scheduled then
 		redraw_scheduled = true
 		DoAfterSpecial(0.1, 'drawWindows()', sendto.script)
 	end
 end
 
 function forceRedraw()
-  if redraw_scheduled == false then
+  if not redraw_scheduled then
     redraw_scheduled = true
     drawWindows()
   end
@@ -1307,7 +1308,6 @@ function SetUpHotspotsAndDraw(firstTime)
     raceLineHeight = WindowFontInfo(win, font, 1)+spacer
     textLineHeight = WindowFontInfo(win, font, 1)+1
     
-    --effectiveWidth = math.min(config.width, GetInfo(281)-windowinfo.window_left)
 		WindowAddHotspot (win, "resize", config.width-RESIZE_TAG_SIZE, config.height-RESIZE_TAG_SIZE, config.width, config.height, "MouseOver", "CancelMouseOver", "MouseDown", "CancelMouseDown", "MouseUp", "", 6, 0)
 		WindowDragHandler(win, "resize", "ResizeMoveCallback", "ResizeReleaseCallback", 0)
     WindowAddHotspot (win, "splitmove", config.split-1, titleHeight, config.split+1, config.height-1, "MouseOver", "CancelMouseOver", "MouseDown", "CancelMouseDown", "MouseUp", "", 8, 0)
@@ -1328,7 +1328,6 @@ function SetUpHotspotsAndDraw(firstTime)
 	else -- not our first time drawing
 		-- everything has already been made
 		-- just move them back into place
-		--effectiveWidth = math.min(config.width, GetInfo(281)-windowinfo.window_left)
 		WindowResize(win, config.width, config.height, 0x000000)
 		WindowMoveHotspot(win, "resize", config.width-RESIZE_TAG_SIZE, config.height-RESIZE_TAG_SIZE, config.width, config.height)
     WindowMoveHotspot(win, "splitmove", config.split-1, WindowFontInfo(win, font, 1)+4, config.split+1, config.height-1)
@@ -1358,12 +1357,11 @@ end
 
 
 function drawWindows()
-	if redraw_scheduled == false then
+	if not redraw_scheduled then
 		return
-	else
-		redraw_scheduled = false
-	end
+  end
   if visible == "true" then
+    redraw_scheduled = false
     drawWindow()
   end
 end
