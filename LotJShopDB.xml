@@ -1,0 +1,628 @@
+<?xml version="1.0" encoding="iso-8859-1" ?> 
+<!DOCTYPE muclient> 
+<muclient>
+<plugin name="LotJShopDB" author="@Johnson" id="d81f71a4639d9e0a1e753017" language="Lua" purpose="LotJ Shop Equipment Database" save_state="y" requires="4.73" version="1.0">
+<description trim="y">
+<![CDATA[ 
+  This plugin allows storing of gear sold in shops, saving it to a local database for later searching and printing.
+  This plugin saves gear shop locations and collects gear stats which can then be searched and displayed, or equipment stats overlaid onto your worn equipment.
+  ]]> 
+  </description>
+  </plugin>
+<!--   Get our standard constants   --> 
+  <include name="constants.lua" /> 
+<!--   Triggers    --> 
+<triggers> 
+  <!-- Shop equipment storing triggers -->
+  <trigger name="shopBegin" script="beginShop" match="^\(Ref\) \[Price(\s+)?\] \[Category(\s+)?\]( \[ Compare \])? Item$" regexp="y" enabled="y" group="LotJShopStart" sequence="100" />
+  <trigger name="shopCaptureItem" script="captureShopItem" match="^\((.*)\) \[(?P<price>[\s\d]+)\] \[(?P<category>.*?)\]( \[(?P<compare>.*)\])? (?P<item>.*)$" regexp="y" enabled="n" group="LotJShopGrab" sequence="100" />
+  <trigger name="shopEnd" script="endShop" match="^$" regexp="y" enabled="n" group="LotJShopGrab" sequence="100" />
+  <!-- Equipment stat storing aliases -->
+  <trigger name="examineStart" script="examineStart" match="^This is (?P<item>.*).$" regexp="y" enabled="n" group="LotJShopExamineStart" sequence="100" />
+  <trigger name="examineGrabStat" script="examineFoundStat" match="^Affects (?P<stat>.*) by (?P<amount>.*).$" regexp="y" enabled="n" group="LotJShopExamine" sequence="100" />
+  <trigger name="examineGrabWeight" script="examineFoundWeight" match="^Item Weight: (?P<weight>.*)$" regexp="y" enabled="n" group="LotJShopExamine" sequence="100" />
+  <trigger name="examineWearloc" script="examineFoundWearloc" match="^Wear locations: (?P<wearlocs>.*)$" regexp="y" enabled="n" group="LotJShopExamine" sequence="100" />
+  <trigger name="examineStop" script="examineStop" match="^$" regexp="y" enabled="n" keep_evaluating="y" group="LotJShopExamine" sequence="100" />
+  <!-- Worn equipment stat overlay triggers -->
+
+  <trigger name="overlayStart" script="overlayStart" match="^(You are (using|carrying)|(.*) contains):$" regexp="y" enabled="n" group="LotJOverlayStart" sequence="100" />
+  <trigger name="wornOverlayItem" script="overlayItem" match="^\<(.*)\> (?P<item>.*)$" regexp="y" enabled="n" group="LotJWornOverlay" sequence="100" />
+  <trigger name="wornOverlayStop" script="wornOverlayStop" match="^$" regexp="y" enabled="n" keep_evaluating="y" group="LotJWornOverlay" sequence="100" />
+  <trigger name="heldOverlayItem" script="overlayItem" match="^(\s+)(?P<item>.*)$" regexp="y" enabled="n" group="LotJHeldOverlay" sequence="100" />
+  <trigger name="heldOverlayStop" script="heldOverlayStop" match="^$" regexp="y" enabled="n" keep_evaluating="y" group="LotJHeldOverlay" sequence="100" />
+
+
+  </triggers>
+<!--   Aliases    --> 
+<aliases>
+  <!-- Shop equipment aliases -->
+  <alias name="shopToggle" script="toggleShop" match="^shopToggle(\s+(.*))?$" enabled="y" ignore_case="y" regexp="y" group="LotJShopDB" sequence="100" />
+  <alias name="shopFindItems" script="printFilterItems" match="^shopfind(\s?(?P<filter>.*))?$" enabled="y" ignore_case="y" regexp="y" group="LotJShopDB" sequence="100" />
+  <alias name="shopDeleteItems" script="deleteFilterItems" match="^shopdelete(\s?(?P<filter>.*))?$" enabled="y" ignore_case="y" regexp="y" group="LotJShopDB" sequence="100" />
+  <!-- Equipment stat storing aliases -->
+  <alias name="examineItem" script="examineItem" match="^examineItem(\s?(?P<item>.*))?$" enabled="y" ignore_case="y" regexp="y" group="LotJShopDB" sequence="100" />
+  <!-- Worn equipment stat overlay aliases -->
+  <alias name="overlayToggle" script="toggleOverlay" match="^shopOverlay(\s+(.*))?$" enabled="y" ignore_case="y" regexp="y" group="LotJShopDB" sequence="100" />
+	<alias match="^shophelp(\s*(.*))?$" script="shopHelp"  enabled="y" regexp="y" ignore_case="y" group="LotJShopDB" sequence="100" />
+  </aliases>
+<!--   Script    --> 
+<script>
+<![CDATA[
+
+require "tprint"
+require "serialize"
+require "copytable"
+dofile(GetPluginInfo(GetPluginID(), 20) .. "lotj_colors.lua")
+dofile(GetPluginInfo(GetPluginID(), 20) .. "LotJMSDPHelper.lua")
+
+local AUTHOR = GetPluginInfo(GetPluginID(), 2) -- author info
+local VERSION = string.format("%1.2f", GetPluginInfo(GetPluginID(), 19)) -- version info
+
+shopDB = {}
+loadstring(GetVariable("shopDB") or "")()
+
+eqdb = {}
+loadstring(GetVariable("eqdb") or "")()
+
+local transactCreate = 0
+local transactUpdate = 0
+local transactDelete = 0
+local transactCaptured = 0
+
+local shopToggle = true
+local overlayToggle = true
+
+function toggleShopOff()
+  shopToggle = false
+  ColourNote(db_main_color,"","[LotJShopDB] shop scanning is now OFF")
+  EnableTriggerGroup("LotJShopGrab", false)
+  EnableTriggerGroup("LotJShopStart", false)
+end
+function toggleShopOn()
+  shopToggle = true
+  ColourNote(db_main_color,"","[LotJShopDB] shop scanning is now ON")
+  EnableTriggerGroup("LotJShopStart", true)
+end
+
+function toggleShop(name, line, args)
+  if (args[1]:find("on")) then
+    toggleShopOn()
+  elseif (args[1]:find("off")) then
+    toggleShopOff()
+  else
+    if (shopToggle) then
+      toggleShopOff()
+    else
+      toggleShopOn()
+    end
+  end
+end
+
+function toggleOverlay(name, line, args)
+  if (args[1]:find("on")) then
+    toggleOverlayOn()
+  elseif (args[1]:find("off")) then
+    toggleOverlayOff()
+  else
+    if (overlayToggle) then
+      toggleOverlayOff()
+    else
+      toggleOverlayOn()
+    end
+  end
+end
+
+function toggleOverlayOff()
+  overlayToggle = false
+  ColourNote(db_main_color,"","[LotJShopDB] equipment overlays are now OFF")
+  EnableTriggerGroup("LotJWornOverlay", false)
+  EnableTriggerGroup("LotJWornOverlayStart", false)
+end
+function toggleOverlayOn()
+  overlayToggle = true
+  ColourNote(db_main_color,"","[LotJShopDB] equipment overlays are now ON")
+  EnableTriggerGroup("LotJWornOverlayStart", true)
+end
+
+local overlayTotals = {}
+
+function overlayStart(name, line, args)
+  if args[0]:find("using") then -- enable worn overlay
+    EnableTriggerGroup("LotJWornOverlay", true)
+    overlayTotals = {}
+  elseif (args[0]:find("carrying") or args[0]:find("contains")) then -- enable held overlay
+    EnableTriggerGroup("LotJHeldOverlay", true)
+  end
+end
+
+function overlayItem(name, line, args, styles)
+  local item = stripName(removeItemTags(args.item))
+  for i, v in ipairs(eqdb) do
+    if (string.match(nameToString(v.name), item) and v.stats) then
+      DeleteLines(1)
+      for a, b in pairs(styles) do
+        ColourTell (RGBColourToName(b.textcolour), RGBColourToName(b.backcolour), b.text) 
+      end
+      local stats = printItemStats(v, true, false, false)
+      for k, v in pairs(stats) do
+        if overlayTotals[k] then -- stat already exists, add the value
+          overlayTotals[k] = overlayTotals[k] + v
+        else
+          if type(v)=="table" then
+            overlayTotals[k] = table.deepcopy(v)
+          elseif type(v)=="string" then
+            overlayTotals[k] = v
+          elseif type(v)=="number" then
+            overlayTotals[k] = tonumber(v)
+          end
+        end
+      end
+      return
+    end
+  end
+end
+
+function wornOverlayStop(name, line, args)
+  if overlayTotals then -- we found some worn stats
+    local sortedTotals = {}
+    for k, v in pairs(overlayTotals) do
+      sortedTotals[#sortedTotals + 1] = {name = k, value = v}
+    end
+    table.sort(sortedTotals, function (k1, k2) return k1.value < k2.value end )
+    ColourTell(db_main_color,"","[",db_highlight_color,"","LotJShopDB",db_main_color,"","] Gear totals: ")
+    for k, v in pairs(sortedTotals) do 
+      ColourTell(db_highlight_color,"",(((v.value>0 and "+") or "")..v.value.." "),db_main_color,"",v.name..((k==#sortedTotals and "") or ", "))
+    end
+    Note()
+  end
+  EnableTriggerGroup("LotJWornOverlay", false)
+end
+
+function heldOverlayStop(name, line, args)
+  EnableTriggerGroup("LotJHeldOverlay", false)
+end
+
+function removeItemTags(item)
+  item = item:gsub("%(.+%)", '')
+  item = Trim(item)
+  return item
+end
+    
+local captureItem = {}
+local captureItemStats = {}
+
+function examineItem(name, line, args)
+  Send("examine "..args.item)
+  EnableTrigger("examineStart", true)
+end
+
+function examineStart(name, line, args, styles)
+  captureItem = {}
+  captureItemStats = {}
+  EnableTriggerGroup("LotJShopExamine", true)
+  EnableTrigger("examineStart", false)
+  captureItem.name = args.item
+    captureItem.styledName = getStyledNameFromLine(line, args.item, styles)
+  beginTransaction()
+end
+
+function examineFoundStat(name, line, args) 
+  if captureItemStats[Trim(args.stat)] then -- stat already exists, add more to the value
+    captureItemStats[Trim(args.stat)] = captureItemStats[Trim(args.stat)] + tonumber(args.amount)
+  else
+    captureItemStats[Trim(args.stat)] = tonumber(args.amount)
+  end
+end
+function examineFoundWeight(name, line, args)
+  captureItem.weight = tonumber(args.weight)
+end
+function examineFoundWearloc(name, line, args)
+    local locs = utils.split(Trim(args.wearlocs), " ")
+    captureItem.wearlocs = copytable.deep(locs)
+end
+function examineStop()
+    captureItem.stats = copytable.deep(captureItemStats)
+    EnableTriggerGroup("LotJShopExamine", false)
+    EnableTrigger("examineStart", false)
+    storeStatsToDB(captureItem)
+    endTransaction()
+    --ColourNote(db_main_color,"","[LotJShopDB] scanned "..transactCaptured.." items. "..transactCreate.." creates. "..transactUpdate.." updates.")
+end
+
+function storeStatsToDB(item)
+  local newItem = { name = item.styledName or item.name, weight = item.weight or 0, stats = copytable.deep(item.stats), wearlocs = copytable.deep(item.wearlocs) }
+  storeItemToDB(newItem)
+end
+
+function checkUpdated(existing, new)
+  if existing then return existing, nil end
+  if new then return new, 1 end
+  return nil, nil
+end
+
+function storeItemToDB(item)
+  transactCaptured = transactCaptured + 1
+  local strippedName = stripName(nameToString(item.name))
+  local found, duplicate = false, false
+  for i, v in ipairs(eqdb) do
+    if (string.match(nameToString(v.name),strippedName)) then -- found existing item that shares name after stripping
+      duplicate = (item.vnum and v.vnum and (item.vnum ~= v.vnum)) -- found a duplicate item with a different vnum, add it
+      found = true
+      local update = {}
+      eqdb[i].vnum, update.vnum = checkUpdated(v.vnum, item.vnum)
+      eqdb[i].planet, update.planet = checkUpdated(v.planet, item.planet)
+      eqdb[i].price, update.price = checkUpdated(v.price, item.price) 
+      eqdb[i].category, update.category = checkUpdated(v.category, item.category) 
+      eqdb[i].room, update.room = checkUpdated(v.room, item.room)
+      eqdb[i].name, update.name = checkUpdated(v.name, item.name) 
+      eqdb[i].stats, update.stats = checkUpdated(v.stats, item.stats)
+      -- check to see if we actually changed anything
+      if update.vnum or update.planet or update.price or update.category or update.room or update.name or update.stats then
+        transactUpdate = transactUpdate + 1
+      end
+    end
+  end
+  -- didn't find a matching item in the database add it now
+  if not found or duplicate then
+    eqdb[#eqdb + 1] = copytable.deep(item)
+    transactCreate = transactCreate + 1  
+  end
+end
+
+function beginTransaction()
+  transactCreate = 0
+  transactUpdate = 0
+  transactDelete = 0
+  transactCaptured = 0
+end
+function endTransaction()
+  ColourNote(db_main_color,"","[LotJShopDB] scanned "..transactCaptured.." item"..((transactCaptured ~= 1 and "s") or "")..". "..transactCreate.." creates. "..transactUpdate.." updates.")
+end
+
+function beginShop(name, line, args)
+  EnableTriggerGroup('LotJShopGrab', true)
+  beginTransaction()
+end
+
+function stripName(name)
+  name = name:gsub("%A", "%%A") -- escape non-word characters for pattern matching
+  name = strip_colours(name) -- remove colors
+  return name
+end
+
+function nameToString(name)
+  local out = ""
+  if (type(name)=="table") then
+    for _, v in ipairs(name) do
+      out = out .. v.text
+    end
+  elseif type(name)=="number" then
+    out = out .. name
+  else
+    out = name
+  end
+  return out
+end
+
+function getStyledNameFromLine(line, name, styles)
+  local strippedName = stripName(name)
+  local startIndex, endIndex = string.find(line, strippedName)
+  local trimmedStyles = StylesToColoursOneLine(styles, startIndex, endIndex)
+  local styledName = ColoursToStyles(trimmedStyles)
+  return styledName
+end
+
+function captureShopItem(name, line, args, styles)
+  local planet = getmsdp("PLANET") or "Unknown"
+  local room = getmsdp("ROOMNAME") or "Unknown"
+  local vnum = getmsdp("ROOMVNUM") or "Unknown"
+  local styledName = getStyledNameFromLine(args[0], args.item, styles)
+  local item = { name = styledName or args.item, price = tonumber(args.price), category = Trim(args.category), planet = planet, room = room, vnum = vnum }
+  storeItemToDB(item)
+end
+
+function endShop(name, line, args)
+  EnableTriggerGroup('LotJShopGrab', false)
+  endTransaction()
+end
+
+function printAllItems()
+  local m1, m2, m3, m4 = findMaxFilterLengths(eqdb)
+  ColourNote(db_main_color,"","Printing all items in LotJShopDB:")
+  for i,v in ipairs(eqdb) do
+    printItem(i, v, m1, m2, m3, m4)
+  end
+  ColourNote(db_highlight_color,"",#eqdb,db_main_color,""," items in LotJShopDB.")
+end
+
+function itemToString(item)
+  local itemString = ""
+  for k,v in pairs(item) do
+    if (type(v)=="table") then
+      if k ~= "stats" and k ~= "wearlocs" then
+        for k, j in ipairs(v) do 
+          itemString = itemString .. j.text
+        end
+      end
+    elseif type(v) == "string" then
+      itemString = itemString .. " " .. v
+    elseif type(v) == "number" then
+      itemString = itemString .. " " .. v
+    end
+  end
+  return itemString
+end
+
+function filterMatchesItem(item, filter)
+  local filter = stripName(filter:lower())
+  local itemString = itemToString(item):lower()
+  return string.match(itemString, filter)
+  -- return string.match(item.name:lower(), filter) or string.match(item.planet:lower(), filter) or string.match(item.category:lower(), filter) or string.match(item.room:lower(), filter)
+end
+
+function printFilterItems(name, line, args)
+  if (args.filter~="") then -- found an argument
+    local found = 0
+    local filter = utils.split(Trim(args.filter):lower(), ' ')
+    local items = {}
+    -- first gather items from main db that match first filter term
+    for k, j in ipairs(filter) do
+      if k == 1 then -- first filter item
+        for i, v in ipairs(eqdb) do 
+          if filterMatchesItem(v, j) then
+            items[#items+1] = v -- store matching item into matching item list
+          end
+        end
+      else -- second filter item and beyond
+        local i = 0
+        while i < #items do
+          i = i + 1
+          local v = items[i]
+          if not filterMatchesItem(v, j) then
+            table.remove(items, i)
+            i = i - 1
+          end
+        end
+      end
+    end
+        
+    local w1, w2, w3, w4 = findMaxFilterLengths(items)
+    ColourNote(db_main_color,"","Printing items in LotJShopDB matching ",db_highlight_color,"",table.concat(filter, " "),db_main_color,"",":")
+    for i,v in ipairs(items) do
+      printItem(i, v, w1, w2, w3, w4)
+    end
+    if #items > 0 then
+      ColourNote(db_main_color,"","  ",db_highlight_color,"",#items,db_main_color,""," items matched.")
+    else
+      ColourNote(db_main_color,"","  None.")
+    end
+  else
+    printAllItems()
+  end
+end
+
+function findMaxFilterLengths(items)
+  local w1, m2, w2, w3, w4 = 0, 0, 0, 0, 0
+  -- find max widths
+  -- If these variables are not found the width defaults to 7 because
+  -- we will print "Unknown" if they don't exist
+  for i,v in ipairs(items) do
+    if (((v.planet and #v.planet) or 7) > w1) then
+      w1 = ((v.planet and #v.planet) or 7)
+    end
+    if (((v.price and v.price) or 0) > m2) then
+      m2 = ((v.price and v.price) or 0)
+    end
+    if (((v.category and #v.category) or 7) > w3) then
+      w3 = ((v.category and #v.category) or 7)
+    end
+    if (((v.room and #v.room) or 7) > w4) then
+      w4 = ((v.room and #v.room) or 7)
+    end
+  end
+  local m = 1
+  while (m < m2) do
+    w2 = w2 + 1
+    m = m * 10
+  end
+    return w1+1, w2+1, w3+1, w4+1
+end
+
+
+db_main_color = "white"
+db_highlight_color = "cyan"
+
+-- quick function to check if there are any stats in the item table
+function hasStats(item)
+  for k, v in pairs(item.stats) do
+    return true
+  end
+  return false
+end
+
+function printItemStats(item, abbrev, showWeight, showWearlocs)
+  local stats = {}
+  if showWeight and item.weight then
+    ColourTell(db_main_color,""," Weight:",db_highlight_color,"",item.weight.." ")
+  end
+  if item.weight then
+    stats.weight = item.weight
+  end
+  if item.stats and hasStats(item) then
+    ColourTell(db_main_color,""," Stats: ")
+    for k, v in pairs(item.stats) do 
+      k = (k:find("armor") and "armor") or k
+      ColourTell(db_highlight_color,"",(((v>0 and "+") or "")..v.." "),db_main_color,"",((abbrev and k:sub(1,3)) or k).." ")
+      if stats[k] then
+        stats[k] = stats[k] + v
+      else
+        stats[k] = v
+      end
+    end
+  end
+  if showWearlocs and item.wearlocs then
+    ColourTell(db_main_color,""," Wear locs:",db_highlight_color,"",table.concat(item.wearlocs," "))
+  end
+  -- returning the stats that we printed in order to calculate total worn stats
+  return stats
+end
+
+function printItemName(item)
+  if (type(item.name) == "string") then
+    ColourTell(db_highlight_color, "", item.name,db_main_color,"","]")
+  elseif (type(item.name) == "table") then
+    for _, v in ipairs(item.name) do
+      ColourTell(RGBColourToName(v.textcolour), RGBColourToName(v.backcolour), v.text)
+    end
+    ColourTell(db_main_color, "", "]")
+  end
+end
+
+function printItem(i, item, w1, w2, w3, w4)
+  local planetWidth = w1 or 15
+  local priceWidth = w2 or 7
+  local catWidth = w3 or 15
+  local roomWidth = w4 or 20
+  ColourTell(db_main_color,"","(",db_highlight_color,"",string.format("%3d", i),db_main_color,"",") ["
+  ,db_highlight_color,"",string.format("%-"..planetWidth.."s", item.planet or "Unknown"),db_main_color,"","] ["
+  ,db_main_color,"",string.format("%-"..roomWidth.."s", item.room or "Unknown"), db_main_color,"","] ["
+  ,"yellow","",string.format("%-"..priceWidth.."d", item.price or 0),db_main_color,"","] ["
+  ,"lime","",string.format("%-"..catWidth.."s", item.category or "Unknown"),db_main_color,"","] [")
+  printItemName(item)
+  printItemStats(item, false, false, false)
+  Note()
+end
+
+function clearItems()
+    eqdb = {}
+    ColourNote(db_main_color,"","[",db_highlight_color,"","LotJShopDB",db_main_color,"","] database cleared.")
+    OnPluginSaveState()
+end
+
+function deleteFilterItems(name, linem, args)
+  if (args.filter~="") then -- found an argument
+    local found = 0
+    local filter = Trim(args.filter)
+    if (tonumber(filter)) then
+      filter = tonumber(filter)
+    end
+    ColourNote(db_main_color,"","Deleting items in LotJShopDB matching ",db_highlight_color,"",filter,db_main_color,"",":")
+    if (tonumber(filter)) then
+      deleteItem(filter)
+      found = found + 1
+    else
+      for i, v in ipairs(eqdb) do
+        if (filterMatchesItem(v, filter)) then
+          deleteItem(i)
+          found = found + 1
+        end
+      end
+    end
+    if found then
+      ColourNote(db_main_color,"","  ".. found .. " items deleted.")
+    else
+      ColourNote(db_main_color,"","  None.")
+    end
+  else
+    clearItems()
+  end
+end
+
+function deleteItem(i)
+  assert(type(i)=="number")
+    if (i < 0 or i > #eqdb) then
+      ColourNote(db_highlight_color,"","Invalid attempt to delete LotJShopDB item at index ".. i)
+      return
+    end
+    if (type(eqdb[i].name == "table")) then
+      ColourTell(db_highlight_color,"","Deleted item ")
+      for i, v in ipairs(eqdb[i].name) do        
+        ColourTell(RGBColourToName(v.textcolour), RGBColourToName(v.backcolour), v.text)
+      end
+      ColourTell(db_highlight_color,"", " from database.\n")
+    else
+      ColourNote(db_highlight_color,"","Deleted item ".. eqdb[i].name .. " from database.")
+    end
+    table.remove(eqdb, i)
+end
+
+function OnPluginSaveState()
+  SetVariable("eqdb", ((eqdb and serialize.save("eqdb")) or ""))
+  SetVariable("shopToggle", tostring(shopToggle))
+  SetVariable("overlayToggle", tostring(overlayToggle))
+end
+
+
+function OnPluginInstall()
+  loadstring(GetVariable("eqdb") or "")()
+  shopToggle = GetVariable("shopToggle") == "true"
+  EnableTriggerGroup("LotJShopStart", shopToggle)
+  overlayToggle = GetVariable("overlayToggle") == "true"
+  EnableTriggerGroup("LotJOverlayStart", overlayToggle)
+
+end
+
+-- define our help command structure
+    local commands = { 
+                { name = "shopToggle", desc = "Toggles automatic shop equipment scanning.",
+                        args = { { name="<none>" , desc = "Toggles the state of automatic shop equipment scanning." },
+                                 { name="<on/off>" , desc = "Indicates the desired state of automatic shop equipment scanning." }, }
+                },
+                { name = "shopOverlay", desc = "Toggles equipment stat overlays.",
+                        args = { { name="<none>" , desc = "Toggles the state of equipment stat overlays." },
+                                 { name="<on/off>" , desc = "Indicates the desired state of equipment stat overlays." }, },
+                },
+               { name = "shopFind", desc = "Searches the database for stored equipment.",
+                        args = { { name = "<none>", desc = "Prints every item currently stored in the equipment database." },
+                                 { name = "<searchTerm>", desc = "Searches the database for items matching the given search term and prints them.\nNotice: Will match the item description, planet, equipment type, or shop location."}, }
+                },
+               { name = "shopDelete", desc = "Deletes items from the equipment database.",
+                        args = { { name = "<none>", desc = "Clears the equipment database."},
+                                 { name = "<searchTerm>", desc = "Searches the database for the first item matching the given search term and deletes it.\nNotice: This will match the item index number, item description, planet, equipment type, or shop location."}, }
+                },
+               { name = "examineItem", desc = "Examines an item attempting to grab the item stats.",
+                        args = { { name = "<item>", desc = "Keyword of item to be examined for stats."}, }
+                },
+
+               { name = "shopHelp", desc = "Displays this help file.",
+                        args = { { name = "<command>", desc = "Displays more detailed information on the specified command."}, }
+                },
+                    }
+
+function shopHelp(name, line, args)
+  local found = false
+  if args[1] == "" then -- show general help
+    ColourNote("white","",GetPluginInfo(GetPluginID(), 1),"cyan",""," v"..VERSION,"white",""," by "..AUTHOR..". Enter '","red","","shophelp <command>","white","","' for more detailed information.")
+    for a, b in ipairs(commands) do -- commands
+      local command = b
+      ColourNote("red","",string.format("%-20s", command.name),"silver",""," : "..command.desc)
+    end
+    Note()
+  else -- entered something
+    ColourNote("white","",GetPluginInfo(GetPluginID(), 1),"cyan",""," v"..VERSION,"white",""," by "..AUTHOR..". Enter '","red","","shophelp","white","","' for more general information.")
+    for a, b in ipairs(commands) do -- scroll through commands
+      if (string.match(b.name:lower(), Trim(args[1]):lower())) then -- found our argument, using string match allows for partial matches
+        found = true
+        ColourNote("red","",b.name,"silver",""," : " .. b.desc)
+        ColourNote("silver","","Available arguments:")
+        if #b.args == 0 then -- no arguments
+          ColourNote("red","","   None.")
+        else -- arguments to print
+          for i, k in ipairs(b.args) do
+            ColourNote("red","",string.format("%20s", k.name),"silver",""," : " .. k.desc)
+          end -- end print arguments
+        end -- end no arguments
+        Note()
+      end -- end found command
+    end -- end scroll commands
+    if not found then
+      ColourNote("red","","Command '"..args[1].."' not found.")
+    end
+  end -- end no input
+end
+
+
+
+]]> 
+</script>
+</muclient>
