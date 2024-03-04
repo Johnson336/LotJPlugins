@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="iso-8859-1" ?> 
 <!DOCTYPE muclient> 
 <muclient>
-<plugin name="LotJShopDB" author="@Johnson" id="d81f71a4639d9e0a1e753017" language="Lua" purpose="LotJ Shop Equipment Database" save_state="y" requires="4.73" version="1.0">
+<plugin name="LotJShopDB" author="@Johnson" id="d81f71a4639d9e0a1e753017" language="Lua" purpose="LotJ Shop Equipment Database" save_state="y" requires="4.73" version="1.01">
 <description trim="y">
 <![CDATA[ 
   This plugin allows storing of gear sold in shops, saving it to a local database for later searching and printing.
@@ -15,10 +15,12 @@
 <triggers> 
   <!-- Shop equipment storing triggers -->
   <trigger name="shopBegin" script="beginShop" match="^\(Ref\) \[Price(\s+)?\] \[Category(\s+)?\]( \[ Compare \])? Item$" regexp="y" enabled="y" group="LotJShopStart" sequence="100" />
-  <trigger name="shopCaptureItem" script="captureShopItem" match="^\((.*)\) \[(?P<price>[\s\d]+)\] \[(?P<category>.*?)\]( \[(?P<compare>.*)\])? (?P<item>.*)$" regexp="y" enabled="n" group="LotJShopGrab" sequence="100" />
+  <trigger name="shopCaptureItem" script="captureShopItem" match="^\((.*)\) \[(?P<price>[\s\d]+)\] \[(?P<category>.*?)\]( \[(?P<compare>.*)\])? (?P<item>.*)$" regexp="y" enabled="n" keep_evaluating="y" group="LotJShopGrab" sequence="100" />
+  <trigger name="shopOverlayItem" script="overlayItem" match="^\((.*)\) \[(?P<price>[\s\d]+)\] \[(?P<category>.*?)\]( \[(?P<compare>.*)\])? (?P<item>.*)$" regexp="y" enabled="n" keep_evaluating="y" group="LotJShopGrab" sequence="100" />
   <trigger name="shopEnd" script="endShop" match="^$" regexp="y" enabled="n" group="LotJShopGrab" sequence="100" />
   <!-- Equipment stat storing aliases -->
   <trigger name="examineStart" script="examineStart" match="^This is (?P<item>.*).$" regexp="y" enabled="n" group="LotJShopExamineStart" sequence="100" />
+  <trigger name="vendorExamineStart" script="examineStart" match="^(.*) allows you a close up look of (?P<item>.*).$" regexp="y" enabled="n" group="LotJShopExamineStart" sequence="100" />
   <trigger name="examineGrabStat" script="examineFoundStat" match="^Affects (?P<stat>.*) by (?P<amount>.*).$" regexp="y" enabled="n" group="LotJShopExamine" sequence="100" />
   <trigger name="examineGrabWeight" script="examineFoundWeight" match="^Item Weight: (?P<weight>.*)$" regexp="y" enabled="n" group="LotJShopExamine" sequence="100" />
   <trigger name="examineWearloc" script="examineFoundWearloc" match="^Wear locations: (?P<wearlocs>.*)$" regexp="y" enabled="n" group="LotJShopExamine" sequence="100" />
@@ -192,15 +194,21 @@ local captureItem = {}
 local captureItemStats = {}
 
 function examineItem(name, line, args)
-  Send("examine "..args.item)
-  EnableTrigger("examineStart", true)
+  local list, stop = args.item:find("list")
+  if list then
+    Send("list"..args.item:sub(stop+1, #args.item).." examine")
+  else
+    Send("examine "..args.item)
+  end
+  EnableTriggerGroup("LotJShopExamineStart", true)
 end
 
 function examineStart(name, line, args, styles)
   captureItem = {}
   captureItemStats = {}
   EnableTriggerGroup("LotJShopExamine", true)
-  EnableTrigger("examineStart", false)
+  EnableTriggerGroup("LotJShopExamineStart", false)
+
   captureItem.name = args.item
     captureItem.styledName = getStyledNameFromLine(line, args.item, styles)
   beginTransaction()
@@ -223,7 +231,7 @@ end
 function examineStop()
     captureItem.stats = copytable.deep(captureItemStats)
     EnableTriggerGroup("LotJShopExamine", false)
-    EnableTrigger("examineStart", false)
+    EnableTriggerGroup("LotJShopExamineStart", false)
     storeStatsToDB(captureItem)
     endTransaction()
     --ColourNote(db_main_color,"","[LotJShopDB] scanned "..transactCaptured.." items. "..transactCreate.." creates. "..transactUpdate.." updates.")
@@ -259,6 +267,8 @@ function storeItemToDB(item)
       -- check to see if we actually changed anything
       if update.vnum or update.planet or update.price or update.category or update.room or update.name or update.stats then
         transactUpdate = transactUpdate + 1
+      --else -- didn't update anything, overlay stored stats
+      --  local stats = printItemStats(v, true, false, false)
       end
     end
   end
@@ -581,7 +591,8 @@ end
                                  { name = "<searchTerm>", desc = "Searches the database for the first item matching the given search term and deletes it.\nNotice: This will match the item index number, item description, planet, equipment type, or shop location."}, }
                 },
                { name = "examineItem", desc = "Examines an item attempting to grab the item stats.",
-                        args = { { name = "<item>", desc = "Keyword of item to be examined for stats."}, }
+                        args = { { name = "list <item/#>", desc = "Examine an item currently for sale in a shop by keyword or index #." },
+                          { name = "<item>", desc = "Keyword of item to be examined for stats."}, }
                 },
 
                { name = "shopHelp", desc = "Displays this help file.",
