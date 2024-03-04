@@ -116,12 +116,12 @@ function toggleOverlayOff()
   overlayToggle = false
   ColourNote(db_main_color,"","[LotJShopDB] equipment overlays are now OFF")
   EnableTriggerGroup("LotJWornOverlay", false)
-  EnableTriggerGroup("LotJWornOverlayStart", false)
+  EnableTriggerGroup("LotJOverlayStart", false)
 end
 function toggleOverlayOn()
   overlayToggle = true
   ColourNote(db_main_color,"","[LotJShopDB] equipment overlays are now ON")
-  EnableTriggerGroup("LotJWornOverlayStart", true)
+  EnableTriggerGroup("LotJOverlayStart", true)
 end
 
 local overlayTotals = {}
