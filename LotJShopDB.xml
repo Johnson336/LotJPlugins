@@ -16,7 +16,7 @@
   <!-- Shop equipment storing triggers -->
   <trigger name="shopBegin" script="beginShop" match="^\(Ref\) \[Price(\s+)?\] \[Category(\s+)?\]( \[ Compare \])? Item$" regexp="y" enabled="y" group="LotJShopStart" sequence="100" />
   <trigger name="shopCaptureItem" script="captureShopItem" match="^\((.*)\) \[(?P<price>[\s\d]+)\] \[(?P<category>.*?)\]( \[(?P<compare>.*)\])? (?P<item>.*)$" regexp="y" enabled="n" keep_evaluating="y" group="LotJShopGrab" sequence="100" />
-  <trigger name="shopOverlayItem" script="overlayItem" match="^\((.*)\) \[(?P<price>[\s\d]+)\] \[(?P<category>.*?)\]( \[(?P<compare>.*)\])? (?P<item>.*)$" regexp="y" enabled="n" keep_evaluating="y" group="LotJShopGrab" sequence="100" />
+  <trigger name="shopOverlayItem" script="overlayItem" match="^\((.*)\) \[(?P<price>[\s\d]+)\] \[(?P<category>.*?)\]( \[(?P<compare>.*)\])? (?P<item>.*)$" regexp="y" enabled="n" keep_evaluating="y" group="LotJShopOverlay" sequence="100" />
   <trigger name="shopEnd" script="endShop" match="^$" regexp="y" enabled="n" group="LotJShopGrab" sequence="100" />
   <!-- Equipment stat storing aliases -->
   <trigger name="examineStart" script="examineStart" match="^This is (?P<item>.*).$" regexp="y" enabled="n" group="LotJShopExamineStart" sequence="100" />
@@ -119,11 +119,13 @@ function toggleOverlayOff()
   ColourNote(db_main_color,"","[LotJShopDB] equipment overlays are now OFF")
   EnableTriggerGroup("LotJWornOverlay", false)
   EnableTriggerGroup("LotJOverlayStart", false)
+  EnableTriggerGroup("LotJShopOverlay", false)
 end
 function toggleOverlayOn()
   overlayToggle = true
   ColourNote(db_main_color,"","[LotJShopDB] equipment overlays are now ON")
   EnableTriggerGroup("LotJOverlayStart", true)
+  EnableTriggerGroup("LotJShopOverlay", true)
 end
 
 local overlayTotals = {}
