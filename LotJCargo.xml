@@ -231,8 +231,8 @@ Initial contraband features added by @Domovoi.
 	<!-- Capture Aliases -->
 	<alias name="populateTable" script="scanNext" match="^cargoscan$" enabled="y" regexp="y" ignore_case="y" group="LotJCargo" sequence="100" />
 	<alias name="listsystems" script="listSystems" match="listsystems" enabled="y" ignore_case="y" group="LotJCargo" sequence="100" />
-	<alias name="cargoBestRoute" script="find_the_best" match="^cargobest( +(.*))?$" enabled="y" ignore_case="y" regexp="y" group="LotJCargo" sequence="100" />
-	<alias name="cargoBestRouteOld" script="cargoBestRoute" match="^cargobestold( +(.*))?$" enabled="y" ignore_case="y" regexp="y" group="LotJCargo" sequence="100" />
+	<alias name="cargoBestRoute" script="find_the_best" match="^cargobest(\s+(.*))?$" enabled="y" ignore_case="y" regexp="y" group="LotJCargo" sequence="100" />
+	<alias name="cargoBestRouteOld" script="cargoBestRoute" match="^cargobestold(\s+(.*))?$" enabled="y" ignore_case="y" regexp="y" group="LotJCargo" sequence="100" />
   <alias name="cargoPrintRoutes" script="printAllRoutes" match="^cargoprintroutes(\s*(?P<sorted>.*))?$" enabled="y" ignore_case="y" regexp="y" group="LotJCargo" sequence="100" />
 	<alias name="Cargosetup" script="cargoSetup" match="^cargosetup$" enabled="y" ignore_case="y" regexp="y" group="LotJCargo" sequence="100" />
 	<alias name="cargoHelp" script="cargoHelp" match="^cargohelp(\s*(.*))?$" enabled="y" regexp="y" ignore_case="y" group="LotJCargo" sequence="100" />
@@ -2002,18 +2002,32 @@ end
 
 bestMatches = {}
 function find_the_best(name, line, args)
-  local maxStops = 7
+  local maxStops = 5 -- default to 5 planets max to keep search time down
+  local args = utils.split(args[1], ' ')
+  local search = ""
+  if #args > 1 then
+    if tonumber(args[2]) then
+      maxStops = tonumber(args[2])
+      for i=3, #args, 1 do
+        search = search .. " " .. args[i]
+      end
+    else
+      for i=2, #args, 1 do
+        search = search .. " " .. args[i]
+      end
+    end
+  end
   find_most_valuable_route(routes, maxStops, false)
   ColourNote("white","","Searched "..iterations.." total routes.")
-  ColourNote("white","","Best routes up to ","red","",maxStops,"white",""," planets matching ","red","",((args[1] == "" and "anything") or args[1])..":")
+  ColourNote("white","","Best routes up to ","red","",maxStops,"white",""," planets matching ","red","",((search == "" and "anything") or search)..":")
   bestMatches = {}
   local prevNum = 0
   local prevValue = 0
   for i, v in ipairs(circularRoutes) do
     local route = circularRoutes[i].route
     local value = circularRoutes[i].value
-    if (args[1] == "") or (string.match(route[1]:lower(), Trim(args[1]):lower()) or string.match(routes[route[1]][route[2]].resource:lower(), Trim(args[1]):lower())) then -- matched this route, print it
-      if #route ~= prevNum and value ~= prevValue then
+    if (search == "") or (string.match(route[1]:lower(), Trim(search):lower()) or string.match(routes[route[1]][route[2]].resource:lower(), Trim(search):lower())) then -- matched this route, print it
+      if #route ~= prevNum or string.format("%0.4f", value) ~= string.format("%0.4f", prevValue) then
         bestMatches[#bestMatches + 1] = { route = route, value = value }
         if #bestMatches >= 10 then
           break
@@ -2024,7 +2038,7 @@ function find_the_best(name, line, args)
     end
   end
   if #bestMatches == 0 then
-    ColourNote("red","","Didn't find any routes matching "..args[1])
+    ColourNote("red","","Didn't find any routes matching "..search)
   else
     for i, v in ipairs(bestMatches) do
       local route = v.route
