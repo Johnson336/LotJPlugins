@@ -3,7 +3,7 @@
 <!--  Saved on Thursday, July 05, 2012, 1:04 AM   --> 
 <!-- MuClient version 4.73 --> 
 <muclient>
-<plugin name="LotJStarMap" author="@Johnson" id="dd5080a41939faabc233da8f" language="Lua" purpose="Dynamically display a system map with player location overlay" save_state="y" requires="4.73" version="2.40">
+<plugin name="LotJStarMap" author="@Johnson" id="dd5080a41939faabc233da8f" language="Lua" purpose="Dynamically display a system map with player location overlay" save_state="y" requires="4.73" version="2.41">
 <description trim="y">
 <![CDATA[
 This plugin will gather information about the current galaxy's star systems 
@@ -400,6 +400,8 @@ function drawWindow(name, line, args)
   	-- heading line
  	WindowText (win, font, WINDOW_NAME, 5, 5, 0, 0, ColourNameToRGB  "white")
  	
+  -- draw cargo route if we received it from LotJCargo
+  drawCargoRoute()
   -- draw hyper path and ship so they are always on top
 	drawHyperpath()
 	
@@ -408,6 +410,38 @@ function drawWindow(name, line, args)
   WindowShow (win,  true)  -- show it
   BroadcastPlugin(999, "repaint")
 end
+
+local storedroutes = {}
+function drawCargoRoute()
+  local storedroute = GetPluginVariable("b4f195e776cff20d17a1abd2", "cargolist") or ""
+  if storedroute ~= "" then -- make cargo routes take priority over calc routes
+    storedroutes = {}
+    local planets = utils.split(storedroute, ',')
+    storedroutes = {}
+    local prevx = 0
+    local prevy = 0
+    for i, v in ipairs(planets) do
+      for k, sysv in pairs(systems) do
+        if (v:lower() == sysv.name:lower()) or (sysv.planet and sysv.planet:lower() == v:lower()) then
+          if i>1 then -- not first system in list
+            local route = {startx = prevx, starty = prevy, endx = scaleXCoord(sysv.x), endy = scaleYCoord(sysv.y) }
+            storedroutes[#storedroutes + 1] = route
+          end
+          prevx = scaleXCoord(sysv.x)
+          prevy = scaleYCoord(sysv.y)
+        end
+      end
+    end 
+    if type(storedroutes)=="table" and #storedroutes > 0 then -- we have multiple routes, draw all the lines
+    -- add the final line to connect the last system back to the first
+    storedroutes[#storedroutes + 1] = {startx = prevx, starty = prevy, endx = storedroutes[1].startx, endy = storedroutes[1].starty }
+      for i, v in ipairs(storedroutes) do
+        WindowLine(win, v.startx, v.starty, v.endx, v.endy, ColourNameToRGB("gray"), 0, 2)
+      end
+    end
+  end
+end
+
 function drawHyperpath()
 	if haveCoords() then -- if we are in a location that can be drawn on the map
 	  drawCoords()
@@ -416,6 +450,7 @@ function drawHyperpath()
 	  end
 	end
 end
+
 function haveCoords()
   currentX = tonumber(getmsdp("SHIPGALX"))
   currentY = tonumber(getmsdp("SHIPGALY"))
@@ -438,6 +473,7 @@ function haveCoords()
   end
   return false -- we arent anywhere! abort!!
 end
+
 function drawCoords()
   if currentX ~= 0 or currentY ~= 0 then -- our coords are in the x,y form
     --Note("passed drawcoords 1")
@@ -478,6 +514,7 @@ function drawCoords()
     WindowCircleOp(win, 1, realx-(shipsize/2), realy-(shipsize/2), realx+(shipsize/2), realy+(shipsize/2), ColourNameToRGB("red"), 0, 0, ColourNameToRGB("red"), 0)
   end
 end
+
 function haveDestination()
   local storedsystem = GetPluginVariable("b2c06b3dcc775c0ede861316", "planetname") or ""
   local storedX = nil
@@ -485,7 +522,7 @@ function haveDestination()
   
   --Note("storedsystem: "..storedsystem)
   
-  if storedsystem == "" then -- we didn't get anything from lotjcalc
+  if storedsystem == "" then -- we didn't get anything from lotjcalc or LotJCargo
     startx = nil
     starty = nil
     startrealx = nil
@@ -507,19 +544,22 @@ function haveDestination()
     return true
   
   end
-  -- if we make it this far, it means we got a planet or system name from lotjcalc, scroll through and find out who it belongs to
-  for k, v in pairs(systems) do -- check to see if lotjcalc's system belongs to one of the known systems or planets
-    if (v.name and string.lower(v.name) == string.lower(storedsystem)) or (v.planet and string.lower(v.planet) == string.lower(storedsystem)) then
-      endX = scaleXCoord(v.x)
-      endY = scaleYCoord(v.y)
-      --Note("passed havedest 3")
-      --Note("planet x,y = "..string.format("%.0f",endX)..","..string.format("%.0f",endY))
-      return true
+  if storedsystem ~= "" then
+    -- if we make it this far, it means we got a planet or system name from lotjcalc, scroll through and find out who it belongs to
+    for k, v in pairs(systems) do -- check to see if lotjcalc's system belongs to one of the known systems or planets
+      if (v.name and string.lower(v.name) == string.lower(storedsystem)) or (v.planet and string.lower(v.planet) == string.lower(storedsystem)) then
+        endX = scaleXCoord(v.x)
+        endY = scaleYCoord(v.y)
+        --Note("passed havedest 3")
+        --Note("planet x,y = "..string.format("%.0f",endX)..","..string.format("%.0f",endY))
+        return true
+      end
     end
   end
   --Note("failed havedest 4")
   return false
 end
+
 function drawRoute()
 	local percent = 0
 	local pixels = 0
@@ -691,6 +731,7 @@ function clearJump()
   realx = nil
   realy = nil
   storedsystem = ""
+  storedroute = ""
   storedX = nil
   storedY = nil
   endX = nil
@@ -781,11 +822,13 @@ function LeftClickOnly(flags, hotspot_id, win)
 end
 function OnPluginInstall () 
   
+  visible = GetVariable("visible") == "true"
 	 font_name = GetVariable("font_name") or default_font_name
    font_size = tonumber(GetVariable("font_size")) or default_font_size
-	
+
     --- Setup the windows
    SetUpHotspotsAndDraw(true)
+   resetBounds()
    
   -- add the fonts                
   --check(WindowFont (win, font, "Arial", 10, true, false, false, false))
@@ -803,13 +846,11 @@ function SetUpHotspotsAndDraw(firstTime)
 		WindowCreate (win, 0, 0, width, height, miniwin.pos_center_all, 0, ColourNameToRGB("black")) -- create windows
 		windowinfo = movewindow.install (win, 6) -- default to 6 (on top right)
 		check(WindowFont (win, font, font_name, font_size, false, false, false, false))
-		--effectiveWidth = math.min(width, GetInfo(281)-windowinfo.window_left)
 		WindowAddHotspot (win, "resize", width-RESIZE_TAG_SIZE, height-RESIZE_TAG_SIZE, width, height, "MouseOver", "CancelMouseOver", "MouseDown", "CancelMouseDown", "MouseUp", "", 6, 0)
 		WindowDragHandler(win, "resize", "ResizeMoveCallback", "ResizeReleaseCallback", 0)
 	else -- not our first time drawing
 		-- everything has already been made
 		-- just move them back into place
-		--effectiveWidth = math.min(width, GetInfo(281)-windowinfo.window_left)
 		WindowResize(win, width, height, 0x000000)
 		WindowMoveHotspot(win, "resize", width-RESIZE_TAG_SIZE, height-RESIZE_TAG_SIZE, width, height)
 		setupConflicts()
@@ -817,6 +858,7 @@ function SetUpHotspotsAndDraw(firstTime)
 		drawWindows()
 	end
 end
+
 function drawWindows()
 	if redraw_scheduled == false then
 		return
@@ -827,6 +869,7 @@ function drawWindows()
     drawWindow()
   end
 end
+
 function drawResizer(window, winwidth, winheight)
    -- draw the resize widget bottom right corner.
    WindowLine(window, winwidth-3, winheight-2, winwidth-2, winheight-3, 0xffffff, 0, 2)
@@ -850,7 +893,11 @@ function OnPluginBroadcast (msg, id, name, text)
 			page_built = false
 			return
 		end
-	scheduleRedraw()
+    scheduleRedraw()
+  elseif id == 'b4f195e776cff20d17a1abd2' then -- LotJCargo
+    if (text == 'reload') then
+      scheduleRedraw()
+    end
   end
 end
 function scheduleRedraw()
@@ -862,6 +909,7 @@ end
 function OnPluginSaveState ()
   -- save window current location for next time  
   movewindow.save_state (win)
+  SetVariable("visible", tostring(visible)) 
   SetVariable("WINDOW_NAME", WINDOW_NAME)
   SetVariable("width", width)
   SetVariable("height", height)
@@ -875,21 +923,21 @@ function OnPluginListChanged()
 	do_plugin_check_now ("b2c06b3dcc775c0ede861316", "LotJCalc") -- check we have LotJCalc
 end
 function restoreDefaults()
-ColourNote("limegreen","","Star Map reset to defaults.")
-for i, v in pairs(systems) do
-	v.colour = nil
-end
-DeleteVariable("WINDOW_NAME")
-DeleteVariable("font_name")
-DeleteVariable("font_size")
-DeleteVariable("width")
-DeleteVariable("height")
-WINDOW_NAME = "Galaxy Map"
-width = 800
-height = 600
-WindowDelete(win)
-OnPluginInstall()
-resetBounds()
+  ColourNote("limegreen","","Star Map reset to defaults.")
+  for i, v in pairs(systems) do
+    v.colour = nil
+  end
+  DeleteVariable("WINDOW_NAME")
+  DeleteVariable("font_name")
+  DeleteVariable("font_size")
+  DeleteVariable("width")
+  DeleteVariable("height")
+  WINDOW_NAME = "Galaxy Map"
+  width = 800
+  height = 600
+  WindowDelete(win)
+  OnPluginInstall()
+  resetBounds()
 end
 -- right click menu
 function right_click_menu (hotspot_id)
