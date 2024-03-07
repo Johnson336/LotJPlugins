@@ -188,11 +188,11 @@ function ColoursToStyles (Text)
 
       Text = Text:gsub ("&%-", "~") -- fix tildes
       Text = Text:gsub ("&&", "\0") -- change && to 0x00
-      Text = Text:gsub ("&([^%d])","%1") -- strip invalid xterm codes (non-number)
+      Text = Text:gsub ("&x([^%d])","%1") -- strip invalid xterm codes (non-number)
       Text = Text:gsub ("&[3-9]%d%d","") -- strip invalid xterm codes (300+)
       Text = Text:gsub ("&2[6-9]%d","") -- strip invalid xterm codes (260+)
       Text = Text:gsub ("&25[6-9]","") -- strip invalid xterm codes (256+)
-      Text = Text:gsub ("&[^xrgObpcwzRGYBPCW]", "")  -- rip out hidden garbage
+      Text = Text:gsub ("&[^xrgObpcwzRGYBPCWD]", "")  -- rip out hidden garbage
       
       -- make sure we start with & or gsub doesn't work properly
       if Text:sub (1, 1) ~= "&" then
@@ -229,8 +229,8 @@ end  -- function ColoursToStyles
 function strip_colours (s)
    s = s:gsub ("&%-", "~")    -- fix tildes
    s = s:gsub ("&&", "\0")  -- change && to 0x00
-   s = s:gsub ("&[^xcmyrgbwCMYRGBWD]", "")  -- rip out hidden garbage
-   s = s:gsub ("&%d?%d?%d?", "") -- strip xterm color codes
+   s = s:gsub ("&[^xrgObpcwzRGYBPCWD]", "")  -- rip out hidden garbage
+   s = s:gsub ("&%d{3}", "") -- strip xterm color codes
    s = s:gsub ("&%a([^&]*)", "%1") -- strip normal color codes
    return (s:gsub ("%z", "&")) -- put & back
 end -- strip_colours
