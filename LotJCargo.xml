@@ -2346,7 +2346,9 @@ local commands = { { name = "cargoScan", desc = "Scans every system in the galax
                           },
                { name = "cargoBest", desc = "Searches through the cargo database to find the most profitable route.",
                         args = { { name = "<none>", desc = "Searches through cargo database to find the most profitable route in the entire galaxy."}, 
-                                 { name = "<planet>", desc = "Searches through cargo database to find the most profitable route from the given planet."}, }
+                                 { name = "<keyword>", desc = "Searches through cargo database to find the most profitable route from the given planet."},
+                                 { name = "<num_planets> <keyword>", desc = "Indicate the maximum number of planets you would like to search for best routes. Searches through cargo database to find the most profitable route from the given keyword.\nWARNING: Searching many planets can get taxing quickly, any more than 4 or 5 will take several seconds for the operation to complete.\nDuring which time, your screen will appear frozen."},
+                                  }
                           },
                { name = "cargoBestOld", desc = "Searches through the cargo database to find the most profitable route.",
                         args = { { name = "<none>", desc = "Searches through cargo database to find the most profitable route in the entire galaxy."}, 
