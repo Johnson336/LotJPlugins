@@ -1435,7 +1435,7 @@ end
 function processTransaction(qty, type, debug)
   if (qty > 0) then -- we are buying
     -- buy enough to fill any empty space in current ship
-    if string.match("y", getContraband():lower()) then
+    if string.match("y", getContraband():lower()) or string.match("on", getContraband():lower()) then
       if debug then
         Note("buycontraband \""..getShip().name.."\" \""..type.."\" "..qty)
       else
@@ -1451,7 +1451,7 @@ function processTransaction(qty, type, debug)
   else -- we are selling
     -- sell the contents of the pod)
     qty = math.abs(qty)
-    if string.match("y", getContraband():lower()) then
+    if string.match("y", getContraband():lower()) or string.match("on", getContraband():lower()) then
       -- we're using sellcontraband
       if debug then
         Note("sellcontraband \""..getShip().name.."\" \""..type.."\" "..qty)
@@ -2043,11 +2043,11 @@ function find_the_best(name, line, args)
     for i, v in ipairs(bestMatches) do
       local route = v.route
       local value = v.value
-      ColourTell("white","",i.." ")
+      ColourTell("white","",string.format("%2.0d", i).." ")
       for a=1, #route, 1 do
-        ColourTell("white","",route[a]..((a < #route and " ("..routes[route[a]][route[a+1]].resource..")") or "")..((a<#route and " -> ") or ""))
+        ColourTell("white","",string.format("%9s", route[a]),"gray","",((a < #route and " ("..string.format("%-10s", routes[route[a]][route[a+1]].resource):gsub("Precious", "Prc"):gsub("Common", "Cmn")..")") or ""),"darkgray","",((a<#route and " -> ") or ""))
       end
-    ColourNote("white",""," Value: "..string.format("%0.2f", value))
+    ColourNote("gray",""," = Value: ","red","",string.format("%0.2f", value))
     end
   end
 end  
@@ -2364,8 +2364,8 @@ local commands = { { name = "cargoScan", desc = "Scans every system in the galax
                         args = { { name = "<shipname>", desc = "Assigns the given name as your current cargo ship."}, }
                           },
                { name = "cargoPlanets", desc = "Used to manually define your cargo running route.",
-                        args = { { name = "<planet1>,<resource1>,<contraband>,<planet2>,<resource2>,<contraband>...", desc = "Manually define your cargo running route with comma-separated parameters. Must list planet, resource and contraband in triplets."} },
-                                 { name = "best <number> <trafficking on/off (optional>", desc = "Use this syntax to load a cargobest result into your cargo planets list automatically." },
+                        args = { { name = "<planet1>,<resource1>,<contraband>,<planet2>,<resource2>,<contraband>...", desc = "Manually define your cargo running route with comma-separated parameters. Must list planet, resource and contraband in triplets."},
+                                 { name = "best <number> <on/off>", desc = "Use this syntax to load a cargobest result into your cargo planets list automatically. Third parameter on/off is optional for trafficking setting, it will default to off." }, }
                           },
                { name = "cargoList", desc = "Displays the current cargo running specifications.",
                         args = { }
@@ -2483,31 +2483,31 @@ local commands = { { name = "cargoScan", desc = "Scans every system in the galax
 function cargoHelp(name, line, args)
   local found = false
   if args[1] == "" then -- show general help
-    ColourNote("white","black","LotJCargo v"..VERSION.." by "..AUTHOR..". Enter 'cargohelp <command>' for more detailed information.")
+    ColourNote("white","",GetPluginInfo(GetPluginID(), 1),"cyan",""," v"..VERSION,"white",""," by "..AUTHOR..". Enter '","red","","cargohelp <command>","white","","' for more detailed information.")
     for a, b in ipairs(commands) do -- commands
       local command = b
-      ColourNote("silver","black",string.format("%-20s", command.name).." : "..command.desc)
+      ColourNote("red","",string.format("%-20s", command.name),"silver",""," : "..command.desc)
     end
-    Note("")
+    Note()
   else -- entered something
-    ColourNote("white","black","LotJCargo v"..VERSION.." by "..AUTHOR..". Enter 'cargohelp' for more general information.")
+    ColourNote("white","",GetPluginInfo(GetPluginID(), 1),"cyan",""," v"..VERSION,"white",""," by "..AUTHOR..". Enter '","red","","cargohelp","white","","' for more general information.")
     for a, b in ipairs(commands) do -- scroll through commands
-      if (string.lower(b.name) == string.lower(Trim(args[1]))) then -- found our argument
+      if (string.match(b.name:lower(), Trim(args[1]):lower())) then -- found our argument, using string match allows for partial matches
         found = true
-        ColourNote("silver","black",b.name .. " : " .. b.desc)
-        ColourNote("silver","black","Available arguments:")
+        ColourNote("red","",b.name,"silver",""," : " .. b.desc)
+        ColourNote("silver","","Available arguments:")
         if #b.args == 0 then -- no arguments
-          ColourNote("silver","black","   None.")
+          ColourNote("red","","   None.")
         else -- arguments to print
           for i, k in ipairs(b.args) do
-            ColourNote("silver","black",string.format("%20s", k.name).." : " .. k.desc)
+            ColourNote("red","",string.format("%20s", k.name),"silver",""," : " .. k.desc)
           end -- end print arguments
         end -- end no arguments
-        Note("")
+        Note()
       end -- end found command
     end -- end scroll commands
     if not found then
-      ColourNote("silver","black","Command '"..args[1].."' not found.")
+      ColourNote("red","","Command '"..args[1].."' not found.")
     end
   end -- end no input
 end
