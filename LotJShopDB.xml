@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="iso-8859-1" ?> 
 <!DOCTYPE muclient> 
 <muclient>
-<plugin name="LotJShopDB" author="@Johnson" id="d81f71a4639d9e0a1e753017" language="Lua" purpose="LotJ Shop Equipment Database" save_state="y" requires="4.73" version="1.01">
+<plugin name="LotJShopDB" author="@Johnson" id="d81f71a4639d9e0a1e753017" language="Lua" purpose="LotJ Shop Equipment Database" save_state="y" requires="4.73" version="1.02">
 <description trim="y">
 <![CDATA[ 
   This plugin allows storing of gear sold in shops, saving it to a local database for later searching and printing.
@@ -21,7 +21,7 @@
   <!-- Equipment stat storing aliases -->
   <trigger name="examineStart" script="examineStart" match="^This is (?P<item>.*).$" regexp="y" enabled="n" group="LotJShopExamineStart" sequence="100" />
   <trigger name="vendorExamineStart" script="examineStart" match="^(.*) allows you a close up look of (?P<item>.*).$" regexp="y" enabled="n" group="LotJShopExamineStart" sequence="100" />
-  <trigger name="examineGrabStat" script="examineFoundStat" match="^Affects (?P<stat>.*) by (?P<amount>.*).$" regexp="y" enabled="n" group="LotJShopExamine" sequence="100" />
+  <trigger name="examineGrabStat" script="examineFoundStat" match="^Affects (?P<stat>.*) by (?P<amount>.*)\.?$" regexp="y" enabled="n" group="LotJShopExamine" sequence="100" />
   <trigger name="examineGrabWeight" script="examineFoundWeight" match="^Item Weight: (?P<weight>.*)$" regexp="y" enabled="n" group="LotJShopExamine" sequence="100" />
   <trigger name="examineWearloc" script="examineFoundWearloc" match="^Wear locations: (?P<wearlocs>.*)$" regexp="y" enabled="n" group="LotJShopExamine" sequence="100" />
   <trigger name="examineStop" script="examineStop" match="^$" regexp="y" enabled="n" keep_evaluating="y" group="LotJShopExamine" sequence="100" />
@@ -145,12 +145,14 @@ function overlayItem(name, line, args, styles)
     if (string.match(nameToString(v.name), item) and v.stats) then
       DeleteLines(1)
       for a, b in pairs(styles) do
-        ColourTell (RGBColourToName(b.textcolour), RGBColourToName(b.backcolour), b.text) 
+        ColourTell (RGBColourToName(b.textcolour or 111111), RGBColourToName(b.backcolour or 0), b.text) 
       end
       local stats = printItemStats(v, true, false, false)
       for k, v in pairs(stats) do
         if overlayTotals[k] then -- stat already exists, add the value
-          overlayTotals[k] = overlayTotals[k] + v
+          if type(v)=="number" then
+            overlayTotals[k] = overlayTotals[k] + v
+          end
         else
           if type(v)=="table" then
             overlayTotals[k] = table.deepcopy(v)
@@ -220,7 +222,7 @@ function examineFoundStat(name, line, args)
   if captureItemStats[Trim(args.stat)] then -- stat already exists, add more to the value
     captureItemStats[Trim(args.stat)] = captureItemStats[Trim(args.stat)] + tonumber(args.amount)
   else
-    captureItemStats[Trim(args.stat)] = tonumber(args.amount)
+    captureItemStats[Trim(args.stat)] = tonumber(args.amount) or args.amount
   end
 end
 function examineFoundWeight(name, line, args)
@@ -297,8 +299,8 @@ function beginShop(name, line, args)
 end
 
 function stripName(name)
-  name = name:gsub("%A", "%%A") -- escape non-word characters for pattern matching
   name = strip_colours(name) -- remove colors
+  name = name:gsub("%A", "%%A") -- escape non-word characters for pattern matching
   return name
 end
 
@@ -462,13 +464,13 @@ function printItemStats(item, abbrev, showWeight, showWearlocs)
   end
   if item.stats and hasStats(item) then
     ColourTell(db_main_color,""," Stats: ")
-    for k, v in pairs(item.stats) do 
-      k = (k:find("armor") and "armor") or k
-      ColourTell(db_highlight_color,"",(((v>0 and "+") or "")..v.." "),db_main_color,"",((abbrev and k:sub(1,3)) or k).." ")
-      if stats[k] then
-        stats[k] = stats[k] + v
+    for stat, amt in pairs(item.stats) do 
+      stat = (stat:find("armor") and "armor") or stat
+      ColourTell(db_highlight_color,"",((((tonumber(amt) and amt>0) and "+") or "")..amt.." "),db_main_color,"",((abbrev and stat:sub(1,3)) or stat).." ")
+      if stats[stat] then
+        stats[stat] = stats[stat] + amt
       else
-        stats[k] = v
+        stats[stat] = amt
       end
     end
   end
@@ -484,7 +486,7 @@ function printItemName(item)
     ColourTell(db_highlight_color, "", item.name,db_main_color,"","]")
   elseif (type(item.name) == "table") then
     for _, v in ipairs(item.name) do
-      ColourTell(RGBColourToName(v.textcolour), RGBColourToName(v.backcolour), v.text)
+      ColourTell(RGBColourToName(v.textcolour or 111111), RGBColourToName(v.backcolour or 000000), v.text)
     end
     ColourTell(db_main_color, "", "]")
   end
@@ -549,7 +551,7 @@ function deleteItem(i)
     if (type(eqdb[i].name == "table")) then
       ColourTell(db_highlight_color,"","Deleted item ")
       for i, v in ipairs(eqdb[i].name) do        
-        ColourTell(RGBColourToName(v.textcolour), RGBColourToName(v.backcolour), v.text)
+        ColourTell(RGBColourToName(v.textcolour or 111111), RGBColourToName(v.backcolour or 000000), v.text)
       end
       ColourTell(db_highlight_color,"", " from database.\n")
     else
@@ -571,6 +573,7 @@ function OnPluginInstall()
   EnableTriggerGroup("LotJShopStart", shopToggle)
   overlayToggle = GetVariable("overlayToggle") == "true"
   EnableTriggerGroup("LotJOverlayStart", overlayToggle)
+  EnableTriggerGroup("LotJShopOverlay", overlayToggle)
 
 end
 
