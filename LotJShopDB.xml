@@ -174,10 +174,10 @@ function wornOverlayStop(name, line, args)
     for k, v in pairs(overlayTotals) do
       sortedTotals[#sortedTotals + 1] = {name = k, value = v}
     end
-    table.sort(sortedTotals, function (k1, k2) return k1.value < k2.value end )
+    table.sort(sortedTotals, function (k1, k2) return ((tonumber(k1.value) and k1.value) or 0) < ((tonumber(k2.value) and k2.value) or 0) end )
     ColourTell(db_main_color,"","[",db_highlight_color,"","LotJShopDB",db_main_color,"","] Gear totals: ")
     for k, v in pairs(sortedTotals) do 
-      ColourTell(db_highlight_color,"",(((v.value>0 and "+") or "")..v.value.." "),db_main_color,"",v.name..((k==#sortedTotals and "") or ", "))
+      ColourTell(db_highlight_color,"",((((tonumber(v.value) and v.value>0) and "+") or "")..v.value.." "),db_main_color,"",v.name..((k==#sortedTotals and "") or ", "))
     end
     Note()
   end
