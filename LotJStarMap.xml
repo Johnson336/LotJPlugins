@@ -935,7 +935,8 @@ function SetUpHotspotsAndDraw(firstTime)
 		WindowAddHotspot (win, "resize", width-RESIZE_TAG_SIZE, height-RESIZE_TAG_SIZE, width, height, "MouseOver", "CancelMouseOver", "MouseDown", "CancelMouseDown", "MouseUp", "", 6, 0)
 		WindowDragHandler(win, "resize", "ResizeMoveCallback", "ResizeReleaseCallback", 0)
     
-    if check(WindowLoadImage(win, "background_image", background_full_path)) then
+    result = WindowLoadImage(win, "background_image", background_full_path)
+    if result ~= error_code.eOK then
       enable_background_image = false
       ColourNote("red","","LotJStarMap failed to load background file: " .. background_full_path)
       ColourNote("red","","Please ensure you select only .PNG image files due to MUSHclient limitations.")
