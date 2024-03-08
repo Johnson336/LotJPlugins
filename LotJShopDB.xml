@@ -443,7 +443,7 @@ function findMaxFilterLengths(items)
 end
 
 
-db_main_color = "white"
+db_main_color = "silver"
 db_highlight_color = "cyan"
 
 -- quick function to check if there are any stats in the item table
@@ -456,26 +456,35 @@ end
 
 function printItemStats(item, abbrev, showWeight, showWearlocs)
   local stats = {}
+  if (showWeight and item.weight) or (item.stats and hasStats(item)) or (showWearlocs and item.wearlocs) then
+    ColourTell(db_main_color,""," (")
+  end
   if showWeight and item.weight then
-    ColourTell(db_main_color,""," Weight:",db_highlight_color,"",item.weight.." ")
+    ColourTell(db_main_color,"","Weight:",db_highlight_color,"",item.weight.." ")
   end
   if item.weight then
     stats.weight = item.weight
   end
   if item.stats and hasStats(item) then
-    ColourTell(db_main_color,""," Stats: ")
+    local out = {}
     for stat, amt in pairs(item.stats) do 
       stat = (stat:find("armor") and "armor") or stat
-      ColourTell(db_highlight_color,"",((((tonumber(amt) and amt>0) and "+") or "")..amt.." "),db_main_color,"",((abbrev and stat:sub(1,3)) or stat).." ")
+      out[#out + 1] = {stat = stat, amt = amt}
       if stats[stat] then
         stats[stat] = stats[stat] + amt
       else
         stats[stat] = amt
       end
     end
+    for i, v in ipairs(out) do
+      ColourTell(db_highlight_color,"",((((tonumber(v.amt) and v.amt>0) and "+") or "")..v.amt.." "),db_main_color,"",((abbrev and v.stat:sub(1,3)) or v.stat)..((i < #out and " ") or ""))
+    end
   end
   if showWearlocs and item.wearlocs then
     ColourTell(db_main_color,""," Wear locs:",db_highlight_color,"",table.concat(item.wearlocs," "))
+  end
+  if (showWeight and item.weight) or (item.stats and hasStats(item)) or (showWearlocs and item.wearlocs) then
+    ColourTell(db_main_color,"",")")
   end
   -- returning the stats that we printed in order to calculate total worn stats
   return stats
