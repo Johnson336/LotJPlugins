@@ -1,9 +1,7 @@
 <?xml version="1.0" encoding="iso-8859-1" ?> 
 <!DOCTYPE muclient> 
-<!--  Saved on Thursday, July 05, 2012, 1:04 AM   --> 
-<!-- MuClient version 4.73 --> 
 <muclient>
-<plugin name="LotJStarMap" author="@Johnson" id="dd5080a41939faabc233da8f" language="Lua" purpose="Dynamically display a system map with player location overlay" save_state="y" requires="4.73" version="2.41">
+<plugin name="LotJStarMap" author="@Johnson" id="dd5080a41939faabc233da8f" language="Lua" purpose="Dynamically display a system map with player location overlay" save_state="y" requires="4.73" version="2.42">
 <description trim="y">
 <![CDATA[
 This plugin will gather information about the current galaxy's star systems 
@@ -57,13 +55,22 @@ change the display font and restore the window to defaults.
 <!--   Script    --> 
 <script>
 <![CDATA[ 
+
 require "movewindow"
 require "serialize"
+dofile(GetPluginInfo(GetPluginID(), 20) .. "lotj_colors.lua")
 dofile(GetPluginInfo(GetPluginID(), 20) .. "LotJMSDPHelper.lua")
+
+-- set file name for star map background here --
+default_background_image = "stars_800_600.png"
+background_full_path = GetPluginInfo(GetPluginID(), 20) .. default_background_image
+
+enable_background_image = true
+
 local win = "galaxy_map_" .. GetPluginID()  -- unique window name
 systems = {}
 local system = {}
-loadstring(GetVariable("systems") or "") ()
+
 local font = "f"
 local maxX = 0
 local minX = 0
@@ -110,33 +117,74 @@ local MIN_HEIGHT  = 50
 local redraw_scheduled = false
 local width       = tonumber(GetVariable("width")) or 800
 local height      = tonumber(GetVariable("height")) or 600
-function storePlanet(name, list, args)
+
+require("tprint")
+
+function storePlanet(name, list, args, styles)
 	--Note("1: '" .. args[1] .. "'")
 	for i, v in ipairs(systems) do
 		local sysName = v.name
 		if (string.find(args[0], sysName)) then -- if the system name was found in the grab text
 			systems[i].planet = Trim(string.sub(args[0], 1, string.find(args[0], sysName)-1)) -- set the planetname
+      -- determine system color based on the most prevalent color in the 'Governed By' string
+      local _, systemEndIndex = string.find(args[0], sysName)
+      local govEndIndex = string.find(args[0], '%[', systemEndIndex+1)
+      if systemEndIndex and govEndIndex then
+        local gov = Trim(string.sub(args[0], systemEndIndex+1, govEndIndex-1))
+        local govStart, govEnd = string.find(args[0], gov or "") 
+        local styled = StylesToColoursOneLine(styles, govStart, govEnd)
+        local astyles = ColoursToStyles(styled)
+        local styleFreq = {}
+        for a, b in pairs(astyles) do
+          if styleFreq[b.textcolour] then -- style already exists
+            styleFreq[b.textcolour] = styleFreq[b.textcolour] + Trim(b.text):len() -- don't include spaces in length count
+          else
+            styleFreq[b.textcolour] = Trim(b.text):len()
+          end  
+        end
+        local most = 0
+        local mostColor = ""
+        for a, b in pairs(styleFreq) do
+          if b > most then
+            most = b
+            mostColor = a
+          end
+        end
+        systems[i].colour = mostColor
+        DeleteLines(1)
+        for a, b in pairs(styles) do
+         ColourTell (RGBColourToName(b.textcolour or 111111), RGBColourToName(b.backcolour or 0), b.text) 
+        end 
+
+        ColourNote("silver",""," Color found: ",RGBColourToName(mostColor),"",RGBColourToName(mostColor),"silver",""," ","red","",most,"silver",""," characters")
+
+      end
 			--Note("System: '" .. systems[i].name .. "' Planet: '" .. systems[i].planet .. "'")
 		end
 	end
 end
+
 function findStars(name, list, args)
   systems = {}
 	SendNoEcho("stars")
 	toggleOn()
 end
+
 function findPlanets(name, list, args)
 	SendNoEcho("planets")
 	togglePlanetsOn()
 end
+
 function togglePlanetsOn(name, list, args)
 	EnableTriggerGroup("PlanetCap", true)
 end
+
 function toggleOn(name, list, args)
 	EnableTriggerGroup("StarCap", true)
 	--WindowCreate (win, 0, 0, 800, 600, miniwin.pos_center_all, 0, ColourNameToRGB("black"))  -- create window
 	--WindowFont (win, font, "Arial", 10, true, false, false, false) -- define font
 end
+
 function storeSystem(name, list, args)
 	if (args[1] and args[2] and args[3]) then
 		system.name = Trim(args[1])
@@ -146,12 +194,15 @@ function storeSystem(name, list, args)
     system = {}
 	end
 end
+
 function toggleOff(name, list, args)
 	EnableTriggerGroup("StarCap", false)
 end
+
 function togglePlanetsOff(name, list, args)
 	EnableTriggerGroup("PlanetCap", false)
 end
+
 function resetBounds()
 	visible = false
 	maxX = nil
@@ -160,8 +211,9 @@ function resetBounds()
 	minY = nil
 	setupWindow()
 end
+
 function setupWindow(name, line, args)
-  if #systems == 0 then -- failsafe in case we try to display window without any planet information
+  if not systems or #systems == 0 then -- failsafe in case we try to display window without any planet information
     findStars()
     return
   end
@@ -174,20 +226,11 @@ function setupWindow(name, line, args)
 	maxY = systems[1].y
 	minY = systems[1].y
 	-- find our real max and min values so we can scale accordingly
-	for i, v in pairs(systems) do
-		local sys = v
-		if (sys.x > maxX) then
-			maxX = sys.x
-		end
-		if (sys.x < minX) then
-		  minX = sys.x
-		end
-		if (sys.y > maxY) then
-			maxY = sys.y
-		end
-		if (sys.y < minY) then
-		  minY = sys.y
-		end
+	for _, v in pairs(systems) do
+    maxX = math.max(maxX, v.x)
+    minX = math.min(minX, v.x)
+    maxY = math.max(maxY, v.y)
+    minY = math.min(minY, v.y)
 	end	
 		
 	setupConflicts()
@@ -195,6 +238,7 @@ function setupWindow(name, line, args)
 	visible = true
   scheduleRedraw()
 end
+
 function setupConflicts()
   -- setup our text boundaries since we just now figured out our max and min values for scaling
   for i, v in ipairs(systems) do
@@ -213,34 +257,35 @@ function setupConflicts()
   failsafe = 0
   resolveConflicts()
 end
+
 function resolveConflicts()
   if failsafe <= 20 then -- we don't want to get stuck in an infinite recursion loop
-  -- resolve window boundary conflicts
-  for i, v in ipairs(systems) do
-    if v.right > smaxX then
-      v.left = smaxX - WindowTextWidth(win, font, ((v.planet and v.planet) or v.name))
-      v.right = smaxX
+    -- resolve window boundary conflicts
+    for i, v in ipairs(systems) do
+      if v.right > smaxX then
+        v.left = smaxX - WindowTextWidth(win, font, ((v.planet and v.planet) or v.name))
+        v.right = smaxX
+      end
+      if v.left < sminX then
+        v.left = sminX
+        v.right = v.left + WindowTextWidth(win, font, ((v.planet and v.planet) or v.name))
+      end
+      if v.bottom > sminY then
+        v.top = sminY - WindowFontInfo(win, font, 1) - 5
+        v.bottom = sminY - 5
+      end
     end
-    if v.left < sminX then
-      v.left = sminX
-      v.right = v.left + WindowTextWidth(win, font, ((v.planet and v.planet) or v.name))
-    end
-    if v.bottom > sminY then
-      v.top = sminY - WindowFontInfo(win, font, 1) - 5
-      v.bottom = sminY - 5
-    end
-  end
-  -- resolve system conflicts
-  for i, v in ipairs(systems) do
-    for j, k in ipairs(systems) do
-      if (i ~= j) then -- don't check a system against itself
-        if conflicts(v, k) then -- uh oh we have a collision!
-          failsafe = failsafe + 1
-          resolveConflicts()
+    -- resolve system conflicts
+    for i, v in ipairs(systems) do
+      for j, k in ipairs(systems) do
+        if (i ~= j) then -- don't check a system against itself
+          if conflicts(v, k) then -- uh oh we have a collision!
+            failsafe = failsafe + 1
+            resolveConflicts()
+          end
         end
       end
     end
-  end
   end
 end
 -- this needs to be done better TODO
@@ -249,6 +294,7 @@ end
 -- distance of the label from the marker, then choosing the label positions 
 -- that maintain the best position for all systems in the vicinity
 -- maybe it's overkill but if it's worth doing, it's worth overdoing.
+
 function conflicts(sys1, sys2)
   if topleftconflicts(sys1, sys2) then
     --Note("Top Left Collision detected! ("..sys1.name..","..sys2.name..")")
@@ -282,23 +328,28 @@ function conflicts(sys1, sys2)
     return false
   end
 end
+
 function topleftconflicts(s1, s2)
   return ((s1.left >= s2.left and s1.left <= s2.right) and (s1.top <= s2.bottom and s1.top >= s2.top))
 end
+
 function bottomleftconflicts(s1, s2)
   return ((s1.left >= s2.left and s1.left <= s2.right) and (s1.bottom <= s2.bottom and s1.bottom >= s2.top))
 end
+
 function toprightconflicts(s1, s2)
   return ((s1.right >= s2.left and s1.right <= s2.right) and (s1.top <= s2.bottom and s1.top >= s2.top))
 end
+
 function bottomrightconflicts(s1, s2)
   return ((s1.right >= s2.left and s1.right <= s2.right) and (s1.bottom <= s2.bottom and s1.bottom >= s2.top))
 end
 local offsetgrid = { {-1, -1}, {-1, 0}, {-1, 1},
                      {0 , -1}, {0 , 0}, {0 , 1},
                      {1 , -1}, {1 , 0}, {1 , 1} }
+
 function findbestsolution(sys1, sys2)
-  local best = 10000 -- arbitrarily large number so we should always find something smaller
+  local best = math.huge -- arbitrarily large number so we should always find something smaller
   local startsys1 = sys1
   local startsys2 = sys2
   local testsys1 = sys1
@@ -331,18 +382,24 @@ function findbestsolution(sys1, sys2)
   Note("best solution found: 1="..bestsys1.name..":"..bestsys1.left..","..bestsys1.top.." 2="..bestsys2.name..":"..bestsys2.left..","..bestsys2.top.." dist: "..best)
   return bestsys1, bestsys2
 end
+
 function systemnamedistance(sys1, sys2)
   return sysdistance(sys1) + sysdistance(sys2)
 end
-   
+
 function sysdistance(sys)
   local bx = (sys.left + ((sys.right-sys.left)/2))
   local by = (sys.top + ((sys.bottom-sys.top)/2))
   return math.sqrt(((sys.x-bx)*(sys.x-bx))+((sys.y-by)*(sys.y-by)))
-end
-  
+end  
+
 function drawWindow(name, line, args)
 	WindowRectOp (win, miniwin.rect_fill, 0, 0, width, height, ColourNameToRGB("black"))  -- draw blank rectangle to "erase" window contents
+
+  if enable_background_image then
+    -- Draw background image  
+    WindowDrawImage(win, "background_image", 0, 0, width, height, 2)
+  end
 	
 	 -- draw border
   WindowRectOp (win, 5, 0, 0, 0, 0, 5, 15 + 0x1000)
@@ -351,7 +408,6 @@ function drawWindow(name, line, args)
 	
 	--drag handler
   movewindow.add_drag_handler (win, 0, 0, width-15, WindowFontInfo (win, font, 1)+5)
-
 	
 	for i=1,#systems,1 do
 		local sys = systems[i]
@@ -359,14 +415,14 @@ function drawWindow(name, line, args)
 		local y = scaleYCoord(sys.y) -- scale Y coordinate
 		
 		WindowText (win, font, ((sys.planet and sys.planet) or sys.name),   -- text
-                sys.left, sys.top, sys.right, sys.bottom,        -- rectangle
+                sys.left or 0, sys.top or 0, sys.right or 0, sys.bottom or 0,        -- rectangle
                 ColourNameToRGB ("white"), -- colour
                 false)              -- not Unicode
                 
     	WindowCircleOp (win, miniwin.circle_ellipse, -- circle
                 x-5, y-5, x+5, y+5,                -- Left, Top, Right, Bottom
-                sys.colour or ColourNameToRGB("lawngreen"), miniwin.pen_solid, 1, -- pen width 1
-                sys.colour or ColourNameToRGB("lawngreen"), miniwin.brush_solid)  -- brush
+                sys.colour or ColourNameToRGB("darkgray"), miniwin.pen_solid, 1, -- pen width 1
+                sys.colour or ColourNameToRGB("darkgray"), miniwin.brush_solid)  -- brush
         
         WindowAddHotspot(win, i,  
                 -- x, y, WindowTextWidth (win, font, tostring(sys.name)), WindowFontInfo (win, font, 1),   -- rectangle, left, top, right, bottom
@@ -398,7 +454,7 @@ function drawWindow(name, line, args)
   			1, 0)
   
   	-- heading line
- 	WindowText (win, font, WINDOW_NAME, 5, 5, 0, 0, ColourNameToRGB  "white")
+ 	WindowText (win, font, WINDOW_NAME, 5, 5, 0, 0, ColourNameToRGB("white"))
  	
   -- draw cargo route if we received it from LotJCargo
   drawCargoRoute()
@@ -412,6 +468,7 @@ function drawWindow(name, line, args)
 end
 
 local storedroutes = {}
+
 function drawCargoRoute()
   local storedroute = GetPluginVariable("b4f195e776cff20d17a1abd2", "cargolist") or ""
   if storedroute ~= "" then -- make cargo routes take priority over calc routes
@@ -596,15 +653,19 @@ function drawRoute()
     end
   end
 end
+
 function jumpChecking()
   routeType = "checking"
 end
+
 function jumpError()
   routeType = "error"
 end
+
 function jumpAborted()
   routeType = "aborted"
 end
+
 function jumpChecked()
   if (routeType == "checking") then
     routeType = "checked"
@@ -615,9 +676,11 @@ function jumpCompleted()
     routeType = "completed"
   end
 end
+
 function enterHyper()
   inHyper = true
 end
+
 function togglePaths(flags, hotspot_id)
 	if(showPaths == true) then
 		showPaths = false
@@ -627,19 +690,23 @@ function togglePaths(flags, hotspot_id)
 		drawPaths(flags, hotspotid)
 	end
 end
+
 function hidePaths(flags, hotspot_id)
 	--WindowRectOp (win, miniwin.rect_fill, 0, 0, 800, 600, ColourNameToRGB("black"))  -- draw blank rectangle to "erase" window contents
 	scheduleRedraw() -- redraw window
 	
 end
+
 function scaleXCoord(coord)
 	local percent = ((-minX+coord) / (-minX + maxX))*100	
   return ((((100-percent) / 100) * 10) + ((percent) / 100) * (width-10))
 end
+
 function scaleYCoord(coord)
 	local percent = ((-minY+coord) / (-minY + maxY))*100
   return ((((100-percent) / 100) * (height-10)) + ((percent) / 100) * 10)
 end
+
 function onClick(flags, hotspot_id)
 	local sys = systems[tonumber(hotspot_id)]
 	if (sys.planet) then
@@ -648,6 +715,7 @@ function onClick(flags, hotspot_id)
 		Execute("calculate '" .. sys.x .. " " .. sys.y .. "'")
 	end
 end
+
 function drawPaths(flags, hotspot_id)
  -- bug out to prevent crashes when not connected
 	local sys = systems[tonumber(hotspot_id)]
@@ -684,14 +752,17 @@ function drawPaths(flags, hotspot_id)
 	scheduleRedraw()
 	BroadcastPlugin(999, "repaint")
 end
+
 function destroyWindow(name, list, args)
 	WindowShow (win, false)
 	visible = false
 	--WindowDelete(win)
 end
+
 function distance(a, b)
 	return string.format("%.0f", math.sqrt(((a.x-b.x)*(a.x-b.x))+((a.y-b.y)*(a.y-b.y))))
 end
+
 function hyperJumpTick()
 	if (totalJump > 0 and partialJump > 0) then
 		partialJump = partialJump - 50
@@ -701,6 +772,7 @@ function hyperJumpTick()
 		end
 	end
 end
+
 function storeTotalJump(name, list, args)
 	if (args[1] and tonumber(args[1]) > 0) then
 		totalJump = tonumber(args[1])
@@ -709,6 +781,7 @@ function storeTotalJump(name, list, args)
 		scheduleRedraw()
 	end
 end
+
 function storePartialJump(name, list, args)
 	if (args[1] and tonumber(args[1]) > 0) then
 		if (totalJump == 0) then
@@ -723,6 +796,7 @@ function storePartialJump(name, list, args)
 		scheduleRedraw()
 	end
 end
+
 function clearJump()
   startx = nil
   starty = nil
@@ -750,6 +824,7 @@ end
 ----------------------------------------------------------------------
 -- Called as the windows are dragged around.
 ----------------------------------------------------------------------
+
 function ResizeMoveCallback(flags, hotspot_id)
    posx, posy = WindowInfo (win, 17), WindowInfo (win, 18)
    width = width + posx - startposx
@@ -782,12 +857,14 @@ lastRefresh = 0
 ---------------------------------------------------------------------------------
 -- Called after the resize widget is released.
 ---------------------------------------------------------------------------------
+
 function ResizeReleaseCallback ()
    SetUpHotspotsAndDraw(false) -- true here causes old lines to re-wrap at the new size
 end
 ---------------------------------------------------------------------------------
 -- Called when mouse button is pressed on hotspot.
 ---------------------------------------------------------------------------------
+
 function MouseDown(flags, hotspot_id)
    if (hotspot_id == "resize") then
      startposx, startposy = WindowInfo (win, 17), WindowInfo (win, 18)
@@ -796,11 +873,13 @@ end
 ---------------------------------------------------------------------------------
 -- Called when mouse moved away from hotspot. Doesn't really apply for draggables.
 ---------------------------------------------------------------------------------
+
 function CancelMouseDown(flags, hotspot_id)
 end
 ---------------------------------------------------------------------------------
 -- Called when mouse button released on hotspot.
 ---------------------------------------------------------------------------------
+
 function MouseUp(flags, hotspot_id, win)
    if bit.band (flags, miniwin.hotspot_got_rh_mouse) ~= 0 then
       right_click_menu()
@@ -808,6 +887,7 @@ function MouseUp(flags, hotspot_id, win)
    end
    return false
 end
+
 function LeftClickOnly(flags, hotspot_id, win)
 	if bit.band (flags, miniwin.hotspot_got_lh_mouse) ~= 0 then
     local sys = systems[tonumber(hotspot_id)]
@@ -820,27 +900,33 @@ function LeftClickOnly(flags, hotspot_id, win)
 	end
 	return false
 end
+
 function OnPluginInstall () 
   
+  loadstring(GetVariable("systems") or "")()
   visible = GetVariable("visible") == "true"
-	 font_name = GetVariable("font_name") or default_font_name
-   font_size = tonumber(GetVariable("font_size")) or default_font_size
+  font_name = GetVariable("font_name") or default_font_name
+  font_size = tonumber(GetVariable("font_size")) or default_font_size
+  enable_background_image = GetVariable("enable_background_image") == "true"
 
-    --- Setup the windows
-   SetUpHotspotsAndDraw(true)
-   resetBounds()
-   
+  background_full_path = GetVariable("starmap_background") or GetPluginInfo(GetPluginID(), 20) .. default_background_image
+
+  --- Setup the windows
+  SetUpHotspotsAndDraw(true)
+  resetBounds()
+ 
   -- add the fonts                
   --check(WindowFont (win, font, "Arial", 10, true, false, false, false))
-  
+
   scheduleRedraw()
-    
+
 end -- OnPluginInstall
 --================================================================================
 -- Called by OnPluginInstall, but also by redraw routine to refresh the screen
 -- and (if the first time) add the resizer tag, otherwise move the resizer relative
 -- to the main window.
 --=================================================================================
+
 function SetUpHotspotsAndDraw(firstTime)
 	if (firstTime) then
 		WindowCreate (win, 0, 0, width, height, miniwin.pos_center_all, 0, ColourNameToRGB("black")) -- create windows
@@ -848,6 +934,12 @@ function SetUpHotspotsAndDraw(firstTime)
 		check(WindowFont (win, font, font_name, font_size, false, false, false, false))
 		WindowAddHotspot (win, "resize", width-RESIZE_TAG_SIZE, height-RESIZE_TAG_SIZE, width, height, "MouseOver", "CancelMouseOver", "MouseDown", "CancelMouseDown", "MouseUp", "", 6, 0)
 		WindowDragHandler(win, "resize", "ResizeMoveCallback", "ResizeReleaseCallback", 0)
+    
+    if check(WindowLoadImage(win, "background_image", background_full_path)) then
+      enable_background_image = false
+      ColourNote("red","","LotJStarMap failed to load background file: " .. background_full_path)
+      ColourNote("red","","Please ensure you select only .PNG image files due to MUSHclient limitations.")
+    end
 	else -- not our first time drawing
 		-- everything has already been made
 		-- just move them back into place
@@ -881,6 +973,7 @@ function drawResizer(window, winwidth, winheight)
    WindowLine(window, winwidth-12, winheight-2, winwidth-2, winheight-12, 0xffffff, 0, 2)
    WindowLine(window, winwidth-13, winheight-2, winwidth-2, winheight-13, 0x696969, 0, 1)
 end
+
 --============================================================================
 -- Central function for listening to data broadcast by LotJMSDPHandler.xml
 -- Stores broadcast information locally to be easily accessed by plugin
@@ -900,12 +993,14 @@ function OnPluginBroadcast (msg, id, name, text)
     end
   end
 end
+
 function scheduleRedraw()
 	if redraw_scheduled == false then
 		redraw_scheduled = true
 		DoAfterSpecial(0.1, 'drawWindows()', sendto.script)
 	end
 end
+
 function OnPluginSaveState ()
   -- save window current location for next time  
   movewindow.save_state (win)
@@ -915,30 +1010,41 @@ function OnPluginSaveState ()
   SetVariable("height", height)
   SetVariable("font_name", font_name)
   SetVariable("font_size", font_size)
-  SetVariable("systems", serialize.save("systems"))
+  SetVariable("systems", ((systems and serialize.save("systems")) or "")) -- make sure we don't serialize nil
+  SetVariable("enable_background_image", tostring(enable_background_image))
+
+  SetVariable("starmap_background", background_full_path or GetPluginInfo(GetPluginID(), 20) .. default_background_image)
 end -- function OnPluginSaveState
+
 require "checkplugin"
+
 function OnPluginListChanged()
 	do_plugin_check_now ("b3aae34498d5bf19b5b2e2af", "LotJMSDPHandler") -- check we have MSDP handler plugin
 	do_plugin_check_now ("b2c06b3dcc775c0ede861316", "LotJCalc") -- check we have LotJCalc
 end
+
 function restoreDefaults()
   ColourNote("limegreen","","Star Map reset to defaults.")
-  for i, v in pairs(systems) do
-    v.colour = nil
+  -- remove any custom colors that have been set
+  for i=1, #systems, 1 do
+    systems[i].colour = nil
   end
   DeleteVariable("WINDOW_NAME")
   DeleteVariable("font_name")
   DeleteVariable("font_size")
   DeleteVariable("width")
   DeleteVariable("height")
+  enable_background_image = true
+  background_full_path = GetPluginInfo(GetPluginID(), 20) .. default_background_image
   WINDOW_NAME = "Galaxy Map"
   width = 800
   height = 600
   WindowDelete(win)
+  OnPluginSaveState()
   OnPluginInstall()
   resetBounds()
 end
+
 -- right click menu
 function right_click_menu (hotspot_id)
 	hotspots = {background=true}
@@ -956,7 +1062,7 @@ function right_click_menu (hotspot_id)
 	end
 	menustring = menustring.."<|-|"
 	
-	menustring = menustring.."Rename Window|Change Font|-|Reset Window to Defaults"
+	menustring = menustring.."Rename Window|Change Font|Remove Background Image|Set Background Image|-|Reset Window to Defaults"
 	
 	
 	result = WindowMenu (win,
@@ -990,7 +1096,7 @@ function right_click_menu (hotspot_id)
 			table.remove(systems, numResult-1)
 			resetBounds()
 		elseif numResult > #systems+1 and numResult < (#systems*2)+2 then -- chose to colour a system
-			new_colour = PickColour(64636)
+			new_colour = PickColour(systems[(numResult-1)-#systems].colour or ColourNameToRGB("darkgray"))
 			if new_colour then
 				systems[(numResult-1)-#systems].colour = new_colour
 				--OnPluginInstall()
@@ -1014,7 +1120,21 @@ function right_click_menu (hotspot_id)
 				OnPluginInstall()
         resetBounds()
 			end
-		elseif numResult == (#systems*2) + 4 then -- reset window to defaults
+		elseif numResult == (#systems*2) + 4 then -- disable background image
+      enable_background_image = false
+      OnPluginSaveState()
+      OnPluginInstall()
+		elseif numResult == (#systems*2) + 5 then -- choose new background image
+      new_image = utils.filepicker("Choose new background image", default_background_image, "png", { png = "PNG Image" }, false )
+      if new_image then
+        background_full_path = new_image
+        ColourNote("limegreen","","New background image: "..background_full_path)
+        enable_background_image = true
+        OnPluginSaveState()
+        OnPluginInstall()
+      end
+
+    elseif numResult == (#systems*2) + 6 then -- reset window to defaults
 			restoreDefaults()
 			return
 		end
