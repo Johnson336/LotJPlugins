@@ -259,20 +259,24 @@ function setupConflicts()
 end
 
 function resolveConflicts()
-  if failsafe <= 20 then -- we don't want to get stuck in an infinite recursion loop
+  if failsafe <= 50 then -- we don't want to get stuck in an infinite recursion loop
     -- resolve window boundary conflicts
     for i, v in ipairs(systems) do
-      if v.right > smaxX then
-        v.left = smaxX - WindowTextWidth(win, font, ((v.planet and v.planet) or v.name))
-        v.right = smaxX
+      if v.top < smaxY - 5 - WindowFontInfo(win, font, 1) then
+        v.top = smaxY - 5
+        v.bottom = v.top + WindowFontInfo(win, font, 1)
       end
-      if v.left < sminX then
-        v.left = sminX
+      if v.right > smaxX - 5 then
+        v.left = smaxX - 5 - WindowTextWidth(win, font, ((v.planet and v.planet) or v.name))
+        v.right = smaxX - 5
+      end
+      if v.left < sminX + 10 then
+        v.left = sminX + 10
         v.right = v.left + WindowTextWidth(win, font, ((v.planet and v.planet) or v.name))
       end
-      if v.bottom > sminY then
-        v.top = sminY - WindowFontInfo(win, font, 1) - 5
-        v.bottom = sminY - 5
+      if v.bottom > sminY - 20 then
+        v.top = sminY - WindowFontInfo(win, font, 1) - 20
+        v.bottom = sminY - 20
       end
     end
     -- resolve system conflicts
@@ -299,15 +303,17 @@ function conflicts(sys1, sys2)
   if topleftconflicts(sys1, sys2) then
     --Note("Top Left Collision detected! ("..sys1.name..","..sys2.name..")")
     -- top left collided, try shifting down (add pixels)
-    sys1.top = sys2.bottom + 1
-    sys1.bottom = sys1.top + WindowFontInfo(win, font, 1)
-    --sys1, sys2 = findbestsolution(sys1, sys2)
+    if sys2.bottom + 1 + WindowFontInfo(win, font, 1) < height - 10 then
+      sys1.top = sys2.bottom + 1
+      sys1.bottom = sys1.top + WindowFontInfo(win, font, 1)
     return true
+    end
+    --sys1, sys2 = findbestsolution(sys1, sys2)
   elseif bottomleftconflicts(sys1, sys2) then
     --Note("Bottom Left Collision detected! ("..sys1.name..","..sys2.name..")")
-    -- bottom left collided, try shifting the other guy down (add pixels)
-    sys2.top = sys1.bottom + 1
-    sys2.bottom = sys2.top + WindowFontInfo(win, font, 1)
+    -- bottom left collided, try shifting up (remove pixels)
+    sys1.top = sys1.top - 1
+    sys1.bottom = sys1.top + WindowFontInfo(win, font, 1)
     --sys1, sys2 = findbestsolution(sys1, sys2)
     return true
   elseif toprightconflicts(sys1, sys2) then
@@ -319,9 +325,9 @@ function conflicts(sys1, sys2)
     return true
   elseif bottomrightconflicts(sys1, sys2) then
     --Note("Bottom Right Collision detected! ("..sys1.name..","..sys2.name..")")
-    -- bottom right collided, try shifting the other guy down (add pixels)
-    sys2.top = sys1.bottom + 1
-    sys2.bottom = sys2.top + WindowFontInfo(win, font, 1)
+    -- bottom right collided, try shifting up (remove pixels)
+    sys1.top = sys1.top - 1
+    sys1.bottom = sys1.top + WindowFontInfo(win, font, 1)
     --sys1, sys2 = findbestsolution(sys1, sys2)
     return true
   else
