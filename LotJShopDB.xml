@@ -6,6 +6,7 @@
 <![CDATA[ 
   This plugin allows storing of gear sold in shops, saving it to a local database for later searching and printing.
   This plugin saves gear shop locations and collects gear stats which can then be searched and displayed, or equipment stats overlaid onto your worn equipment.
+  Use `shophelp` for detailed information about what commands this plugin offers.
   ]]> 
   </description>
   </plugin>
