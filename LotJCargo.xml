@@ -1078,12 +1078,8 @@ function cargoSetup() -- old setup function, replacement planned
 		cPlanets[#cPlanets + 1] = planet
 		planet = {}
 	end
-  BroadcastPlugin(999, 'reload')
-	--ship.name = utils.inputbox("Name of cargo vessel?", "Cargo vessel", "", GetInfo(23), GetInfo(215))
-  --if not ship.name then
-  --  ColourNote("red","","Cancel detected, aborting.")
-  --  return
- -- end
+  OnPluginSaveState()
+  BroadcastPlugin(999, 'reload') -- sends a message to LotJStarMap to reload the map
 end
 
 function cargoSetupShipName(name, line, args)
@@ -2002,23 +1998,25 @@ end
 
 bestMatches = {}
 function find_the_best(name, line, args)
+  local startTime = GetInfo(232)
   local maxStops = 5 -- default to 5 planets max to keep search time down
   local args = utils.split(args[1], ' ')
   local search = ""
-  if #args > 1 then
+  if #args > 1 then -- entered some arguments
     if tonumber(args[2]) then
-      maxStops = tonumber(args[2])
+      maxStops = tonumber(args[2]) -- entered number as first argument, use it for max stops
       for i=3, #args, 1 do
-        search = search .. " " .. args[i]
+        search = search .. " " .. args[i] -- append any remaining arguments into search terms
       end
     else
       for i=2, #args, 1 do
-        search = search .. " " .. args[i]
+        search = search .. " " .. args[i] -- no number entered, all arguments are search terms
       end
     end
   end
   find_most_valuable_route(routes, maxStops, false)
-  ColourNote("white","","Searched "..iterations.." total routes.")
+  local endTime = GetInfo(232)
+  ColourNote("white","","Searched "..iterations.." total routes in "..string.format("%1.3f", endTime-startTime).." seconds.")
   ColourNote("white","","Best routes up to ","red","",maxStops,"white",""," planets matching ","red","",((search == "" and "anything") or search)..":")
   bestMatches = {}
   local prevNum = 0
