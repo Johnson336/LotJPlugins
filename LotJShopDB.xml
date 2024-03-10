@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="iso-8859-1" ?> 
 <!DOCTYPE muclient> 
 <muclient>
-<plugin name="LotJShopDB" author="@Johnson" id="d81f71a4639d9e0a1e753017" language="Lua" purpose="LotJ Shop Equipment Database" save_state="y" requires="4.73" version="1.02">
+<plugin name="LotJShopDB" author="@Johnson" id="d81f71a4639d9e0a1e753017" language="Lua" purpose="LotJ Shop Equipment Database" save_state="y" requires="4.73" version="1.03">
 <description trim="y">
 <![CDATA[ 
   This plugin allows storing of gear sold in shops, saving it to a local database for later searching and printing.
@@ -25,6 +25,7 @@
   <trigger name="examineGrabStat" script="examineFoundStat" match="^Affects (?P<stat>.*) by (?P<amount>.*)\.?$" regexp="y" enabled="n" group="LotJShopExamine" sequence="100" />
   <trigger name="examineGrabWeight" script="examineFoundWeight" match="^Item Weight: (?P<weight>.*)$" regexp="y" enabled="n" group="LotJShopExamine" sequence="100" />
   <trigger name="examineWearloc" script="examineFoundWearloc" match="^Wear locations: (?P<wearlocs>.*)$" regexp="y" enabled="n" group="LotJShopExamine" sequence="100" />
+  <trigger name="examineCharge" script="examineFoundCharge" match="^It has (?P<amount>.*) units of charge remaining\.$" regexp="y" enabled="n" group="LotJShopExamine" sequence="100" />
   <trigger name="examineStop" script="examineStop" match="^$" regexp="y" enabled="n" keep_evaluating="y" group="LotJShopExamine" sequence="100" />
   <!-- Worn equipment stat overlay triggers -->
 
@@ -226,13 +227,24 @@ function examineFoundStat(name, line, args)
     captureItemStats[Trim(args.stat)] = tonumber(args.amount) or args.amount
   end
 end
+
 function examineFoundWeight(name, line, args)
   captureItem.weight = tonumber(args.weight)
 end
+
 function examineFoundWearloc(name, line, args)
     local locs = utils.split(Trim(args.wearlocs), " ")
     captureItem.wearlocs = copytable.deep(locs)
 end
+
+function examineFoundCharge(name, line, args)
+  if captureItemStats["charge"] then
+    captureItemStats["charge"] = captureItemState["charge"] + tonumber(args.amount)
+  else
+    captureItemStats["charge"] = tonumber(args.amount) or args.amount
+  end
+end
+
 function examineStop()
     captureItem.stats = copytable.deep(captureItemStats)
     EnableTriggerGroup("LotJShopExamine", false)
