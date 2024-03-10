@@ -2,7 +2,7 @@
 <!DOCTYPE muclient> 
 <!--  Saved on Wednesday, July 25, 2012, 7:14 PM   -->  
 <muclient>
-<plugin name="LotJFlight" author="@Johnson" id="680bf1a4e5e600854747c379" language="Lua" purpose="Flight Made Easy" save_state="y" requires="4.40" version="1.50">
+<plugin name="LotJFlight" author="@Johnson" id="680bf1a4e5e600854747c379" language="Lua" purpose="Flight Made Easy" save_state="y" requires="4.40" version="1.51">
 <description trim="y">
 <![CDATA[ 
 'FlyHelp'      - To see the list of commands associated with this plugin.
@@ -339,7 +339,6 @@ end
 
 function coursePlanet()
   hyperCompleted = true
-	Send("speed 100")
 	Send("course '" .. planetName .. "'")
 end
 
