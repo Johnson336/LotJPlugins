@@ -51,11 +51,11 @@ USAGE:
   
   <trigger enabled="n" name="immchat" match="( IMM | CHAT )*" regexp="n" omit_from_output="n" script="untagged_info" sequence="100" />
   <trigger enabled="n" name="rpcchat" match="(R|P|C)*" regexp="n" omit_from_output="n" script="untagged_info" sequence="100" />
-  <trigger enabled="n" name="ooc" match="(OOC) *" regexp="n" omit_from_output="n" script="untagged_info" sequence="100" />
-  <trigger enabled="n" name="newbie" match="(NEWBIE) *" regexp="n" omit_from_output="n" script="untagged_info" sequence="100" />
+  <trigger enabled="n" name="ooc" match="(OOC) *:*" regexp="n" omit_from_output="n" script="untagged_info" sequence="100" />
+  <trigger enabled="n" name="newbie" match="(NEWBIE) *:*" regexp="n" omit_from_output="n" script="untagged_info" sequence="100" />
   <trigger enabled="n" name="osay" match="(OSAY) *" regexp="n" omit_from_output="n" script="untagged_info" sequence="100" />
-  <trigger enabled="n" name="immooc" match="(IMM) *" regexp="n" omit_from_output="n" script="untagged_info" sequence="100" />
-  <trigger enabled="n" name="rpcooc" match="(RPC) *" regexp="n" omit_from_output="n" script="untagged_info" sequence="100" />
+  <trigger enabled="n" name="immooc" match="(IMM) *:*" regexp="n" omit_from_output="n" script="untagged_info" sequence="100" />
+  <trigger enabled="n" name="rpcooc" match="(RPC) *:*" regexp="n" omit_from_output="n" script="untagged_info" sequence="100" />
   <trigger enabled="n" name="immnet" match="ImmNet[*]*" regexp="n" omit_from_output="n" script="untagged_info" sequence="100" />
   <trigger enabled="n" name="councilnet" match="CouncilNet[*]*" regexp="n" omit_from_output="n" script="untagged_info" sequence="100" />
   
@@ -839,7 +839,7 @@ function untagged_info (name, line, wildcards, styles)
   if rpcchat_echo == 1 and name=="rpcchat" then
   EnableTrigger("end_gag", true)  
   end
-  if ooc_echo == 1 and (name=="ooc" or name=="immooc" or name=="rpcooc") then
+  if ooc_echo == 1 and (name=="ooc" or name=="immooc" or name=="rpcooc" or name=="osay") then
   EnableTrigger("end_gag", true)
   end
   if newbie_echo == 1 and name=="newbie" then
@@ -1339,7 +1339,8 @@ function right_click_menu (hotspot_id)
       	end
       	EnableTrigger("immooc", 0 == show_ooc)
       	EnableTrigger("rpcooc", 0 == show_ooc)
-      	EnableTrigger("ooc", 0 == show_ooc)
+        EnableTrigger("ooc", 0 == show_ooc)
+        EnableTrigger("osay", 0 == show_ooc)
       	show_ooc = GetTriggerOption("ooc","enabled")
       elseif numResult == 17+hyperlink_skip then
       	if show_newbie == 0 then
@@ -1438,6 +1439,7 @@ function right_click_menu (hotspot_id)
         SetTriggerOption("ooc", "omit_from_output", 0 == ooc_echo)
         SetTriggerOption("immooc", "omit_from_output", 0 == ooc_echo)
         SetTriggerOption("rpcooc", "omit_from_output", 0 == ooc_echo)
+        SetTriggerOption("osay", "omit_from_output", 0 == ooc_echo)
         ooc_echo = GetTriggerOption("ooc", "omit_from_output")
       elseif numResult == 28+hyperlink_skip then
         if newbie_echo == 0 then
