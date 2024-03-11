@@ -1131,18 +1131,14 @@ function cargoSetupPlanets(name, line, args)
 	cPlanets = {}
   ColourNote("yellow","","Cargo planet list cleared.")
   
-  for i, v in pairs(addItems) do
-    planet = {}
-    if math.fmod(i-1, 3)==0 then -- planet
-      planet.name = Trim(v)
-    elseif math.fmod(i-1, 3)==1 then -- resource
-      planet.resource = Trim(v)
-    elseif math.fmod(i-1, 3)==2 then -- trafficking
-      planet.contraband = Trim(v)
-      cPlanets[#cPlanets + 1] = planet
-      ColourNote("yellow","","("..planet.name..","..planet.resource..","..planet.contraband..") added to cargo planets.")
-    end
-  end 
+  local i = 1
+  while i < #addItems do
+    planet = { name = Trim(addItems[i]), resource = Trim(addItems[i+1]), contraband = Trim(addItems[i+2]) }
+    table.insert(cPlanets, planet)
+    ColourNote("yellow","","("..(planet.name or "")..","..(planet.resource or "")..","..(planet.contraband or "")..") added to cargo planets.")
+    i = i + 3
+  end
+
   OnPluginSaveState()
   BroadcastPlugin(999, 'reload')
 end
@@ -2014,7 +2010,7 @@ function find_the_best(name, line, args)
       end
     end
   end
-  find_most_valuable_route(routes, maxStops, false)
+  find_most_valuable_route(routes, maxStops, false) -- perform the search
   local endTime = GetInfo(232)
   ColourNote("white","","Searched "..iterations.." total routes in "..string.format("%1.3f", endTime-startTime).." seconds.")
   ColourNote("white","","Best routes up to ","red","",maxStops,"white",""," planets matching ","red","",((search == "" and "anything") or search)..":")
