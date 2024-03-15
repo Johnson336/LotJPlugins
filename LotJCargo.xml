@@ -194,6 +194,7 @@ Initial contraband features added by @Domovoi.
   <trigger match="^Usage\: showplanet \<planet\>$" script="retrievePlanetFailed" regexp="y" enabled="n" group="RetrievePlanet" sequence="100" />
     <trigger match="--Planet Data: --([-]+)\nPlanet: (?P<planet>.*)\Z" script="storePlanet" regexp="y" enabled="n" multi_line="y" lines_to_match="2" omit_from_log="y" omit_from_output="y" group="RetrievePlanet" sequence="100" />
   <trigger match="^Use \'SHOWPLANET \<planet\> RESOURCES\' for current resources\.$" script="updateListPosition" regexp="y" enabled="n" group="RetrievePlanet" sequence="100" />
+  <trigger match="^No such planet.$" script="retrievePlanetFailed" regexp="y" enabled="n" group="RetrievePlanet" sequence="100" />
   
 	<!-- Automatic cargo triggers -->
 	<trigger name="tradeCargo" script="leftShip" match="^You exit the ship\.$" enabled="n" regexp="y" group="AutoCargo" sequence="100" />
@@ -1950,25 +1951,22 @@ end
 
 local circularRoutes = {}
 local iterations = 0
-function find_most_valuable_route(graph, maxStops, verbose)
+function find_most_valuable_route(graph, maxStops)
   circularRoutes = {}
   iterations = 0
 
   -- Iterate over each node in the graph
   for start_node, _ in pairs(graph) do
     local stack = {{start_node, {start_node}, 0}}
-    local visited = {}
+    local visited = 0
 
     -- Perform DFS iteratively
-    while countTable(stack) > 0 do
+    while #stack > 0 do
       local current_node, route, value = stack[#stack][1], stack[#stack][2], stack[#stack][3]
       table.remove(stack)
 
       -- if current_node == start_node and we visited at least 1 system, then we have a valid route
-      if current_node == start_node and countTable(visited) > 1 then
-        if verbose then
-          ColourNote("white","","Valid route: "..table.concat(route, ' -> ').." value: "..value / (#route - 1))
-        end
+      if current_node == start_node and visited > 1 then
         circularRoutes[#circularRoutes + 1] = {route = copytable.deep(route), value = (value / (#route - 1))}
       else
         for neighbor, neighbor_value in pairs(graph[current_node]) do
@@ -1978,11 +1976,9 @@ function find_most_valuable_route(graph, maxStops, verbose)
               newRoute[#newRoute + 1] = neighbor
               local newValue = value + neighbor_value.value * 1000
               iterations = iterations + 1
-              if verbose then
-                --ColourNote("white","","Searching: "..recursion..": "..table.concat(newRoute, ' -> ').." value: "..newValue / #newRoute)
-              end
               table.insert(stack, {neighbor, newRoute, newValue})
-              visited[current_node.."-"..neighbor] = true
+              -- visited[current_node.."-"..neighbor] = true
+              visited = visited + 1
             end
           end
         end
@@ -2010,7 +2006,7 @@ function find_the_best(name, line, args)
       end
     end
   end
-  find_most_valuable_route(routes, maxStops, false) -- perform the search
+  find_most_valuable_route(routes, maxStops) -- perform the search
   local endTime = GetInfo(232)
   ColourNote("white","","Searched "..iterations.." total routes in "..string.format("%1.3f", endTime-startTime).." seconds.")
   ColourNote("white","","Best routes up to ","red","",maxStops,"white",""," planets matching ","red","",((search == "" and "anything") or search)..":")
@@ -2039,9 +2035,9 @@ function find_the_best(name, line, args)
       local value = v.value
       ColourTell("white","",string.format("%2.0d", i).." ")
       for a=1, #route, 1 do
-        ColourTell("white","",string.format("%9s", route[a]),"gray","",((a < #route and " ("..string.format("%-10s", routes[route[a]][route[a+1]].resource):gsub("Precious", "Prc"):gsub("Common", "Cmn")..")") or ""),"darkgray","",((a<#route and " -> ") or ""))
+        ColourTell("white","",string.format("%9s", route[a]),"darkgray","",((a < #route and " ("..string.format("%-11s", routes[route[a]][route[a+1]].resource):gsub("Precious", "Prc"):gsub("Common", "Cmn")..")") or ""),"gray","",((a<#route and " -> ") or ""))
       end
-    ColourNote("gray",""," = Value: ","red","",string.format("%0.2f", value))
+    ColourNote("darkgray",""," = Value: ","red","",string.format("%0.2f", value))
     end
   end
 end  
@@ -2051,20 +2047,20 @@ local routeValues = {}
 
 function calculateRouteValues()
   routeValues = {}
-	for system1key, system1value in pairs(systems) do
-		for system2key, system2value in pairs(systems) do
-			if (system1value ~= system2value) then
-				for body1key, body1value in pairs(system1value.bodies) do
-					for body2key, body2value in pairs(system2value.bodies) do
-						if (body1value ~= body2value) then
-							local tax1 = body1value.tax
-							local tax2 = body2value.tax
-							for resourcego1key, resourcego1value in pairs(body1value.resources) do
-								for resourcego2key, resourcego2value in pairs(body2value.resources) do
-									if (resourcego1value.name == resourcego2value.name) then
-										for resourceret1key, resourceret1value in pairs(body1value.resources) do
-											for resourceret2key, resourceret2value in pairs(body2value.resources) do
-												if ((resourceret1value.name == resourceret2value.name) and (resourcego1value.name ~= resourceret1value.name)) then
+  for system1key, system1value in pairs(systems) do
+    for system2key, system2value in pairs(systems) do
+      if (system1value ~= system2value) then
+        for body1key, body1value in pairs(system1value.bodies) do
+          for body2key, body2value in pairs(system2value.bodies) do
+            if (body1value ~= body2value) then
+              local tax1 = body1value.tax
+              local tax2 = body2value.tax
+              for resourcego1key, resourcego1value in pairs(body1value.resources) do
+                for resourcego2key, resourcego2value in pairs(body2value.resources) do
+                  if (resourcego1value.name == resourcego2value.name) then
+                    for resourceret1key, resourceret1value in pairs(body1value.resources) do
+                      for resourceret2key, resourceret2value in pairs(body2value.resources) do
+                        if ((resourceret1value.name == resourceret2value.name) and (resourcego1value.name ~= resourceret1value.name)) then
                           local curGoProfit, curGoTime = calculateRouteValue(system1value, system2value, resourcego2value.price, resourcego1value.price, tax2, tax1)
                           local curRetProfit, curRetTime = calculateRouteValue(system1value, system2value, resourceret1value.price, resourceret2value.price, tax1, tax2)
                           local curTotalProfit = curGoProfit + curRetProfit
@@ -2072,20 +2068,19 @@ function calculateRouteValues()
                           local curTotalValue = curTotalProfit / curTotalTime
                           local route = { value = curTotalValue, profit = curTotalProfit, time = curTotalTime, planet1 = body1value, planet2 = body2value, resource1 = resourcego1value, resource2 = resourceret1value }
                           routeValues[#routeValues + 1] = route
-												end
-											end
-										end
-									end
-								end
-							end
-						end
-					end
-				end
-			end
-		end
-	end
-	table.sort(routeValues, function (k1, k2) return k1.value > k2.value end )
-  
+                        end
+                      end
+                    end
+                  end
+                end
+              end
+            end
+          end
+        end
+      end
+    end
+  end
+  table.sort(routeValues, function (k1, k2) return k1.value > k2.value end )
 end
 
 function cargoBestRoute(name, list, args)					-- find the most profitable route in the entire galaxy
