@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="iso-8859-1" ?> 
 <!DOCTYPE muclient> 
 <muclient>
-<plugin name="LotJShopDB" author="@Johnson" id="d81f71a4639d9e0a1e753017" language="Lua" purpose="LotJ Shop Equipment Database" save_state="y" requires="4.73" version="1.03">
+<plugin name="LotJShopDB" author="@Johnson" id="d81f71a4639d9e0a1e753017" language="Lua" purpose="LotJ Shop Equipment Database" save_state="y" requires="4.73" version="1.04">
 <description trim="y">
 <![CDATA[ 
   This plugin allows storing of gear sold in shops, saving it to a local database for later searching and printing.
@@ -23,6 +23,7 @@
   <trigger name="examineStart" script="examineStart" match="^This is (?P<item>.*).$" regexp="y" enabled="n" group="LotJShopExamineStart" sequence="100" />
   <trigger name="vendorExamineStart" script="examineStart" match="^(.*) allows you a close up look of (?P<item>.*).$" regexp="y" enabled="n" group="LotJShopExamineStart" sequence="100" />
   <trigger name="examineGrabStat" script="examineFoundStat" match="^Affects (?P<stat>.*) by (?P<amount>.*)\.?$" regexp="y" enabled="n" group="LotJShopExamine" sequence="100" />
+  <trigger name="examineGrabCyber" script="examineFoundCyber" match="^This will enhance a patient with\: (?P<stat>.*)" regexp="y" enabled="n" group="LotJShopExamine" sequence="100" />
   <trigger name="examineGrabWeight" script="examineFoundWeight" match="^Item Weight: (?P<weight>.*)$" regexp="y" enabled="n" group="LotJShopExamine" sequence="100" />
   <trigger name="examineWearloc" script="examineFoundWearloc" match="^Wear locations: (?P<wearlocs>.*)$" regexp="y" enabled="n" group="LotJShopExamine" sequence="100" />
   <trigger name="examineCharge" script="examineFoundCharge" match="^It has (?P<amount>.*) units of charge remaining\.$" regexp="y" enabled="n" group="LotJShopExamine" sequence="100" />
@@ -178,7 +179,13 @@ function wornOverlayStop(name, line, args)
     end
     table.sort(sortedTotals, function (k1, k2) return ((tonumber(k1.value) and k1.value) or 0) < ((tonumber(k2.value) and k2.value) or 0) end )
     ColourTell(db_main_color,"","[",db_highlight_color,"","LotJShopDB",db_main_color,"","] Gear totals: ")
+    local num = 0
     for k, v in pairs(sortedTotals) do 
+      num = num + 1
+      if num >= 6 then -- limit stats to 6 per output line
+        Tell("\n"..string.rep(' ', 26))
+        num = 0
+      end
       ColourTell(db_highlight_color,"",((((tonumber(v.value) and v.value>0) and "+") or "")..v.value.." "),db_main_color,"",v.name..((k==#sortedTotals and "") or ", "))
     end
     Note()
@@ -228,6 +235,10 @@ function examineFoundStat(name, line, args)
   end
 end
 
+function examineFoundCyber(name, line, args)
+  captureItem.cyber = args.stat
+end
+
 function examineFoundWeight(name, line, args)
   captureItem.weight = tonumber(args.weight)
 end
@@ -255,7 +266,7 @@ function examineStop()
 end
 
 function storeStatsToDB(item)
-  local newItem = { name = item.styledName or item.name, weight = item.weight or 0, stats = copytable.deep(item.stats), wearlocs = copytable.deep(item.wearlocs) }
+  local newItem = { name = item.styledName or item.name, weight = item.weight or 0, stats = copytable.deep(item.stats), cyber = item.cyber, wearlocs = copytable.deep(item.wearlocs) }
   storeItemToDB(newItem)
 end
 
@@ -281,8 +292,9 @@ function storeItemToDB(item)
       eqdb[i].room, update.room = checkUpdated(v.room, item.room)
       eqdb[i].name, update.name = checkUpdated(v.name, item.name) 
       eqdb[i].stats, update.stats = checkUpdated(v.stats, item.stats)
+      eqdb[i].cyber, update.cyber = checkUpdated(v.cyber, item.cyber)
       -- check to see if we actually changed anything
-      if update.vnum or update.planet or update.price or update.category or update.room or update.name or update.stats then
+      if update.vnum or update.planet or update.price or update.category or update.room or update.name or update.stats or update.cyber then
         transactUpdate = transactUpdate + 1
       --else -- didn't update anything, overlay stored stats
       --  local stats = printItemStats(v, true, false, false)
@@ -469,7 +481,7 @@ end
 
 function printItemStats(item, abbrev, showWeight, showWearlocs)
   local stats = {}
-  if (showWeight and item.weight) or (item.stats and hasStats(item)) or (showWearlocs and item.wearlocs) then
+  if (showWeight and item.weight) or (item.stats and hasStats(item)) or (showWearlocs and item.wearlocs) or item.cyber then
     ColourTell(db_main_color,""," (")
   end
   if showWeight and item.weight then
@@ -477,6 +489,10 @@ function printItemStats(item, abbrev, showWeight, showWearlocs)
   end
   if item.weight then
     stats.weight = item.weight
+  end
+  if item.cyber then
+      ColourTell(db_highlight_color,"",item.cyber..((hasStats(item) and " ") or ""))
+      stats.cyber = item.cyber
   end
   if item.stats and hasStats(item) then
     local out = {}
@@ -490,13 +506,14 @@ function printItemStats(item, abbrev, showWeight, showWearlocs)
       end
     end
     for i, v in ipairs(out) do
-      ColourTell(db_highlight_color,"",((((tonumber(v.amt) and v.amt>0) and "+") or "")..v.amt.." "),db_main_color,"",((abbrev and v.stat:sub(1,3)) or v.stat)..((i < #out and " ") or ""))
+      -- don't abbreviate 'charge' stat because it becomes (cha) which can be mistaken with Charisma
+      ColourTell(db_highlight_color,"",((((tonumber(v.amt) and v.amt>0) and "+") or "")..v.amt.." "),db_main_color,"",(((abbrev and (v.stat ~= "charge")) and v.stat:sub(1,3)) or v.stat)..((i < #out and " ") or ""))
     end
   end
   if showWearlocs and item.wearlocs then
     ColourTell(db_main_color,""," Wear locs:",db_highlight_color,"",table.concat(item.wearlocs," "))
   end
-  if (showWeight and item.weight) or (item.stats and hasStats(item)) or (showWearlocs and item.wearlocs) then
+  if (showWeight and item.weight) or (item.stats and hasStats(item)) or (showWearlocs and item.wearlocs) or item.cyber then
     ColourTell(db_main_color,"",")")
   end
   -- returning the stats that we printed in order to calculate total worn stats
