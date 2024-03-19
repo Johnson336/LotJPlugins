@@ -23,7 +23,17 @@ Questions, comments, complaints, suggestions, bug reports can be directed
  via email to __LotJJohnson@gmail.com__, in game __@Johnson__, in the issues section
  of the GitHub repository, or on the LotJ forums.
  
- 
+
+## Features
+
+### LotJRaceBrowser.xml
+
+* Perform a race data scan using ```racescan```
+* Display Race Browser window using ```raceshow```
+* The plugin loads race information from the game and displays it in a window to make browsing and comparing races more convenient.
+* Right click in the window to apply sorting filters. Races in the left side window are sorted based on the filter criteria.
+![LotJRaceBrowser](images/LotJRaceBrowser-detail.png)<br>
+
 ## Installation
 
 ### Dropbox https://www.dropbox.com/sh/iqwhx27wte04pd4/WrDTVI4yPi    
@@ -56,11 +66,6 @@ Questions, comments, complaints, suggestions, bug reports can be directed
 * As mentioned this is an early release so there aren't a lot of features, mainly the core mechanic of recording and replaying.
 * More features may be added if there is interest in that happening.
 
-### LotJRaceBrowser.xml
-
-#### v1.00
-* Released first version of this plugin. It loads race information from the game and displays it in a window to make browsing and comparing races more convenient.
-* Right click in the window to apply sorting filters.
 
 ### LotJMSDPHandler.xml
 
