@@ -26,25 +26,35 @@ Questions, comments, complaints, suggestions, bug reports can be directed
 
 ## Features
 
+### LotJStarMap.xml
+![LotJStarMap](images/LotJStarMap.png)<br>
+
+#### v2.43
+* Added support for a background image. This will default to looking for the image provided on GitHub called 'stars_800_600.png'
+* Added larger indicator showing where the player is on the system map.
+* Added cross-plugin support with LotJCargo to display cargo routes on the system map.
+* Added automatic planet colors based on governing clan colors.
+
+#### v2.28
+* Added right click menu to give several new options including adding/removing systems, changing colors and fonts, or restoring defaults.
+* Adjusted how distances are displayed when hovering a system, should be easier to read.
+
+#### v2.15 
+* Added resizing capability. Also added automatic settings and planet information saving.
+* New command: `'showmap'` displays currently loaded planet settings without the need to scan every time.
+* `'hypmap'` retains original scanning functionality
+* Added support for ship coordinate display. Also added hyperjump route display.
+
 ### LotJRaceBrowser.xml
+![LotJRaceBrowser](images/LotJRaceBrowser-detail.png)<br>
 
 * Perform a race data scan using ```racescan```
 * Display Race Browser window using ```raceshow```
 * The plugin loads race information from the game and displays it in a window to make browsing and comparing races more convenient.
 * Right click in the window to apply sorting filters. Races in the left side window are sorted based on the filter criteria.
-![LotJRaceBrowser](images/LotJRaceBrowser-detail.png)<br>
 
 ## Installation
 
-### Dropbox https://www.dropbox.com/sh/iqwhx27wte04pd4/WrDTVI4yPi    
-
-1. Click __download__ button at top right of main page and extract the LotJPlugins.zip file into your MUSHclient\Worlds\LotJ directory.
-2. Delete any previous versions of plugins you may be using to ensure no conflicts arise.
-3. Open your plugin manager by pressing __ctrl+shift+p__ in MUSHclient, or click __File->Plugins__.
-4. Click __Add__ and choose the .xml plugins you wish to use.
-5. Click __Show Info__ on each plugin to see a brief description of what each does and information on the provided in-game help system for each.
-6. Disconnect from the game world, then reconnect to allow changes to take effect. (This step only really applies to the MSDP handler)
-   
 ### GitHub https://github.com/Johnson336/LotJPlugins
 
 ##### __WARNING__ Do NOT right click files and choose "Save link as" as this will attempt to save the entire web page and will result in a distorted .xml file and will throw errors if you try to install it! You have been warned!
@@ -55,6 +65,8 @@ Questions, comments, complaints, suggestions, bug reports can be directed
 5. Click __Add__ and choose the .xml plugins you wish to use.
 6. Click __Show Info__ on each plugin to see a brief description of what each does and information on the provided in-game help system for each.
 7. Disconnect from the game world, then reconnect to allow changes to take effect.
+   
+
 
 
 ## ChangeLog
@@ -97,21 +109,6 @@ myVariable = getmsdp("VARIABLE NAME")
 
 #### v0.82
 * Experimenting with 3D coordinate transforms and attempting to display localized space bodies represented in a 2D window.
-
-### LotJStarMap.xml
-
-#### v2.28
-* Added right click menu to give several new options including adding/removing systems, changing colors and fonts, or restoring defaults.
-* Adjusted how distances are displayed when hovering a system, should be easier to read.
-
-#### v2.16
-* Added a bit of redundancy to `getmsdp()` variable calls.
-
-#### v2.15 
-* Added resizing capability. Also added automatic settings and planet information saving.
-* New command: `'showmap'` displays currently loaded planet settings without the need to scan every time.
-* `'hypmap'` retains original scanning functionality
-* Added support for ship coordinate display. Also added hyperjump route display.
 
 ### LotJFlight.xml
 * Added squadron home ship labeling. Saves the ship that launched a fighter and displays that information when the fighter is seen via look, proximity, radar, or fleetradar in the format: 
