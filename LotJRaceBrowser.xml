@@ -1270,7 +1270,7 @@ function right_click_menu(hotspot_id)
     elseif result == #matrix_class*2+#matrix_stats+#attribs+1 then -- chose alpha sort
       sortByAlpha()
       return
-    elseif result == #matrix_class*2+#matrix_stats+2 then -- chose clear filters
+    elseif result == #matrix_class*2+#matrix_stats+#attribs+2 then -- chose clear filters
       clearFilters()
       return
     end
