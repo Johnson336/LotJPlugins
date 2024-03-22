@@ -2,7 +2,7 @@
 <!DOCTYPE muclient> 
 <!--  Saved on Wednesday, July 25, 2012, 7:12 PM   -->  
 <muclient>
-<plugin name="LotJCargo" author="@Johnson" id="b4f195e776cff20d17a1abd2" language="Lua" purpose="Cargo Running Made Easy" save_state="y" requires="4.40" version="1.58">
+<plugin name="LotJCargo" author="@Johnson" id="b4f195e776cff20d17a1abd2" language="Lua" purpose="Cargo Running Made Easy" save_state="y" requires="4.40" version="1.59">
 <description trim="y">
 <![CDATA[ 
 Usage:
@@ -1108,6 +1108,10 @@ function cargoSetupPlanets(name, line, args)
       return
     end
     local bestRoute = bestMatches[bestNum].route
+    if not bestRoute then -- something went wrong
+      ColourNote("red","","Something went wrong, unable to find best route with index "..bestNum)
+      return
+    end
     cPlanets = {}
     addItems = {}
     for i=1, #bestRoute-1, 1 do
@@ -1116,7 +1120,7 @@ function cargoSetupPlanets(name, line, args)
       planet.resource = routes[bestRoute[i]][bestRoute[i+1]].resource or ""
       planet.contraband = contraband
       cPlanets[#cPlanets + 1] = planet
-      ColourNote("yellow","","("..planet.name..","..planet.resource..","..planet.contraband..") added to cargo planets.")
+      ColourNote("yellow","","("..(planet.name or "")..","..(planet.resource or "")..","..(planet.contraband or "")..") added to cargo planets.")
 
     end
     if #cPlanets == #bestRoute-1 then
@@ -1129,12 +1133,16 @@ function cargoSetupPlanets(name, line, args)
     ColourNote("red","",cargoPlanetsUsage)
 	  return
 	end
+  -- perform comprehensive input checking
+  if not AllItemsAreValid(addItems) then
+    return
+  end
 	cPlanets = {}
   ColourNote("yellow","","Cargo planet list cleared.")
-  
+
   local i = 1
   while i < #addItems do
-    planet = { name = Trim(addItems[i]), resource = Trim(addItems[i+1]), contraband = Trim(addItems[i+2]) }
+    planet = { name = addItems[i], resource = addItems[i+1], contraband = addItems[i+2] }
     table.insert(cPlanets, planet)
     ColourNote("yellow","","("..(planet.name or "")..","..(planet.resource or "")..","..(planet.contraband or "")..") added to cargo planets.")
     i = i + 3
@@ -1142,6 +1150,56 @@ function cargoSetupPlanets(name, line, args)
 
   OnPluginSaveState()
   BroadcastPlugin(999, 'reload')
+end
+
+function AllItemsAreValid(items)
+  if #items % 3 ~= 0 then -- incorrect number of items given, should come in pairs of 3
+    ColourNote("red","",cargoPlanetsUsage)
+    return false
+  end
+  for i=1, #items, 3 do -- check each planet for validity
+    items[i] = Trim(items[i])
+    local found = false
+    for k, v in pairs(systems) do
+      for a, b in pairs(v.bodies) do
+        if items[i]:lower() == b.name:lower() then
+          found = true
+        end
+      end
+    end
+    if not found then
+      ColourNote("red","","Invalid planet name given. '"..items[i].."' is not a valid planet.")
+      return false
+    end
+  end
+  for i=2, #items, 3 do -- check each resource for validity
+    items[i] = Trim(items[i])
+    local found = false
+    if items[i]:lower() == "none" then
+      found = true
+    end
+    for k, v in pairs(systems) do
+      for a, b in pairs(v.bodies) do
+        for c, d in pairs(b.resources) do
+          if items[i]:lower() == d.name:lower() then
+            found = true
+          end
+        end
+      end
+    end
+    if not found then
+      ColourNote("red","","Invalid resource name given. '"..items[i].."' is not a valid resource.")
+      return false
+    end
+  end
+  for i=3, #items, 3 do -- check each contraband parameter for validity
+    items[i] = Trim(items[i])
+    if items[i]:lower() ~= "yes" and items[i]:lower() ~= "no" and items[i]:lower() ~= "on" and items[i]:lower() ~= "off" then
+      ColourNote("red","","Invalid option given to contraband, it must be 'yes', 'no', 'on', or 'off'.")
+      return false
+    end
+  end
+  return true
 end
 
 function contraSellFailed(name, line, args)
@@ -2234,10 +2292,10 @@ function cargoList()
     ColourNote("red","","Cargo route empty, add something first!")
   else
     ColourNote(gray,"","Cargo list contains ",cyan,"",#cPlanets,gray,""," planets: ")
-    ColourNote(gray,"","-----------------------------------------------")
-    ColourNote(gray,"","[",darkblue,"","Curr:",gray,"","] [",darkblue,"","Planet:       ",gray,"","] [",darkblue,"","Resource:           ",gray,"","]")
+    ColourNote(gray,"",string.rep("-", 57))
+    ColourNote(gray,"","[",darkblue,"","Curr:",gray,"","] [",darkblue,"",string.format("%-14s", "Planet:"),gray,"","] [",darkblue,"",string.format("%-20s", "Resource:"),gray,"","] [",darkblue,"",string.format("%-7s", "Contra:"),gray,"","]")
     for i, v in ipairs(cPlanets) do
-      ColourNote(gray,"","[",cyan,"",string.format("%-5s", ((i == cVar and "*") or "")),gray,"","] [",cyan,"",string.format("%-14s", v.name),gray,"","] [",cyan,"",string.format("%-20s", v.resource),gray,"","]")
+      ColourNote(gray,"","[",cyan,"",string.format("%-5s", ((i == cVar and "*") or "")),gray,"","] [",cyan,"",string.format("%-14s", v.name),gray,"","] [",cyan,"",string.format("%-20s", v.resource),gray,"","] [",cyan,"",string.format("%-7s",v.contraband),gray,"","]")
     end -- for
   end
   OnPluginSaveState()
