@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="iso-8859-1" ?> 
 <!DOCTYPE muclient> 
 <muclient>
-<plugin name="LotJRaceBrowser" author="@Johnson" id="a4e8153e52b1b6d490ed4b10" language="Lua" purpose="Browse LotJ Races" save_state="y" requires="4.84" version="1.08">
+<plugin name="LotJRaceBrowser" author="@Johnson" id="a4e8153e52b1b6d490ed4b10" language="Lua" purpose="Browse LotJ Races" save_state="y" requires="4.84" version="1.09">
 <description trim="y">
 <![CDATA[ 
 
@@ -154,6 +154,9 @@ local lastRefresh = 0
 local filter_main_class = ""
 local filter_classes = {}
 local filter_stats = {}
+local filter_attribs = {}
+-- list of all possible race attributes
+attribs = {}
 
 races = {}
 local newRace = {}
@@ -180,7 +183,7 @@ local lines = {}
 local polys = {}
 
 loadstring(GetVariable("races") or "") ()
-
+loadstring(GetVariable("attribs") or "") ()
 
 
 function printBrowseList()
@@ -233,14 +236,14 @@ function updateRaceText()
       local title_width = WindowTextWidth(win, font, race.name)
       addText( {"white",filler.."Race"..filler}, font, "center")
       addText( {"cyan",race.name}, font, "center")
-      
+
       addText( {"white", filler.."Stats"..filler}, font, "center")
       addText( {"white","Price: ",((race.price==0 and "lime") or "red"),race.price,"white"," Deposit: ",((race.dep==0 and "lime") or "red"),race.dep,"white"," Language: ","red",race.language}, font, "center")
       addText( {"white","AC: ","red",race.ac,"white"," Base HP: ","red",race.hp,"white"," App Only: ",((race.apponly=="Yes" and "red") or "lime"),race.apponly}, font, "center")
       addText( {"white","Str: ","red",race.str,"white"," Dex: ","red",race.dex,"white"," Con: ","red",race.con}, font, "center")
       addText( {"white","Int: ","red",race.int,"white"," Wis: ","red",race.wis,"white"," Cha: ","red",race.cha}, font, "center")
       addText( {"white","Frc: ","red",race.frc,"white"," Lck: ","red",race.lck,"white"," Era Restrict: ",((race.erarestrict==0 and "lime") or "red"),race.erarestrict}, font, "center")
-      
+
       addText( {"white",filler.."Levels"..filler}, font, "center")
       local levelTitle = "               COM PIL ENG HUN SMU LEA ESP SLI MED SCI"
       addText( {"white",levelTitle}, font, "center")
@@ -249,9 +252,9 @@ function updateRaceText()
       local levelClassWidth = WindowTextWidth(win, font, "                ")
       local spaceWidth = WindowTextWidth(win, font, " ")
       local levelHeadingWidth = WindowTextWidth(win, font, " COM")
-      
+
       local bound = { left = config.split+2, top = titleHeight, right = config.width-SCROLL_BAR_WIDTH, bot = config.height-2 } -- valid bounding box for drawing
-      
+
       -- add highlight box for class filters
       for _, v in pairs(filter_classes) do
         local index = class_matrix[v] or 0
@@ -261,7 +264,7 @@ function updateRaceText()
                        bot = bound.top+(((#text-textStart)+#matrix_class+1)*textLineHeight) }
         addPoly( string.format("%i,%i,%i,%i,%i,%i,%i,%i", line.left, line.top, line.right, line.top, line.right, line.bot, line.left, line.bot), ColourNameToRGB("white"), 1+0x2000, 1, ColourNameToRGB("white"), 1, true, false )
       end
-            
+
       for a, b in pairsByKeys(race.levels) do
         local t = {}
         t[#t+1]=((a==race.mainclass and "cyan") or "white")
@@ -481,10 +484,11 @@ function scanNextRace(name, line, args)
   if currentRaceIndex > #races then
     ColourNote("yellow","","Race Scan complete.")
     EnableTrigger("gagAll", false)
+    BuildRaceAttribs()
     --tprint(races)
   else
     currentRace = races[currentRaceIndex]
-    --DeleteLines(2)
+    DeleteLines(1)
     ColourNote("silver","","Scan "..string.format("%2.2f",((currentRaceIndex/#races)*100)).."% completed.")
     SendNoEcho("showrace \""..currentRace.name.."\"")
     EnableTriggerGroup("raceScanFirst", true)
@@ -492,15 +496,30 @@ function scanNextRace(name, line, args)
   scheduleRedraw()
 end
 
+function BuildRaceAttribs()
+  attribs = {}
+  for i, v in ipairs(races) do
+    for k, j in ipairs(v.attribs or {}) do
+      local found = false
+      for a, b in ipairs(attribs or {}) do
+        if b==j.name then found = true end
+      end
+      if not found then
+        attribs[#attribs + 1] = j.name
+      end
+    end
+  end
+end
+
 function sortByAlpha()
   table.sort(races, function (k1, k2) return k1.name < k2.name end )
   clearFilters()
 end
 
-function sortByFilter(class, filter, stats)
+function sortByFilter(class, filter, stats, attribs)
   --table.sort(races, function (k1, k2) return getSubclassLevelsByClass(k1, class, filter, stats) > getSubclassLevelsByClass(k2, class, filter, stats) end )
   for a=1, #races do
-    findRaceWeightValue(races[a], class, filter, stats)
+    findRaceWeightValue(races[a], class, filter, stats, attribs)
   end
   table.sort(races, function (k1, k2) return k1.weight > k2.weight end )
   updateSelectedRace()
@@ -510,6 +529,10 @@ function clearFilters()
   filter_main_class = ""
   filter_classes = {}
   filter_stats = {}
+  filter_attribs = {}
+  for i, _ in ipairs(races) do
+    races[i].weight = 0
+  end
   updateSelectedRace()
 end
   
@@ -536,7 +559,7 @@ class_matrix = {  ["combat"] = 1,
 matrix_class = { "combat", "piloting", "engineering", "bounty hunting", "smuggling", "leadership", "espionage", "slicer", "medical", "science" }
   matrix_stats = { "price", "dep", "str", "dex", "con", "int", "wis", "cha", "frc", "lck", "ac", "hp", "apponly", "erarestrict" }
 
-function findRaceWeightValue(race, main, class_filter, stat_filter)
+function findRaceWeightValue(race, main, class_filter, stat_filter, attrib_filter)
   local num = 0
   if main~="" then -- picked a main class
     if #class_filter == 0 then -- no class filters, find average of all levels
@@ -565,6 +588,12 @@ function findRaceWeightValue(race, main, class_filter, stat_filter)
   end
   for _, v in pairs(stat_filter) do
     num = num + getRaceStat(race, v)
+  end
+  -- add a flat 1000 if this race has the desired attribute
+  for _, v in pairs(attrib_filter) do
+    for _, j in pairs(race.attribs) do
+      if v==j.name then num = num + 1000 end
+    end
   end
   race.weight = num
 end
@@ -778,9 +807,6 @@ function drawWindow(name, line, args)
   drawAlphaButton()
   drawResizer(win, config.width, config.height)
   WindowShow (win,  true)
-  --BroadcastPlugin(999, "repaint")
-  
-  
 end
 
 function drawRefreshButton()
@@ -1033,8 +1059,8 @@ function ScrollerMoveCallback(flags, hotspot_id)
 end
 
 function ScrollerReleaseCallback(flags, hotspot_id)
-   dragscrolling = false
-   scheduleRedraw()
+  dragscrolling = false
+  scheduleRedraw()
 end
 
 ----------------------------------------------------------------------
@@ -1149,16 +1175,16 @@ end
 
 function right_click_menu(hotspot_id)
 
-	menu ="!"
+  local menu ="!"
   menu = menu .."^Race Sorting|>Apply main class filter|"
-  
-  for i, v in ipairs(matrix_class) do
+
+  for _, v in ipairs(matrix_class) do
     menu = menu..((filter_main_class==v and "+") or "")..v.."|"
   end
   menu = menu.."<|>Apply level filters|"
-  for i, v in ipairs(matrix_class) do
+  for _, v in ipairs(matrix_class) do
     local found = false
-    for k, j in pairs(filter_classes) do
+    for _, j in pairs(filter_classes) do
       if j==v then -- class belongs to sorting filter
         found = true
       end
@@ -1166,23 +1192,35 @@ function right_click_menu(hotspot_id)
     menu = menu..((found and "+") or "")..v.."|"
   end
   menu = menu.."<|>Apply stat filters|"
-  for i, v in ipairs(matrix_stats) do
+  for _, v in ipairs(matrix_stats) do
     local found = false
-      for k, j in pairs(filter_stats) do
+      for _, j in pairs(filter_stats) do
         if j==v then -- stat belongs to sorting filter
           found = true
         end
       end
     menu = menu..((found and "+") or "")..v.."|"
   end
+  -- add filtering for racial attributes
+  menu = menu.."<|>Apply racial attrib filters|"
+  for _, v in ipairs(attribs) do
+    local found = false
+      for _, j in pairs(filter_attribs) do
+        if j==v then -- attrib belongs to sorting filter
+          found = true
+        end
+      end
+    menu = menu..((found and "+") or "")..v.."|"
+  end
+  -- add static menu options at the end
   menu = menu .. "<|Sort alphabetically|Clear filters"
-  
-  result = tonumber(WindowMenu (win,
-		WindowInfo (win, 14),  -- x position
-		WindowInfo (win, 15),   -- y position
-		menu))
-    
-    
+
+  local result = tonumber(WindowMenu (win,
+    tonumber(WindowInfo (win, 14)) or 0,  -- x position
+    tonumber(WindowInfo (win, 15)) or 0,   -- y position
+    menu))
+
+
   if result~=nil then
     if result > 0 and result <= #matrix_class then -- chose a main class
       if filter_main_class==matrix_class[result] then -- remove main class choice
@@ -1193,9 +1231,9 @@ function right_click_menu(hotspot_id)
     elseif result > #matrix_class and result <= #matrix_class*2 then -- chose a level filter
       local choice = matrix_class[result-#matrix_class]
       local found = 0
-      for k, v in pairs(filter_classes) do
+      for i, v in ipairs(filter_classes) do
         if v==choice then -- choice already in filter, remove it
-          found = k
+          found = i
         end
       end
       if found>0 then
@@ -1206,9 +1244,9 @@ function right_click_menu(hotspot_id)
     elseif result > #matrix_class*2 and result <= #matrix_class*2+#matrix_stats then -- chose a stat filter
       local choice = matrix_stats[result-#matrix_class*2]
       local found = 0
-      for k, v in pairs(filter_stats) do
+      for i, v in ipairs(filter_stats) do
         if v==choice then -- choice already in filter, remove it
-          found = k
+          found = i
         end
       end
       if found>0 then
@@ -1216,14 +1254,27 @@ function right_click_menu(hotspot_id)
       else
         filter_stats[#filter_stats + 1] = choice
       end
-    elseif result == #matrix_class*2+#matrix_stats+1 then -- chose alpha sort
+    elseif result > #matrix_class*2+#matrix_stats and result <= #matrix_class*2+#matrix_stats+#attribs then -- chose an attribute
+      local choice = attribs[result-(#matrix_class*2+#matrix_stats)]
+      local found = 0
+      for i, v in ipairs(filter_attribs) do
+        if v==choice then -- choice already in filter, remove it
+          found = i
+        end
+      end
+      if found>0 then
+        table.remove(filter_attribs, found)
+      else
+        filter_attribs[#filter_attribs + 1] = choice
+      end
+    elseif result == #matrix_class*2+#matrix_stats+#attribs+1 then -- chose alpha sort
       sortByAlpha()
       return
     elseif result == #matrix_class*2+#matrix_stats+2 then -- chose clear filters
       clearFilters()
       return
     end
-    sortByFilter(filter_main_class, filter_classes, filter_stats)
+    sortByFilter(filter_main_class, filter_classes, filter_stats, filter_attribs)
   end
 
 end
@@ -1383,6 +1434,7 @@ function OnPluginSaveState ()
   movewindow.save_state (win)
   SetVariable("config", serialize.save("config"))
   SetVariable("races", serialize.save("races"))
+  SetVariable("attribs", serialize.save("attribs"))
   SetVariable("visible", visible)
 end -- function OnPluginSaveState
 
